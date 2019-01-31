@@ -4,3 +4,6 @@
 [submodule "ublarcvapp"]
 	path = ublarcvapp
 	url = https://github.com/LArbys/ublarcvapp
+[submodule "larlite"]
+	path = larlite
+	url = https://github.com/larlight/larlite
