@@ -1,0 +1,98 @@
+File=Table 
+Product=ubdl
+Version=v1_0_0
+ 
+Group:
+
+Flavor     = ANY
+Qualifiers = "e17:prof"
+
+  Action = GetProducts
+    setupRequired( root     v6_12_06a -q e17:prof )
+    setupRequired( opencv   v3_4_2    -q e17 )
+    setupRequired( python   v2_7_14b )
+    setupRequired( numpy    v1_14_3   -q e17:p2714b:prof )
+    setupRequired( numpydev v1_14_3   -q e17:p2714b:prof )
+
+Common:
+  Action = setup
+    prodDir()
+    setupEnv()
+    envSet(${UPS_PROD_NAME_UC}_VERSION, ${UPS_PROD_VERSION})
+
+    # Set up required products, which is root
+    exeActionRequired(GetProducts)
+
+    # set key environment variables for sub-packages
+    envSet(OPENCV_LIBDIR,${OPENCV_LIB})
+    envSet(OPENCV_INCDIR,${OPENCV_INC})
+
+    # larlite
+    envSet(LARLITE_BASEDIR,${UPS_PROD_DIR}/larlite)
+    envSet(LARLITE_COREDIR,${UPS_PROD_DIR}/larlite/core)
+    envSet(LARLITE_LIBDIR, ${UPS_PROD_DIR}/larlite/lib)
+    envSet(LARLITE_USERDEVDIR,${UPS_PROD_DIR}/larlite/UserDev)
+    envSet(LARLITE_PYTHON,"python2")
+    envSet(LARLTTE_PYTHON_VERSION,2)
+
+    # Geo2D
+    envSet(GEO2D_BASEDIR,${UPS_PROD_DIR}/Geo2D)
+    envSet(GEO2D_BINDIR, ${UPS_PROD_DIR}/Geo2D/bin)
+    envSet(GEO2D_COREDIR,${UPS_PROD_DIR}/Geo2D/Geo2D/core)
+    envSet(GEO2D_INCDIR, ${UPS_PROD_DIR}/Geo2D)
+    envSet(GEO2D_LIBDIR, ${UPS_PROD_DIR}/Geo2D/lib)
+    envSet(ENABLE_GEO2D_ALIAS,1)
+
+    # LArOpenCV
+    envSet(LAROPENCV_BASEDIR,${UPS_PROD_DIR}/LArOpenCV)
+    envSet(LAROPENCV_IMAGECLUSTERDIR,${UPS_PROD_DIR}/LArOpenCV/ImageCluster)
+
+    # LArCV
+    envSet(LARCV_APPDIR,${UPS_PROD_DIR}/larcv/larcv/app)
+    envSet(LARCV_BASEDIR,${UPS_PROD_DIR}/larcv)
+    envSet(LARCV_BINDIR,${UPS_PROD_DIR}/larcv/build/installed/bin)
+    envSet(LARCV_BUILDDIR,${UPS_PROD_DIR}/larcv/build)
+    envSet(LARCV_COREDIR,${UPS_PROD_DIR}/larcv/larcv/core)
+    envSet(LARCV_INCDIR,${UPS_PROD_DIR}/larcv/build/installed/include)
+    envSet(LARCV_LIBDIR,${UPS_PROD_DIR}/larcv/build/installed/lib)
+    envSet(LARCV_ANN,1)
+    envSet(LARCV_LIBTORCH,1)
+    envSet(LARCV_NUMPY,1)
+    envSet(LARCV_OPENCV,1)
+    envSet(LARCV_ROOT6,1)
+    envSet(LARCV_VERSION,1)
+
+    # UBLArCVApp
+    envSet(UBLARCVAPP_BASEDIR, ${UPS_PROD_DIR}/ublarcvapp)
+    envSet(UBLARCVAPP_INCDIR,  ${UPS_PROD_DIR}/ublarcvapp/build/include)
+    envSet(UBLARCVAPP_LIBDIR,  ${UPS_PROD_DIR}/ublarcvapp/build/lib)
+
+    if ( test `uname` = "Darwin" )
+      envSet(LARCV_CXX,clang++)
+      pathPrepend(DYLD_LIBRARY_PATH, ${LARCV_LIBDIR})
+    else()
+      envSet(LARCV_CXX,g++)
+      pathPrepend(LD_LIBRARY_PATH, ${LARCV_LIBDIR})
+    endif ( test `uname` = "Darwin" )
+
+    # add python directory to the python path
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/larlite/python )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/Geo2D/python )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/LArOpenCV/python )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/larcv/python )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvapp/python )
+
+    # add lib dir to ld path
+    pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larlite/lib )
+    pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/Geo2D/lib )
+    pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larcv/build/installed/lib )
+    pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/lib )
+
+End:
+# End Group definition
+#*************************************************
+#
+# ups declare command that works on gpvm:
+# ups declare ubdl v1_0_1 -r ubdl/v06_36_00 -f Linux64bit+2.6-2.12 -m ubdl.table -q e17:prof -U ups/
+#
+#
