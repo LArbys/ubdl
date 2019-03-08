@@ -10,3 +10,6 @@ export LIBTORCH_LIBDIR="/usr/local/lib/python2.7/dist-packages/torch/lib"
 export LIBTORCH_INCDIR="/usr/local/lib/python2.7/dist-packages/torch/lib/include"
 [[ ":$LD_LIBRARY_PATH:" != *":${LIBTORCH_LIBDIR}:"* ]] && \
     export LD_LIBRARY_PATH="${LIBTORCH_LIBDIR}:${LD_LIBRARY_PATH}"
+
+# CUDA
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
