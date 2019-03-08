@@ -13,3 +13,6 @@
 [submodule "LArOpenCV"]
 	path = LArOpenCV
 	url = https://github.com/NevisUB/LArOpenCV
+[submodule "ublarcvserver"]
+	path = ublarcvserver
+	url = https://github.com/larbys/ublarcvserver
