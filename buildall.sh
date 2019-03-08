@@ -21,9 +21,12 @@ make install
 cd $workdir
 
 mkdir -p ublarcvapp/build
-cd ublarcvapp/build
+cd ublarcvapp
+source configure.sh
+cd build
+cmake ../
+make install
 cd $workdir
 
 echo "built ubdl modules"
-
 
