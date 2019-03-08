@@ -27,5 +27,6 @@ source configure.sh
 cd $workdir
 
 # UB LArCV app
-#cd ublarcvapp
-#source configure.sh
+cd ublarcvapp
+source configure.sh
+cd $workdir
