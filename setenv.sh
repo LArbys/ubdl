@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Note locations here are some defaults that typically work for ubuntu.
+# they are also the locations used in the [ubdl container](https://github.com/larbys/larbys-containers)
+
+# ROOT
+source /usr/local/root/build/bin/thisroot.sh
+
 # OPENCV
 export OPENCV_INCDIR=/usr/local/include
 export OPENCV_LIBDIR=/usr/local/lib
