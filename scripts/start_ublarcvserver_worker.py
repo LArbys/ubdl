@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 import os,sys,argparse,logging
-from ublarcvserver import Broker
-from start_ubssnet_worker import startup_ubssnet_workers
 
 parser = argparse.ArgumentParser()
 parser.add_argument("brokeraddr",type=str,help="Broker Address")
@@ -20,7 +18,11 @@ parser.add_argument("-n","--num_workers",type=int,default=1,
 
 if __name__ == "__main__":
 
-    args = parser.parse_args()
+    args = parser.parse_args(sys.argv[1:])
+
+    from ublarcvserver import Broker
+    from start_ubssnet_worker import startup_ubssnet_workers
+    
 
     level = logging.INFO
     if args.debug:
