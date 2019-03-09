@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os,sys,argparse,logging
 from ublarcvserver import Broker
 

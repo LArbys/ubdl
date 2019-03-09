@@ -26,6 +26,16 @@ if [ ! -f ../ublarcvserver/networks/pytorch-uresnet/.git ]; then
   cd ${startdir}
 fi
 
+# PYTHON PATHS
+
+# ubsset app dir
+UBSSNETAPP_DIR=${UBLARCVSERVER_BASEDIR}/app/ubssnet
+[[ ":$PYTHONPATH:" != *":${UBSSNETAPP_DIR}:"* ]] && export PYTHONPATH="${UBSSNETAPP_DIR}:${PYTHONPATH}"
+
+# pytorch-uresnet model dir
+PYTORCH_URESNET_MODEL_DIR=${UBLARCVSERVER_BASEDIR}/networks/pytorch-uresnet/models
+[[ ":$PYTHONPATH:" != *":${PYTORCH_URESNET_MODEL_DIR=}:"* ]] && export PYTHONPATH="${PYTORCH_URESNET_MODEL_DIR=}:${PYTHONPATH}"
+
 if [ ! -f ../ublarcvserver/networks/pytorch-uresnet/weights/mcc8_caffe_ubssnet_plane0.tar ]; then
   echo "--------------------------------------------------------"
   echo "missing the weight files for ubssnet."
