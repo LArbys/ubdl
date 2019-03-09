@@ -22,7 +22,7 @@ fi
 if [ ! -f ../ublarcvserver/networks/pytorch-uresnet/.git ]; then
   cd ${here}/../ublarcvserver/
   git submodule init
-  git submdoule update
+  git submodule update
   cd ${startdir}
 fi
 
