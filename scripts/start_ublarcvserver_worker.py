@@ -38,6 +38,7 @@ if __name__ == "__main__":
     weights_files = {0:weights_dir+"/mcc8_caffe_ubssnet_plane0.tar",
                      1:weights_dir+"/mcc8_caffe_ubssnet_plane1.tar",
                      2:weights_dir+"/mcc8_caffe_ubssnet_plane2.tar"}
+
     for p in xrange(2):
         if not os.path.exists(weights_files[p]):
             log.error("did not find weight file at: "+weights_files[p])
