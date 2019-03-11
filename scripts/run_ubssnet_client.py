@@ -1,4 +1,4 @@
-import os,sys,time,logging,argparse
+import os,sys,time,logging,argparse,getpass
 
 parser = argparse.ArgumentParser()
 parser.add_argument("brokeraddr",type=str,help="Broker Address")
@@ -15,7 +15,7 @@ parser.add_argument("-b","--batch-size",type=int,default=1,
                     help="batch size for each worker")
 parser.add_argument("-n","--num_workers",type=int,default=1,
                     help="number of workers to launch")
-parser.add_arguemnt("-t","--ssh-tunnel",type=str,
+parser.add_argument("-t","--ssh-tunnel",type=str,
                     help="Tunnel using SSH through the given address")
 parser.add_argument("-u","--ssh-user",type=str,default=None,
                     help="username for ssh tunnel command")
