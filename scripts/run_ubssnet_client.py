@@ -9,12 +9,6 @@ parser.add_argument("-l","--logfile",type=str, default=None,
                     help="where the log file is writen to")
 parser.add_argument("-d","--debug",action="store_true",
                     help="set logger level to debug")
-parser.add_argument("-m","--mode",type=str,default="cuda",
-                    help="run with device. either 'cuda' or 'cpu'")
-parser.add_argument("-b","--batch-size",type=int,default=1,
-                    help="batch size for each worker")
-parser.add_argument("-n","--num_workers",type=int,default=1,
-                    help="number of workers to launch")
 parser.add_argument("-t","--ssh-tunnel",type=str,
                     help="Tunnel using SSH through the given address")
 parser.add_argument("-u","--ssh-user",type=str,default=None,
@@ -26,7 +20,6 @@ parser.add_argument("-p","--opflash",type=str,default="simpleFlashBeam",
 parser.add_argument("-r","--tick-backwards",action="store_true",
                     help="larcv images stored in tick-backwards format. "+
                          "typical for older files.")
-
 
 
 args = parser.parse_args()
