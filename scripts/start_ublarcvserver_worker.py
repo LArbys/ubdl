@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os,sys,argparse,logging
+import getpass
 
 parser = argparse.ArgumentParser()
 parser.add_argument("brokeraddr",type=str,help="Broker Address")
@@ -15,6 +16,11 @@ parser.add_argument("-b","--batch-size",type=int,default=1,
                     help="batch size for each worker")
 parser.add_argument("-n","--num_workers",type=int,default=1,
                     help="number of workers to launch")
+parser.add_argument("-t","--ssh-tunnel",type=str,default=None,
+                    help="Tunnel using SSH through the given IP address")
+parser.add_argument("-u","--ssh-user",type=str,default=None,
+                    help="username for ssh tunnel command")
+
 
 if __name__ == "__main__":
 
@@ -22,7 +28,7 @@ if __name__ == "__main__":
 
     from ublarcvserver import Broker
     from start_ubssnet_worker import startup_ubssnet_workers
-    
+
 
     level = logging.INFO
     if args.debug:
@@ -50,15 +56,27 @@ if __name__ == "__main__":
     batch_size = args.batch_size
     nworkers   = args.num_workers
     endpoint = args.brokeraddr
+
+    if args.ssh_tunnel is not None:
+        if args.ssh_user is None:
+            raise ValueError("If using ssh tunnel, must provide user")
+        print "Using ssh, please provide password"
+        ssh_password =  getpass.getpass()
+        ssh_url = "%s@%s"%(args.ssh_user,args.ssh_tunnel)
+    else:
+        ssh_url = None
+        ssh_password = None
+
     workers_v = []
     log.info("starting the workers")
     for w in xrange(args.num_workers):
         pworkers = startup_ubssnet_workers(endpoint,weights_files,
-                                            nplanes=[0,1,2],
-                                            devices=args.mode,
-                                            batch_size=batch_size)
+                                           nplanes=[0,1,2],
+                                           devices=args.mode,
+                                           batch_size=batch_size,
+                                           ssh_thru_server=ssh_url,
+                                           ssh_password=ssh_password)
         workers_v.append(pworkers)
-
 
     log.info("Workers started")
     raw_input()
