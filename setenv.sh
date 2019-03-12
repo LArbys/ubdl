@@ -6,6 +6,11 @@
 # ROOT
 source /usr/local/root/build/bin/thisroot.sh
 
+# CUDA
+# typical location of cuda in ubuntu
+export CUDA_HOME=/usr/local/cuda-10.0
+[[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
 # OPENCV
 export OPENCV_INCDIR=/usr/local/include
 export OPENCV_LIBDIR=/usr/local/lib
@@ -21,6 +26,3 @@ export LIBTORCH_INCDIR=${LIBTORCH_DIR}/lib/include
 #[[ ":$LD_LIBRARY_PATH:" != *":${LIBTORCH_LIBDIR}:"* ]] && \
 #    export LD_LIBRARY_PATH="${LIBTORCH_LIBDIR}:${LD_LIBRARY_PATH}"
 
-# CUDA
-# typical location of cuda in ubuntu
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
