@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os,sys,argparse,logging
+import os,sys,argparse,logging,time
 import getpass
 
 parser = argparse.ArgumentParser()
@@ -79,4 +79,12 @@ if __name__ == "__main__":
         workers_v.append(pworkers)
 
     log.info("Workers started")
-    raw_input()
+    nalive = len(workers_v)
+    while nalive>0:
+        time.sleep(60)
+        nalive = 0
+        for plane_v in workers_v:
+            for w in plane_v:
+                if w.is_alive():
+                    nalive+=1
+    log.info("All workers stopped")
