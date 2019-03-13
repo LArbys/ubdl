@@ -43,6 +43,16 @@ We provide a number of scripts to set the environment variables and perform the 
 
 ## scripts directory
 
+| script                   | purpose | do I have to edit it? | when do I run it? |
+|:------------------------:|:-------:|:---------------------:| :---------------- |
+| setenv_ublarcvserver.sh  | set envionroment variables for using ublarcvserver | NO | every new shell |
+| start_ublarcvserver_broker.sh | start the gpu job broker | NO | when you want to start a broker |
+| start_ublarcvserver_worker.sh | start one or more gpu UBSSNet workers | NO | when you want to start workers |
+| run_ubssnet_client.sh | run ubssnet client | NO | when you want to run a client |
+| tufts_start_container.sh | start current ubdl container stored on Tufts cluster | NO | to start a new interactive session inside the container |
+| tufts_submit_build.sh    | launches a grid job on the Tufts cluster to build code | NO (but call to compile) | every time changes are made to source code |
+
+
 
 ## LArCV1 notes
 
