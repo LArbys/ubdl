@@ -16,7 +16,7 @@ make -j4
 cd $workdir
 
 cd larcv/build
-cmake -DUSE_PYTHON2=ON -DUSE_OPENCV=ON ../
+cmake -DUSE_PYTHON2=ON -DUSE_OPENCV=OFF ../
 make install
 cd $workdir
 
@@ -29,4 +29,3 @@ make install
 cd $workdir
 
 echo "built ubdl modules"
-

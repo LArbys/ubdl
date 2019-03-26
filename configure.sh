@@ -6,9 +6,6 @@ workdir=$PWD
 # set the basedir
 export UBDL_BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-export OPENCV_LIBDIR=/usr/local/lib
-export OPENCV_INCDIR=/usr/local/include
-
 cd $UBDL_BASEDIR
 
 # larlite
