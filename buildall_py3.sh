@@ -16,7 +16,7 @@ make -j4
 cd $workdir
 
 cd larcv/build
-cmake -DUSE_PYTHON3=ON -DUSE_OPENCV=OFF ../
+cmake -DUSE_PYTHON3=ON -DUSE_OPENCV=ON ../
 make install
 cd $workdir
 
