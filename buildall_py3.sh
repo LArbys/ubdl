@@ -1,5 +1,8 @@
 #!/bin/bash
 
+alias python=python3
+alias python-config=python3-config
+
 workdir=$PWD
 cd larlite
 make
