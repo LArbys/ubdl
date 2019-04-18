@@ -48,7 +48,7 @@ int main( int nargs, char** argv ) {
   int run, subrun, event;
 
   // input
-  larcv::IOManager io_ubpost_larcv( larcv::IOManager::kREAD, "", larcv::IOManager::kTickBackward );
+  larcv::IOManager io_ubpost_larcv( larcv::IOManager::kREAD, "", larcv::IOManager::kTickForward );
   io_ubpost_larcv.add_in_file( ubpost_larcv );
   io_ubpost_larcv.initialize();
 
@@ -95,7 +95,7 @@ int main( int nargs, char** argv ) {
 
   int nentries = io_ubpost_larcv.get_n_entries();
 
-  for (int i=0; i<nentries; i++) {
+  for (int i=0; i<5; i++) {
     io_ubpost_larcv.read_entry(i);
     io_ubpost_larlite.go_to(i);
     io_ubclust.go_to(i);
@@ -136,6 +136,10 @@ int main( int nargs, char** argv ) {
     std::vector<int> out_of_time(ev_cluster->size(),-1); //is cluster partially outside of beam window?
     std::vector<float> nufrac(ev_cluster->size(),0.); //how many cluster pixels are neutrino?
     std::vector<float> numhits(ev_cluster->size(),0.); //tot. number of hits in cluster
+
+    //grab Y plane wire image
+    auto const& wire_img = ev_img->Image2DArray().at( 2 );
+    auto const& wire_meta = wire_img.meta();
 
     //grab Y plane ancestor image
     auto const& anc_img = ev_ancestor->Image2DArray().at( 2 );
@@ -191,8 +195,12 @@ int main( int nargs, char** argv ) {
 
       }//End of Hits Loop
       nufrac[i] /= numhits[i]; // nu hits/all hits
-      out_of_time[i] = is_clust_out_bounds(early,late,100);
-
+      if (i<ev_cluster->size()-1){
+        out_of_time[i] = is_clust_out_bounds(early,late,100);
+      }
+      else{
+        out_of_time[i] = 0;
+      }
 	     //flag cross mu & through mu
       //first we arrange the cluster by y coordinate
 
@@ -200,6 +208,39 @@ int main( int nargs, char** argv ) {
 
     //fout.cd();
     //hancestor->Write();
+
+    //Lets get some figures of merit:
+    // TCanvas can("can", "histograms ", 2400, 800);
+    // gStyle->SetPalette(107);
+    // TH2F hist("Y-Plane", "Y-Plane", 1008, 0.0, 1008.0, 3456,0.0,3456);
+    // hist.SetOption("COLZ");
+    // larcv::Image2D binarized_adc = wire_img;
+    // binarized_adc.binary_threshold(0.0, 0.0, 1.0);
+    // larcv::Image2D binarized_instance=  inst_img;
+    // binarized_instance.binary_threshold(0.0, 0.0, 1.0);
+    // binarized_instance.eltwise(binarized_adc)
+    // float count_neut=0;
+    // float count_neut_thresh=0;
+    // for (int r=0;r<1008;r++){
+    //   for (int c=0;c<3456;c++){
+    //     count_neut += binarized_instance.pixel(r,c);
+    //     count_neut_thresh += binarized_instance.pixel(r,c)*binarized_adc.pixel(r,c);
+    //     // hist.SetBinContent(r,c, binarized_instance.pixel(r,c));
+    //   }
+    // }
+    // hist.Draw();
+    // hist.Write();
+    // std::string str = "Instance_"+std::to_string(i)+".png";
+    // char cstr[str.size() + 1];
+    // str.copy(cstr,str.size()+1);
+    // cstr[str.size()] = '\0';
+    // can.SaveAs(cstr);
+    // hist.Reset();
+    // std::cout << count_neut << " Neutrino Pixels" << std::endl;
+    // std::cout << count_neut_thresh << " Neutrino Pixels when adc thresholded" << std::endl;
+    // std::cout << count_neut_thresh/count_neut << " Fraction kept by that" << std::endl;
+
+
 
   }//end of entry loop
 
