@@ -191,7 +191,7 @@ int main( int nargs, char** argv ) {
 
       }//End of Hits Loop
       nufrac[i] /= numhits[i]; // nu hits/all hits
-      out_of_time[i] = is_clust_out_bounds(early,late);
+      out_of_time[i] = is_clust_out_bounds(early,late,100);
 
 	     //flag cross mu & through mu
       //first we arrange the cluster by y coordinate
@@ -226,5 +226,6 @@ late is too many. Defaulted to 0. Funtion returns:
 int result =0;
 if (early_count > threshold) {result =1;}
 else if (late_count > threshold) {result =2;}
+else if (late_count+early_count > threshold) { result =1;}
 return result;
 }
