@@ -16,6 +16,8 @@
 #include "DataFormat/mctrack.h"
 #include "DataFormat/mcshower.h"
 #include "LArUtil/LArProperties.h"
+#include "LArUtil/Geometry.h"
+#include "LArUtil/ClockConstants.h"
 
 // larcv
 #include "larcv/core/DataFormat/IOManager.h"
@@ -28,6 +30,9 @@
  * cosmic tag/rejection
  *
  */
+int is_clust_out_bounds(int early_count, int late_count, int threshold=0);
+
+
 int main( int nargs, char** argv ) {
 
   gStyle->SetOptStat(0);
@@ -68,16 +73,26 @@ int main( int nargs, char** argv ) {
   io_ssnet.initialize();
 
   //std::string output_hist = "outhist.root";
-  //TFile fout( output_hist.c_str(), "recreate" ); 
+  //TFile fout( output_hist.c_str(), "recreate" );
   //TH2D* hancestor;
 
   //this should be defined with proper constants
-  float beam_low = 3200.;
-  float beam_high = 3200 + 256./0.111/0.5; //width/drift speed / us per tick 
+  // larutil::LArProperties larproperties;
+  // larutil::Geometry geometry;
+  double drift_vel = larutil::LArProperties::GetME()->DriftVelocity();
+  double width = larutil::Geometry::GetME()->DetHalfWidth() * 2;
+  double time_per_tick = 1/larutil::kDEFAULT_FREQUENCY_TPC;
+  std::cout << "Width is         " << width << std::endl;
+  std::cout << "Drift Vel is     " << drift_vel << std::endl;
+  std::cout << "Time per tick " << time_per_tick << std::endl;
 
-  //fraction of cluster hits not in time with beam
-  float timewin_thresh = 0.1;
-  
+
+  float beam_low = 3200.;
+  float beam_high = 3200 + (width / drift_vel ) / time_per_tick; //width/drift speed / us per tick
+
+  std::cout << "Beam Low  is  " << beam_low << std::endl;
+  std::cout << "Beam High is "  << beam_high << std::endl;
+
   int nentries = io_ubpost_larcv.get_n_entries();
 
   for (int i=0; i<nentries; i++) {
@@ -87,7 +102,7 @@ int main( int nargs, char** argv ) {
     io_ubmrcnn.read_entry(i);
     io_larcvtruth.read_entry(i);
     io_ssnet.read_entry(i);
-    
+
     std::cout << "entry " << i << std::endl;
 
     // in
@@ -121,7 +136,7 @@ int main( int nargs, char** argv ) {
     std::vector<int> out_of_time(ev_cluster->size(),-1); //is cluster partially outside of beam window?
     std::vector<float> nufrac(ev_cluster->size(),0.); //how many cluster pixels are neutrino?
     std::vector<float> numhits(ev_cluster->size(),0.); //tot. number of hits in cluster
-    
+
     //grab Y plane ancestor image
     auto const& anc_img = ev_ancestor->Image2DArray().at( 2 );
     auto const& anc_meta = anc_img.meta();
@@ -129,7 +144,7 @@ int main( int nargs, char** argv ) {
     //grab Y plane instance image
     auto const& inst_img = ev_instance->Image2DArray().at( 2 );
     auto const& inst_meta = inst_img.meta();
-    
+
     //grab Y plane SSNet images
     auto const& track_img = ev_ssnet->Image2DArray().at(0);
     auto const& shower_img = ev_ssnet->Image2DArray().at(1);
@@ -138,7 +153,7 @@ int main( int nargs, char** argv ) {
     //char histname_event[100];
     //sprintf(histname_event,"hancestor_run%d_event%d",run,event);
     //hancestor = new TH2D(histname_event,"",meta.cols(), 0, meta.cols(), meta.rows(),0,meta.rows());
-    
+
     // loop over all clusters
     // last one is a collection of unclustered hits
     for(unsigned int i=0; i<ev_cluster->size(); i++){
@@ -146,46 +161,43 @@ int main( int nargs, char** argv ) {
 
       int early=0; //before beam window
       int late=0; //after beam window
-      
+
       // loop over larflow3dhits in cluster
       for(auto& hit : ev_cluster->at(i)){
-	int tick = hit.tick; //time tick
-	int wire = hit.srcwire; // Y wire
+      	int tick = hit.tick; //time tick
+      	int wire = hit.srcwire; // Y wire
 
-	//are we in time with the beam
-	if( tick < beam_low ) early++;
-	if( tick > beam_high ) late++;
-	
-	if ( anc_meta.min_x()<=wire && wire<anc_meta.max_x()
-	     && anc_meta.min_y()<=tick && tick<anc_meta.max_y() ) {
-	  int col = anc_meta.col( wire );
-	  int row = anc_meta.row( tick );
-	  float nuscore  = anc_img.pixel(row,col);
-	  if(nuscore>-1) nufrac[i]++;
-	  //hancestor->SetBinContent(col+1, row+1, nuscore);
-	}
-	if ( track_meta.min_x()<=wire && wire<track_meta.max_x()
-	     && track_meta.min_y()<=tick && tick<track_meta.max_y() ) {
-	  int col = track_meta.col( wire );
-	  int row = track_meta.row( tick );
-	  float trackscore  = track_img.pixel(row,col);
-	  float showerscore = shower_img.pixel(row,col);
-	  float bkgscore = 1. - trackscore - showerscore;
+      	//are we in time with the beam
+      	if( tick < beam_low ) early++;
+      	if( tick > beam_high ) late++;
 
-	}
-	
-      }
+      	if ( anc_meta.min_x()<=wire && wire<anc_meta.max_x()
+      	    && anc_meta.min_y()<=tick && tick<anc_meta.max_y() ) {
+      	  int col = anc_meta.col( wire );
+      	  int row = anc_meta.row( tick );
+      	  float nuscore  = anc_img.pixel(row,col);
+      	  if(nuscore>-1) nufrac[i]++;
+      	  //hancestor->SetBinContent(col+1, row+1, nuscore);
+      	}
+      	if ( track_meta.min_x()<=wire && wire<track_meta.max_x()
+      	     && track_meta.min_y()<=tick && tick<track_meta.max_y() ) {
+      	  int col = track_meta.col( wire );
+      	  int row = track_meta.row( tick );
+      	  float trackscore  = track_img.pixel(row,col);
+      	  float showerscore = shower_img.pixel(row,col);
+      	  float bkgscore = 1. - trackscore - showerscore;
+
+      	}
+
+      }//End of Hits Loop
       nufrac[i] /= numhits[i]; // nu hits/all hits
-      
-      if(early/numhits[i] >= timewin_thresh) out_of_time[i] = 1;
-      if(late/numhits[i] >= timewin_thresh) out_of_time[i] = 2;
-      else if(early/numhits[i]<timewin_thresh && late/numhits[i]<timewin_thresh) out_of_time[i] = 0;
+      out_of_time[i] = is_clust_out_bounds(early,late);
 
-	//flag cross mu & through mu
+	     //flag cross mu & through mu
       //first we arrange the cluster by y coordinate
-      
+
     }//end of cluster loop
-    
+
     //fout.cd();
     //hancestor->Write();
 
@@ -197,6 +209,22 @@ int main( int nargs, char** argv ) {
   io_ubmrcnn.finalize();
   io_larcvtruth.finalize();
   io_ssnet.finalize();
-  
+
   return 0;
+}
+
+int is_clust_out_bounds(int early_count, int late_count, int threshold){
+/*
+This function takes in a count of how many hits are early and late.
+There is an optional argument for the threshold of how many hits too early or
+late is too many. Defaulted to 0. Funtion returns:
+1 if too many hits are early
+2 if too many hits are late
+1 if both too early and too late
+0 otherwise
+*/
+int result =0;
+if (early_count > threshold) {result =1;}
+else if (late_count > threshold) {result =2;}
+return result;
 }
