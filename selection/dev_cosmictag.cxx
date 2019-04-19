@@ -31,6 +31,9 @@
  *
  */
 int is_clust_out_bounds(int early_count, int late_count, int threshold=0);
+int is_cluster_bkgdfrac_cut(float bkgdfrac, float threshold);
+int is_cluster_showerfrac_cut(float showerfrac, float threshold);
+int is_cluster_outsidefrac_cut(float outsidefrac, float threshold);
 
 
 int main( int nargs, char** argv ) {
@@ -43,7 +46,7 @@ int main( int nargs, char** argv ) {
   std::string ubclust = argv[4];
   std::string ancestor = argv[5];
   std::string ssnet = argv[6];
-  //std::string infill = argv[6];
+  //std::string infill = argv[7];
 
   int run, subrun, event;
 
@@ -89,6 +92,18 @@ int main( int nargs, char** argv ) {
 
   float beam_low = 3200.;
   float beam_high = 3200 + (width / drift_vel ) / time_per_tick; //width/drift speed / us per tick
+
+  // thresholds for ssnet pixel classification
+  float ssnet_bkgd_score_tresh = 0.5;
+  float ssnet_shower_score_tresh = 0.5;
+  float ssnet_track_score_tresh = 0.5;
+
+  //cluster background fraction to cut on (placeholder for now)
+  float bkgd_frac_cut = 0.0;
+  //cluster shower fraction to cut on (placeholder for now)
+  float shower_frac_cut = 0.0;
+  //cluster frac outside cROI to cut on (placeholder for now)
+  float outside_frac_cut = 0.0;
 
   std::cout << "Beam Low  is  " << beam_low << std::endl;
   std::cout << "Beam High is "  << beam_high << std::endl;
@@ -136,6 +151,10 @@ int main( int nargs, char** argv ) {
     std::vector<int> out_of_time(ev_cluster->size(),-1); //is cluster partially outside of beam window?
     std::vector<float> nufrac(ev_cluster->size(),0.); //how many cluster pixels are neutrino?
     std::vector<float> numhits(ev_cluster->size(),0.); //tot. number of hits in cluster
+    std::vector<float> showerfrac(ev_cluster->size(),0.); //what fraction are shower pixels?
+    std::vector<float> bkgdfrac(ev_cluster->size(),0.);//what fraction are bkgd pixels?
+    std::vector<float> outsidefrac(ev_cluster->size(),0.);//what fraction are outside croi?
+    std::vector<float> trackfrac(ev_cluster->size(),0.);//what fraction are track pixels?
 
     //grab Y plane wire image
     auto const& wire_img = ev_img->Image2DArray().at( 2 );
@@ -187,11 +206,15 @@ int main( int nargs, char** argv ) {
       	     && track_meta.min_y()<=tick && tick<track_meta.max_y() ) {
       	  int col = track_meta.col( wire );
       	  int row = track_meta.row( tick );
-      	  float trackscore  = track_img.pixel(row,col);
-      	  float showerscore = shower_img.pixel(row,col);
-      	  float bkgscore = 1. - trackscore - showerscore;
 
+      	  float trackscore  = track_img.pixel(row,col);
+          if (trackscore > ssnet_track_score_tresh){trackfrac[i]++;}
+      	  float showerscore = shower_img.pixel(row,col);
+          if (showerscore > ssnet_shower_score_tresh){showerfrac[i]++;}
+      	  float bkgscore = 1. - trackscore - showerscore;
+          if (bkgscore > ssnet_bkgd_score_tresh){bkgdfrac[i]++;}
       	}
+        else{outsidefrac[i]++;}
 
       }//End of Hits Loop
       nufrac[i] /= numhits[i]; // nu hits/all hits
@@ -201,8 +224,20 @@ int main( int nargs, char** argv ) {
       else{
         out_of_time[i] = 0;
       }
-	     //flag cross mu & through mu
-      //first we arrange the cluster by y coordinate
+
+      //calculating ssnet fractions
+      showerfrac[i] /= numhits[i];
+      trackfrac[i] /= numhits[i];
+      outsidefrac[i] /= numhits[i];
+      bkgdfrac[i] /= numhits[i];
+
+      //flags for ssnet (not using yet)
+      // int bkgdflag = is_cluster_bkgdfrac_cut(bkgdfrac[i],bkgd_frac_cut);
+      // int showerflag = is_cluster_showerfrac_cut(showerfrac[i],shower_frac_cut);
+      // int outsideflag = is_cluster_outsidefrac_cut(outsidefrac[i],outside_frac_cut);
+
+     //flag cross mu & through mu
+     //first we arrange the cluster by y coordinate
 
     }//end of cluster loop
 
@@ -269,4 +304,31 @@ if (early_count > threshold) {result =1;}
 else if (late_count > threshold) {result =2;}
 else if (late_count+early_count > threshold) { result =1;}
 return result;
+}
+
+int is_cluster_outsidefrac_cut(float outsidefrac, float threshold){
+  //returns whether outnow cluster passes fraction outside croi cout
+  // 1 if fails
+  // 0 if passes
+  int result = 0;
+  if (outsidefrac > threshold){result = 1;}
+  return result;
+}
+
+int is_cluster_showerfrac_cut(float showerfrac, float threshold){
+  //returns whether outnow cluster passes shower fraction cout
+  // 1 if fails
+  // 0 if passes
+  int result = 0;
+  if (showerfrac > threshold){result = 1;}
+  return result;
+}
+
+int is_cluster_bkgdfrac_cut(float bkgdfrac, float threshold){
+  //returns whether outnow cluster passes background fraction cout
+  // 1 if fails
+  // 0 if passes
+  int result = 0;
+  if (bkgdfrac > threshold){result = 1;}
+  return result;
 }
