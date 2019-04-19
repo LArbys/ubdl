@@ -38,7 +38,9 @@ int is_cluster_outsidefrac_cut(float outsidefrac, float threshold);
 
 int main( int nargs, char** argv ) {
 
-  gStyle->SetOptStat(0);
+  gStyle->SetOptStat(1);
+  gStyle->SetStatY(0.4);
+  gStyle->SetStatX(0.30);
 
   std::string ubpost_larcv  = argv[1];
   std::string ubpost_larlite = argv[2];
@@ -103,14 +105,23 @@ int main( int nargs, char** argv ) {
   //cluster shower fraction to cut on (placeholder for now)
   float shower_frac_cut = 0.0;
   //cluster frac outside cROI to cut on (placeholder for now)
-  float outside_frac_cut = 0.0;
+  float outside_frac_cut = 0.5;
 
   std::cout << "Beam Low  is  " << beam_low << std::endl;
   std::cout << "Beam High is "  << beam_high << std::endl;
 
   int nentries = io_ubpost_larcv.get_n_entries();
+  TH2F eff_hist("Neutrino and Cosmic Efficiency", "Nu Efficiency, Cosmic Rejection, Pixelwise", 20,0.0,1.001,20,0.0,1.001);
+  TH1D rej_hist("Cosmic Rejection", "Cosmic Rejection, Pixelwise (Nu Eff > 90%)", 25,0.0,1.001);
+  eff_hist.SetOption("COLZ");
+  eff_hist.SetXTitle("Neutrino Efficiency");
+  eff_hist.SetYTitle("Cosmic Rejection");
+  // rej_hist.SetOption("COLZ");
+  rej_hist.SetXTitle("Cosmic Rejection");
 
-  for (int i=0; i<5; i++) {
+  for (int i=0; i<nentries; i++) {
+
+
     io_ubpost_larcv.read_entry(i);
     io_ubpost_larlite.go_to(i);
     io_ubclust.go_to(i);
@@ -155,6 +166,8 @@ int main( int nargs, char** argv ) {
     std::vector<float> bkgdfrac(ev_cluster->size(),0.);//what fraction are bkgd pixels?
     std::vector<float> outsidefrac(ev_cluster->size(),0.);//what fraction are outside croi?
     std::vector<float> trackfrac(ev_cluster->size(),0.);//what fraction are track pixels?
+    std::vector<int> outside_flag(ev_cluster->size(),0.);//what fraction are track pixels?
+
 
     //grab Y plane wire image
     auto const& wire_img = ev_img->Image2DArray().at( 2 );
@@ -218,12 +231,7 @@ int main( int nargs, char** argv ) {
 
       }//End of Hits Loop
       nufrac[i] /= numhits[i]; // nu hits/all hits
-      if (i<ev_cluster->size()-1){
-        out_of_time[i] = is_clust_out_bounds(early,late,100);
-      }
-      else{
-        out_of_time[i] = 0;
-      }
+
 
       //calculating ssnet fractions
       showerfrac[i] /= numhits[i];
@@ -234,11 +242,18 @@ int main( int nargs, char** argv ) {
       //flags for ssnet (not using yet)
       // int bkgdflag = is_cluster_bkgdfrac_cut(bkgdfrac[i],bkgd_frac_cut);
       // int showerflag = is_cluster_showerfrac_cut(showerfrac[i],shower_frac_cut);
-      // int outsideflag = is_cluster_outsidefrac_cut(outsidefrac[i],outside_frac_cut);
 
      //flag cross mu & through mu
      //first we arrange the cluster by y coordinate
 
+     if (i<ev_cluster->size()-1){
+       out_of_time[i] = is_clust_out_bounds(early,late,100);
+       outside_flag[i] = is_cluster_outsidefrac_cut(outsidefrac[i],outside_frac_cut);
+     }
+     else{
+       out_of_time[i] = 0;
+       outside_flag[i] = 0;
+     }
     }//end of cluster loop
 
     //fout.cd();
@@ -246,31 +261,99 @@ int main( int nargs, char** argv ) {
 
     //Lets get some figures of merit:
     // TCanvas can("can", "histograms ", 2400, 800);
-    // gStyle->SetPalette(107);
-    // TH2F hist("Y-Plane", "Y-Plane", 1008, 0.0, 1008.0, 3456,0.0,3456);
-    // hist.SetOption("COLZ");
-    // larcv::Image2D binarized_adc = wire_img;
-    // binarized_adc.binary_threshold(0.0, 0.0, 1.0);
-    // larcv::Image2D binarized_instance=  inst_img;
-    // binarized_instance.binary_threshold(0.0, 0.0, 1.0);
-    // binarized_instance.eltwise(binarized_adc)
-    // float count_neut=0;
-    // float count_neut_thresh=0;
-    // for (int r=0;r<1008;r++){
-    //   for (int c=0;c<3456;c++){
-    //     count_neut += binarized_instance.pixel(r,c);
-    //     count_neut_thresh += binarized_instance.pixel(r,c)*binarized_adc.pixel(r,c);
-    //     // hist.SetBinContent(r,c, binarized_instance.pixel(r,c));
-    //   }
-    // }
-    // hist.Draw();
-    // hist.Write();
-    // std::string str = "Instance_"+std::to_string(i)+".png";
-    // char cstr[str.size() + 1];
-    // str.copy(cstr,str.size()+1);
-    // cstr[str.size()] = '\0';
+    // can.cd();
+    gStyle->SetPalette(107);
+    TH2F image_hist("Y-Plane, Updated", "Y-Plane Everything", 1008, 0.0, 1008.0, 3456,0.0,3456);
+    image_hist.SetOption("COLZ");
+    larcv::Image2D binarized_adc = wire_img;
+    binarized_adc.binary_threshold(10.0, 0.0, 1.0);
+    larcv::Image2D binarized_instance =  inst_img;
+    binarized_instance.binary_threshold(-1.0, 0.0, 1.0);
+    binarized_instance.eltwise(binarized_adc);
+    larcv::Image2D neut_or_cosmic = binarized_adc;
+
+
+    for (int r=0;r<1008;r++){
+      for (int c=0;c<3456;c++){
+        if (binarized_instance.pixel(r,c) == 1){
+          neut_or_cosmic.set_pixel(r,c,2);
+        }
+        image_hist.SetBinContent(r,c, neut_or_cosmic.pixel(r,c));
+      }
+    }
+    // image_hist.Draw();
+    // image_hist.Write();
+    std::string str = "Neut_or_Cosm_All_"+std::to_string(i)+".png";
+    char cstr[str.size() + 1];
+    str.copy(cstr,str.size()+1);
+    cstr[str.size()] = '\0';
     // can.SaveAs(cstr);
-    // hist.Reset();
+    image_hist.SetTitle("Y-Plane Cuts");
+    for(unsigned int i=0; i<ev_cluster->size(); i++){
+      if ((out_of_time[i] != 0) || (outside_flag[i] !=0) ){
+        // loop over larflow3dhits in cluster
+        for(auto& hit : ev_cluster->at(i)){
+          int tick = hit.tick; //time tick
+          int wire = hit.srcwire; // Y wire
+          if ( neut_or_cosmic.meta().min_x()<=wire && wire<neut_or_cosmic.meta().max_x()
+               && neut_or_cosmic.meta().min_y()<=tick && tick<neut_or_cosmic.meta().max_y() ) {
+            int col = neut_or_cosmic.meta().col( wire );
+            int row = neut_or_cosmic.meta().row( tick );
+            neut_or_cosmic.set_pixel(row,col,0);
+            image_hist.SetBinContent(row,col,0);
+          }
+        }
+
+      }
+
+    }
+    float orig_sum_nu_pix = 0;
+    float final_sum_nu_pix = 0;
+    float orig_sum_cosm_pix = 0;
+    float final_sum_cosm_pix = 0;
+    for (int r=0;r<1008;r++){
+      for (int c=0;c<3456;c++){
+        if (binarized_instance.pixel(r,c) == 1){
+          orig_sum_nu_pix++;
+        }
+        else if(binarized_adc.pixel(r,c) ==1){
+          orig_sum_cosm_pix++;
+        }
+        if (image_hist.GetBinContent(r,c) ==2){
+          final_sum_nu_pix++;
+        }
+        else if (image_hist.GetBinContent(r,c) ==1){
+          final_sum_cosm_pix++;
+        }
+      }
+    }
+
+
+    float neutrino_efficiency = final_sum_nu_pix/orig_sum_nu_pix;
+    float cosmic_rejection = 1 - (final_sum_cosm_pix/orig_sum_cosm_pix);
+    std::cout << orig_sum_nu_pix << " Orig Count Nu" << std::endl;
+    std::cout << final_sum_nu_pix << " Final Count Nu" << std::endl;
+    std::cout << neutrino_efficiency << " Fract " << std::endl;
+
+    std::cout << orig_sum_cosm_pix << " Orig Count Cosm" << std::endl;
+    std::cout << final_sum_cosm_pix << " Final Count Cosm" << std::endl;
+    std::cout << cosmic_rejection << " Cosmic Rejection" << std::endl;
+
+    eff_hist.Fill(neutrino_efficiency,cosmic_rejection);
+    if (neutrino_efficiency >= 0.9){
+      rej_hist.Fill(cosmic_rejection);
+    }
+
+    // image_hist.Draw();
+    // image_hist.Write();
+    str = "Neut_or_Cosm_Removed_"+std::to_string(i)+".png";
+    cstr[str.size() + 1];
+    str.copy(cstr,str.size()+1);
+    cstr[str.size()] = '\0';
+    // can.SaveAs(cstr);
+    image_hist.Reset();
+
+
     // std::cout << count_neut << " Neutrino Pixels" << std::endl;
     // std::cout << count_neut_thresh << " Neutrino Pixels when adc thresholded" << std::endl;
     // std::cout << count_neut_thresh/count_neut << " Fraction kept by that" << std::endl;
@@ -278,6 +361,18 @@ int main( int nargs, char** argv ) {
 
 
   }//end of entry loop
+  TCanvas can2("can", "histograms ", 800, 800);
+  can2.cd();
+  eff_hist.Draw();
+  // eff_hist.Write();
+  can2.SaveAs("Eff_Rej_outside.png");
+  gStyle->SetStatY(0.9);
+  gStyle->SetStatX(0.30);
+  rej_hist.Draw();
+  // rej_hist.Write();
+
+  // can2.SaveAs("Eff_Rej_outside.png");
+  can2.SaveAs("Rej_1d.png");
 
   io_ubpost_larcv.finalize();
   io_ubpost_larlite.close();
