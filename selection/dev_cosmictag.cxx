@@ -113,15 +113,15 @@ int main( int nargs, char** argv ) {
   float ssnet_track_score_tresh = 0.5;
 
   //cluster background fraction to cut on (placeholder for now)
-  float bkgd_frac_cut = 0.0;
+  float bkgd_frac_cut = 0.3;
   //cluster shower fraction to cut on (placeholder for now)
-  float shower_frac_cut = 0.0;
+  float shower_frac_cut = 0.1;
   //cluster frac outside cROI to cut on (placeholder for now)
-  float outside_frac_cut = 0.5;
+  float outside_frac_cut = 0.1;
 
   // dist to detector boundary threshold in cm
   const float dwall_thresh = 10.0;
-  
+
   int nentries = io_ubpost_larcv.get_n_entries();
   TH2F eff_hist("Neutrino and Cosmic Efficiency", "Nu Efficiency, Cosmic Rejection, Pixelwise", 20,0.0,1.001,20,0.0,1.001);
   TH1D rej_hist("Cosmic Rejection", "Cosmic Rejection, Pixelwise (Nu Eff > 90%)", 25,0.0,1.001);
@@ -131,7 +131,7 @@ int main( int nargs, char** argv ) {
   // rej_hist.SetOption("COLZ");
   rej_hist.SetXTitle("Cosmic Rejection");
 
-  for (int i=0; i<nentries; i++) {
+  for (int i=0; i<400; i++) {
 
 
     io_ubpost_larcv.read_entry(i);
@@ -179,6 +179,8 @@ int main( int nargs, char** argv ) {
     std::vector<float> outsidefrac(ev_cluster->size(),0.);//what fraction are outside croi?
     std::vector<float> trackfrac(ev_cluster->size(),0.);//what fraction are track pixels?
     std::vector<int> outside_flag(ev_cluster->size(),0.);//what fraction are track pixels?
+    std::vector<int> shower_flag(ev_cluster->size(),0.);//what fraction are track pixels?
+    std::vector<int> bkgd_flag(ev_cluster->size(),0.);//what fraction are track pixels?
 
 
     //grab Y plane wire image
@@ -202,7 +204,7 @@ int main( int nargs, char** argv ) {
     //sprintf(histname_event,"hancestor_run%d_event%d",run,event);
     //hancestor = new TH2D(histname_event,"",meta.cols(), 0, meta.cols(), meta.rows(),0,meta.rows());
 
-    
+
     // loop over all clusters
     // last one is a collection of unclustered hits
     for(unsigned int i=0; i<ev_cluster->size(); i++){
@@ -210,10 +212,11 @@ int main( int nargs, char** argv ) {
 
       int early=0; //before beam window
       int late=0; //after beam window
+      int dwall_frac=0;
 
       std::vector<std::pair<float,int> > position;
-      //std::vector<pos> poaition;
-      
+      //std::vector<pos> position;
+
       // loop over larflow3dhits in cluster
       for(auto& hit : ev_cluster->at(i)){
       	int tick = hit.tick; //time tick
@@ -248,8 +251,8 @@ int main( int nargs, char** argv ) {
         //fill pos
 	float dWall = calc_dWall(hit[0],hit[1],hit[2]);
 	position.push_back(std::make_pair(dWall,i));
-	
-	
+  if(dWall<10.0) dwall_frac++;
+
       }//End of Hits Loop
       nufrac[i] /= numhits[i]; // nu hits/all hits
 
@@ -267,15 +270,21 @@ int main( int nargs, char** argv ) {
       //flag cross mu & through mu
       //first we arrange the cluster by dWall
       sort(position.begin(),position.end());
-      if(position.size()>0 && position[0].first< dwall_thresh) is_crossmu[i] =1; //this is actually true for both crossing and through-going muons, will refine 
-      
+
+
      if (i<ev_cluster->size()-1){
        out_of_time[i] = is_clust_out_bounds(early,late,100);
        outside_flag[i] = is_cluster_outsidefrac_cut(outsidefrac[i],outside_frac_cut);
+       shower_flag[i] = is_cluster_showerfrac_cut(showerfrac[i],shower_frac_cut);
+       bkgd_flag[i] = is_cluster_bkgdfrac_cut(bkgdfrac[i],bkgd_frac_cut);
+       if(position.size()>0 && position[0].first< dwall_thresh && dwall_frac>20) is_crossmu[i] =1;
+
      }
      else{
        out_of_time[i] = 0;
        outside_flag[i] = 0;
+       shower_flag[i] = 0;
+       bkgd_flag[i] = 0;
      }
     }//end of cluster loop
 
@@ -283,10 +292,15 @@ int main( int nargs, char** argv ) {
     //hancestor->Write();
 
     //Lets get some figures of merit:
-    // TCanvas can("can", "histograms ", 2400, 800);
-    // can.cd();
+    TCanvas can("can", "histograms ", 2400, 800);
+    can.cd();
     gStyle->SetPalette(107);
-    TH2F image_hist("Y-Plane, Updated", "Y-Plane Everything", 1008, 0.0, 1008.0, 3456,0.0,3456);
+
+    std::string str_title = "Y-Plane Everything Run:" +std::to_string(run) + " Event: " + std::to_string(event);
+    char image_title[str_title.size() + 1];
+    str_title.copy(image_title,str_title.size()+1);
+    image_title[str_title.size()] = '\0';
+    TH2F image_hist("Y-Plane, Updated", image_title, 1008, 0.0, 1008.0, 3456,0.0,3456);
     image_hist.SetOption("COLZ");
     larcv::Image2D binarized_adc = wire_img;
     binarized_adc.binary_threshold(10.0, 0.0, 1.0);
@@ -313,7 +327,7 @@ int main( int nargs, char** argv ) {
     // can.SaveAs(cstr);
     image_hist.SetTitle("Y-Plane Cuts");
     for(unsigned int i=0; i<ev_cluster->size(); i++){
-      if ((out_of_time[i] != 0) || (outside_flag[i] !=0) ){
+      if ( (out_of_time[i] != 0) || (outside_flag[i] != 0) ||( bkgd_flag[i] != 0 ) || (is_crossmu[i] !=-1) ){
         // loop over larflow3dhits in cluster
         for(auto& hit : ev_cluster->at(i)){
           int tick = hit.tick; //time tick
