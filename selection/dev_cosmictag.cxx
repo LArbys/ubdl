@@ -1,5 +1,6 @@
 #include <iostream>
-
+#include <map>
+#include <utility>
 // ROOT
 #include "TFile.h"
 #include "TTree.h"
@@ -34,6 +35,16 @@ int is_clust_out_bounds(int early_count, int late_count, int threshold=0);
 int is_cluster_bkgdfrac_cut(float bkgdfrac, float threshold);
 int is_cluster_showerfrac_cut(float showerfrac, float threshold);
 int is_cluster_outsidefrac_cut(float outsidefrac, float threshold);
+float calc_dWall(float x, float y, float z);
+
+struct pos{
+  float x=-1;
+  float y=-1;
+  float z=-1;
+  float dWall=-1;
+  int idx=-1;
+
+};
 
 
 int main( int nargs, char** argv ) {
@@ -84,16 +95,17 @@ int main( int nargs, char** argv ) {
   //this should be defined with proper constants
   // larutil::LArProperties larproperties;
   // larutil::Geometry geometry;
-  double drift_vel = larutil::LArProperties::GetME()->DriftVelocity();
-  double width = larutil::Geometry::GetME()->DetHalfWidth() * 2;
-  double time_per_tick = 1/larutil::kDEFAULT_FREQUENCY_TPC;
+  const float drift_vel = larutil::LArProperties::GetME()->DriftVelocity();
+  const float width = larutil::Geometry::GetME()->DetHalfWidth() * 2;
+  const float time_per_tick = 1/larutil::kDEFAULT_FREQUENCY_TPC;
   std::cout << "Width is         " << width << std::endl;
   std::cout << "Drift Vel is     " << drift_vel << std::endl;
   std::cout << "Time per tick " << time_per_tick << std::endl;
 
-
   float beam_low = 3200.;
   float beam_high = 3200 + (width / drift_vel ) / time_per_tick; //width/drift speed / us per tick
+  std::cout << "Beam Low  is  " << beam_low << std::endl;
+  std::cout << "Beam High is "  << beam_high << std::endl;
 
   // thresholds for ssnet pixel classification
   float ssnet_bkgd_score_tresh = 0.5;
@@ -107,9 +119,9 @@ int main( int nargs, char** argv ) {
   //cluster frac outside cROI to cut on (placeholder for now)
   float outside_frac_cut = 0.5;
 
-  std::cout << "Beam Low  is  " << beam_low << std::endl;
-  std::cout << "Beam High is "  << beam_high << std::endl;
-
+  // dist to detector boundary threshold in cm
+  const float dwall_thresh = 10.0;
+  
   int nentries = io_ubpost_larcv.get_n_entries();
   TH2F eff_hist("Neutrino and Cosmic Efficiency", "Nu Efficiency, Cosmic Rejection, Pixelwise", 20,0.0,1.001,20,0.0,1.001);
   TH1D rej_hist("Cosmic Rejection", "Cosmic Rejection, Pixelwise (Nu Eff > 90%)", 25,0.0,1.001);
@@ -190,6 +202,7 @@ int main( int nargs, char** argv ) {
     //sprintf(histname_event,"hancestor_run%d_event%d",run,event);
     //hancestor = new TH2D(histname_event,"",meta.cols(), 0, meta.cols(), meta.rows(),0,meta.rows());
 
+    
     // loop over all clusters
     // last one is a collection of unclustered hits
     for(unsigned int i=0; i<ev_cluster->size(); i++){
@@ -198,6 +211,9 @@ int main( int nargs, char** argv ) {
       int early=0; //before beam window
       int late=0; //after beam window
 
+      std::vector<std::pair<float,int> > position;
+      //std::vector<pos> poaition;
+      
       // loop over larflow3dhits in cluster
       for(auto& hit : ev_cluster->at(i)){
       	int tick = hit.tick; //time tick
@@ -229,6 +245,11 @@ int main( int nargs, char** argv ) {
       	}
         else{outsidefrac[i]++;}
 
+        //fill pos
+	float dWall = calc_dWall(hit[0],hit[1],hit[2]);
+	position.push_back(std::make_pair(dWall,i));
+	
+	
       }//End of Hits Loop
       nufrac[i] /= numhits[i]; // nu hits/all hits
 
@@ -243,9 +264,11 @@ int main( int nargs, char** argv ) {
       // int bkgdflag = is_cluster_bkgdfrac_cut(bkgdfrac[i],bkgd_frac_cut);
       // int showerflag = is_cluster_showerfrac_cut(showerfrac[i],shower_frac_cut);
 
-     //flag cross mu & through mu
-     //first we arrange the cluster by y coordinate
-
+      //flag cross mu & through mu
+      //first we arrange the cluster by dWall
+      sort(position.begin(),position.end());
+      if(position.size()>0 && position[0].first< dwall_thresh) is_crossmu[i] =1; //this is actually true for both crossing and through-going muons, will refine 
+      
      if (i<ev_cluster->size()-1){
        out_of_time[i] = is_clust_out_bounds(early,late,100);
        outside_flag[i] = is_cluster_outsidefrac_cut(outsidefrac[i],outside_frac_cut);
@@ -272,9 +295,9 @@ int main( int nargs, char** argv ) {
     binarized_instance.eltwise(binarized_adc);
     larcv::Image2D neut_or_cosmic = binarized_adc;
 
-
-    for (int r=0;r<1008;r++){
-      for (int c=0;c<3456;c++){
+    auto const& adcmeta = binarized_adc.meta();
+    for (int r=0;r<adcmeta.rows();r++){
+      for (int c=0;c<adcmeta.cols();c++){
         if (binarized_instance.pixel(r,c) == 1){
           neut_or_cosmic.set_pixel(r,c,2);
         }
@@ -426,4 +449,25 @@ int is_cluster_bkgdfrac_cut(float bkgdfrac, float threshold){
   int result = 0;
   if (bkgdfrac > threshold){result = 1;}
   return result;
+}
+
+float calc_dWall(float x, float y, float z){
+
+  const ::larutil::Geometry* geo = ::larutil::Geometry::GetME();
+  const float xmin = 0.;
+  const float xmax = geo->DetHalfWidth()*2.;
+  const float ymin = -1.*geo->DetHalfHeight();
+  const float ymax = geo->DetHalfHeight();
+  const float zmin = 0.;
+  const float zmax = geo->DetLength();
+
+  float mindist = 1.0e4;
+
+  if(std::abs(y - ymin)< mindist) mindist = std::abs(y - ymin);
+  if(std::abs(y - ymax)< mindist) mindist = std::abs(y - ymax);
+  if(std::abs(z - zmin)< mindist) mindist = std::abs(z - zmin);
+  if(std::abs(z - zmax)< mindist) mindist = std::abs(z - zmax);
+
+  return mindist;
+
 }
