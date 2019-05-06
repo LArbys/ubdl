@@ -96,11 +96,7 @@ int main( int nargs, char** argv ) {
 
   std::string output_hist = "outhist.root";
   TFile fout( output_hist.c_str(), "recreate" );
-  //TH2D* hancestor;
 
-  //this should be defined with proper constants
-  // larutil::LArProperties larproperties;
-  // larutil::Geometry geometry;
   const float drift_vel = larutil::LArProperties::GetME()->DriftVelocity();
   const float width = larutil::Geometry::GetME()->DetHalfWidth() * 2;
   const float time_per_tick = 1/larutil::kDEFAULT_FREQUENCY_TPC;
@@ -114,23 +110,25 @@ int main( int nargs, char** argv ) {
   std::cout << "Beam High is "  << beam_high << std::endl;
 
   // thresholds for ssnet pixel classification
-  float ssnet_bkgd_score_tresh = 0.5;
-  float ssnet_shower_score_tresh = 0.5;
-  float ssnet_track_score_tresh = 0.5;
+  const float ssnet_bkgd_score_tresh = 0.5;
+  const float ssnet_shower_score_tresh = 0.5;
+  const float ssnet_track_score_tresh = 0.5;
 
   //cluster background fraction to cut on (placeholder for now)
-  float bkgd_frac_cut = 0.3;
+  const float bkgd_frac_cut = 0.3;
   //cluster shower fraction to cut on (placeholder for now)
-  float shower_frac_cut = 0.1;
+  const float shower_frac_cut = 0.1;
   //cluster frac outside cROI to cut on (placeholder for now)
-  float outside_frac_cut = 0.1;
+  const float outside_frac_cut = 0.1;
 
   // dist to detector boundary threshold in cm
   const float dwall_thresh = 10.0;
 
+  //nu fraction for cluster neutrino labeling
+  const float nufrac_thresh = 0.5;
 
-  TH2F eff_hist("Neutrino and Cosmic Efficiency", "Nu Efficiency, Cosmic Rejection, Pixelwise", 20,0.0,1.001,20,0.0,1.001);
-  TH1D rej_hist("Cosmic Rejection", "Cosmic Rejection, Pixelwise (Nu Eff > 90%)", 25,0.0,1.001);
+  TH2F eff_hist("eff_hist", "Nu Efficiency, Cosmic Rejection, Pixelwise", 20,0.0,1.001,20,0.0,1.001);
+  TH1D rej_hist("rej_hist", "Cosmic Rejection, Pixelwise (Nu Eff > 90%)", 25,0.0,1.001);
   eff_hist.SetOption("COLZ");
   eff_hist.SetXTitle("Neutrino Efficiency");
   eff_hist.SetYTitle("Cosmic Rejection");
@@ -144,6 +142,7 @@ int main( int nargs, char** argv ) {
   TH1D* hcrPointsOut = new TH1D("hPointsOut_cr","",200,0,400.);
 
   int nentries = io_ubpost_larcv.get_n_entries();
+  nentries = 10; //temp
   for (int i=0; i<nentries; i++) {
 
     io_ubpost_larcv.read_entry(i);
@@ -197,34 +196,36 @@ int main( int nargs, char** argv ) {
     std::vector<int> shower_flag(ev_cluster->size(),0.);//what fraction are track pixels?
     std::vector<int> bkgd_flag(ev_cluster->size(),0.);//what fraction are track pixels?
 
+    // save index: if not vetoed we save cluster at idx
+    std::vector<int> save_idx;
 
     //grab Y plane wire image
     auto const& wire_img = ev_img->Image2DArray().at( 2 );
     auto const& wire_meta = wire_img.meta();
 
-    //grab Y plane ancestor image
-    auto const& anc_img = ev_ancestor->Image2DArray().at( 2 );
-    auto const& anc_meta = anc_img.meta();
+    //grab Y plane ancestor image: obsolete
+    //auto const& anc_img = ev_ancestor->Image2DArray().at( 2 );
+    //auto const& anc_meta = anc_img.meta();
 
     //grab Y plane instance image
     auto const& inst_img = ev_instance->Image2DArray().at( 2 );
     auto const& inst_meta = inst_img.meta();
 
     //grab Y plane SSNet images
-    auto const& track_img = ev_ssnet->Image2DArray().at(0);
-    auto const& shower_img = ev_ssnet->Image2DArray().at(1);
+    auto const& track_img = ev_ssnet->Image2DArray().at( 0 );
+    auto const& shower_img = ev_ssnet->Image2DArray().at( 1 );
     auto const& track_meta = track_img.meta();
 
-    //char histname_event[100];
-    //sprintf(histname_event,"hancestor_run%d_event%d",run,event);
-    //hancestor = new TH2D(histname_event,"",meta.cols(), 0, meta.cols(), meta.rows(),0,meta.rows());
 
-    std::string str_title = "Y-Plane Everything Run:" +std::to_string(run) + " Event: " + std::to_string(event);
-    char image_title[str_title.size() + 1];
-    str_title.copy(image_title,str_title.size()+1);
-    image_title[str_title.size()] = '\0';
-    TH2F image_hist("Y-Plane, Updated", image_title, 1008, 0.0, 1008.0, 3456,0.0,3456);
-    image_hist.SetOption("COLZ");
+    std::string str_title = "Y-Plane All Run:" +std::to_string(run) + " Event: " + std::to_string(event);
+    TH2F image_hist0(Form("Y_Plane_all_run%d_event%d",run,event), str_title.c_str(),
+		     wire_meta.cols(), 0.0, wire_meta.cols(), wire_meta.rows(), 0.0, wire_meta.rows());
+    TH2F image_hist1(Form("Y_Plane_cuts_run%d_event%d",run,event), str_title.c_str(),
+		     wire_meta.cols(), 0.0, wire_meta.cols(), wire_meta.rows(), 0.0, wire_meta.rows());
+    image_hist0.SetOption("COLZ");
+    image_hist1.SetOption("COLZ");
+    image_hist1.SetTitle("Y-Plane Cuts");
+
     larcv::Image2D binarized_adc = wire_img;
     binarized_adc.binary_threshold(10.0, 0.0, 1.0);
     larcv::Image2D binarized_instance =  inst_img;
@@ -232,23 +233,19 @@ int main( int nargs, char** argv ) {
     binarized_instance.eltwise(binarized_adc);
     larcv::Image2D neut_or_cosmic = binarized_adc;
 
-    auto const& adcmeta = binarized_adc.meta();
-    for (int r=0;r<adcmeta.rows();r++){
-      for (int c=0;c<adcmeta.cols();c++){
+    for (int r=0;r<wire_meta.rows();r++){
+      for (int c=0;c<wire_meta.cols();c++){
         if (binarized_instance.pixel(r,c) == 1){
           neut_or_cosmic.set_pixel(r,c,2);
         }
-        image_hist.SetBinContent(r,c, neut_or_cosmic.pixel(r,c));
+        image_hist0.SetBinContent(r,c, neut_or_cosmic.pixel(r,c));
+	image_hist1.SetBinContent(r,c, neut_or_cosmic.pixel(r,c));
       }
     }
     std::string str = "Neut_or_Cosm_All_"+std::to_string(i)+".png";
-    char cstr[str.size() + 1];
-    str.copy(cstr,str.size()+1);
-    cstr[str.size()] = '\0';
-    // can.SaveAs(cstr);
-    image_hist.SetTitle("Y-Plane Cuts");
+    // can.SaveAs(str.c_str());
 
-    
+
     // loop over all clusters
     // last one is a collection of unclustered hits
     for(unsigned int i=0; i<ev_cluster->size(); i++){
@@ -275,14 +272,13 @@ int main( int nargs, char** argv ) {
 	position.push_back(std::make_pair(dWall,i));
 	if(dWall<10.0) dwall_frac++;
 
-      	if ( anc_meta.min_x()<=wire && wire<anc_meta.max_x()
-      	    && anc_meta.min_y()<=tick && tick<anc_meta.max_y() ) {
-      	  int col = anc_meta.col( wire );
-      	  int row = anc_meta.row( tick );
-      	  float nuscore  = anc_img.pixel(row,col);
-      	  if(nuscore>-1) nufrac[i]++;
-      	  //hancestor->SetBinContent(col+1, row+1, nuscore);
-	  if(nuscore>-1) hnu->Fill(dWall);
+      	if ( wire_meta.min_x()<=wire && wire<wire_meta.max_x()
+      	    && wire_meta.min_y()<=tick && tick<wire_meta.max_y() ) {
+      	  int col = wire_meta.col( wire );
+      	  int row = wire_meta.row( tick );
+      	  if(binarized_instance.pixel(row,col)>0.){
+	    nufrac[i]++;
+	    hnu->Fill(dWall);}
 	  else hcr->Fill(dWall);
       	}
       	if ( track_meta.min_x()<=wire && wire<track_meta.max_x()
@@ -321,7 +317,7 @@ int main( int nargs, char** argv ) {
        bkgd_flag[i] = is_cluster_bkgdfrac_cut(bkgdfrac[i],bkgd_frac_cut);
        if(position.size()>0 && position[0].first< dwall_thresh && dwall_frac>20) is_crossmu[i] =1;
 
-       if(nufrac[i]>=0.5) hnuPointsOut->Fill(dwall_frac);
+       if(nufrac[i]>=nufrac_thresh) hnuPointsOut->Fill(dwall_frac);
        else hcrPointsOut->Fill(dwall_frac);
      }
      else{
@@ -341,17 +337,21 @@ int main( int nargs, char** argv ) {
 	   int col = neut_or_cosmic.meta().col( wire );
 	   int row = neut_or_cosmic.meta().row( tick );
 	   neut_or_cosmic.set_pixel(row,col,0);
-	   image_hist.SetBinContent(row,col,0);
+	   image_hist1.SetBinContent(row,col,0);
 	 }
        }
        
      }
+     // fill save_idx
+     if( out_of_time[i]==0 && outside_flag[i]==0 && bkgd_flag[i]==0 && is_crossmu[i]==-1){
+       save_idx.push_back(i);
+     }
 
     }//end of cluster loop
 
-    //fout.cd();
-    //hancestor->Write();
-    
+    fout.cd();
+    image_hist0.Write();
+    image_hist1.Write();
 
     //Lets get some figures of merit:
     TCanvas can("can", "histograms ", 2400, 800);
@@ -370,10 +370,10 @@ int main( int nargs, char** argv ) {
         else if(binarized_adc.pixel(r,c) ==1){
           orig_sum_cosm_pix++;
         }
-        if (image_hist.GetBinContent(r,c) ==2){
+        if (image_hist1.GetBinContent(r,c) ==2){
           final_sum_nu_pix++;
         }
-        else if (image_hist.GetBinContent(r,c) ==1){
+        else if (image_hist1.GetBinContent(r,c) ==1){
           final_sum_cosm_pix++;
         }
       }
@@ -396,20 +396,20 @@ int main( int nargs, char** argv ) {
     }
 
     str = "Neut_or_Cosm_Removed_"+std::to_string(i)+".png";
-    cstr[str.size() + 1];
-    str.copy(cstr,str.size()+1);
-    cstr[str.size()] = '\0';
-    // can.SaveAs(cstr);
-    image_hist.Reset();
-
+    // can.SaveAs(cstr.c_str());
+    image_hist0.Reset();
+    image_hist1.Reset();
 
     // std::cout << count_neut << " Neutrino Pixels" << std::endl;
     // std::cout << count_neut_thresh << " Neutrino Pixels when adc thresholded" << std::endl;
     // std::cout << count_neut_thresh/count_neut << " Fraction kept by that" << std::endl;
 
 
-    //for ( auto& lf : *ev_clusters )
-    //  evout->emplace_back( std::move(lf) );
+    // fill output
+    for ( int jj=0; jj<save_idx.size(); jj++ ){
+      evout_cluster->emplace_back( std::move(ev_cluster->at( save_idx[jj] ) ) );
+    }
+    
     out_larlite.set_id( run, subrun, event );
     out_larlite.next_event();
       
