@@ -62,12 +62,17 @@ int main( int nargs, char** argv ) {
   //std::string infill = argv[7];
   std::string outfile_larlite = argv[7];
 
-  std::string saveme = "";  
+  std::string saveme = "";
+  std::string calc_eff="";
   if(nargs>8){
     saveme = argv[8];
+    calc_eff = argv[8];
+    if(nargs>9) saveme = argv[9];
   }
   bool savehist=false;
   if(saveme=="save") savehist=true; //only if we give "save" as last argument save histograms
+  bool doeff=false;
+  if(calc_eff=="eff") doeff=true; 
   
   int run, subrun, event;
 
@@ -136,14 +141,13 @@ int main( int nargs, char** argv ) {
   //nu fraction for cluster neutrino labeling
   const float nufrac_thresh = 0.5;
 
-  TH2F eff_hist("eff_hist", "Nu Efficiency, Cosmic Rejection, Pixelwise", 20,0.0,1.001,20,0.0,1.001);
-  TH1D rej_hist("rej_hist", "Cosmic Rejection, Pixelwise (Nu Eff > 90%)", 25,0.0,1.001);
-  eff_hist.SetOption("COLZ");
-  eff_hist.SetXTitle("Neutrino Efficiency");
-  eff_hist.SetYTitle("Cosmic Rejection");
-  // rej_hist.SetOption("COLZ");
-  rej_hist.SetXTitle("Cosmic Rejection");
-
+  TH2F* eff_hist = NULL;
+  if(doeff){
+    eff_hist = new TH2F("eff_hist", "Nu Efficiency, Cosmic Rejection, Pixelwise", 20,0.0,1.001,20,0.0,1.001);
+    eff_hist->SetOption("COLZ");
+    eff_hist->SetXTitle("Neutrino Efficiency");
+    eff_hist->SetYTitle("Cosmic Rejection");
+  }
   //
   TH1D* hnu = new TH1D("hdWall_nu","",128.,0,128.);
   TH1D* hcr = new TH1D("hdWall_cr","",128.,0,128.);
@@ -151,7 +155,7 @@ int main( int nargs, char** argv ) {
   TH1D* hcrPointsOut = new TH1D("hPointsOut_cr","",200,0,400.);
 
   int nentries = io_ubpost_larcv.get_n_entries();
-  //nentries = 10; //temp
+  nentries = 10; //temp
   for (int i=0; i<nentries; i++) {
 
     io_ubpost_larcv.read_entry(i);
@@ -226,15 +230,21 @@ int main( int nargs, char** argv ) {
     auto const& track_meta = track_img.meta();
 
 
-    std::string str_title = "Y-Plane All Run:" +std::to_string(run) + " Event: " + std::to_string(event);
-    TH2F image_hist0(Form("Y_Plane_all_run%d_event%d",run,event), str_title.c_str(),
-		     wire_meta.rows(), 0.0, wire_meta.rows(), wire_meta.cols(), 0.0, wire_meta.cols());
-    TH2F image_hist1(Form("Y_Plane_cuts_run%d_event%d",run,event), str_title.c_str(),
-		     wire_meta.rows(), 0.0, wire_meta.rows(), wire_meta.cols(), 0.0, wire_meta.cols());
-    image_hist0.SetOption("COLZ");
-    image_hist1.SetOption("COLZ");
-    image_hist1.SetTitle("Y-Plane Cuts");
 
+    TH2F* image_hist0 = NULL;
+    TH2F* image_hist1 = NULL;
+    if(doeff){
+      std::string str_title = "Y-Plane All Run:" +std::to_string(run) + " Event: " + std::to_string(event);
+      image_hist0 = new TH2F(Form("Y_Plane_all_run%d_event%d",run,event), str_title.c_str(),
+			     wire_meta.rows(), 0.0, wire_meta.rows(), wire_meta.cols(), 0.0, wire_meta.cols());
+      
+      image_hist1 = new TH2F(Form("Y_Plane_cuts_run%d_event%d",run,event), str_title.c_str(),
+			     wire_meta.rows(), 0.0, wire_meta.rows(), wire_meta.cols(), 0.0, wire_meta.cols());
+      image_hist0->SetOption("COLZ");
+      image_hist1->SetOption("COLZ");
+      image_hist1->SetTitle("Y-Plane Cuts");
+    }
+    
     larcv::Image2D binarized_adc = wire_img;
     binarized_adc.binary_threshold(10.0, 0.0, 1.0);
     larcv::Image2D binarized_instance =  inst_img;
@@ -245,26 +255,27 @@ int main( int nargs, char** argv ) {
     float final_sum_nu_pix = 0;
     float orig_sum_cosm_pix = 0;
     float final_sum_cosm_pix = 0;
-    
-    for (int r=0;r<wire_meta.rows();r++){
-      for (int c=0;c<wire_meta.cols();c++){
-        if (binarized_instance.pixel(r,c) == 1){
-	  image_hist0.SetBinContent(r+1,c+1,2);
-	  image_hist1.SetBinContent(r+1,c+1,2);
-	  orig_sum_nu_pix++;
-        }
-	else if(binarized_adc.pixel(r,c) ==1){
-	  image_hist0.SetBinContent(r+1,c+1,1);
-	  image_hist1.SetBinContent(r+1,c+1,1);
-	  orig_sum_cosm_pix++;
-        }
 
+    //only run if we want to calculate efficiency
+    if(doeff){
+      for (int r=0;r<wire_meta.rows();r++){
+	for (int c=0;c<wire_meta.cols();c++){
+	  if (binarized_instance.pixel(r,c) == 1){
+	    image_hist0->SetBinContent(r+1,c+1,2);
+	    image_hist1->SetBinContent(r+1,c+1,2);
+	    orig_sum_nu_pix++;
+	  }
+	  else if(binarized_adc.pixel(r,c) ==1){
+	    image_hist0->SetBinContent(r+1,c+1,1);
+	    image_hist1->SetBinContent(r+1,c+1,1);
+	    orig_sum_cosm_pix++;
+	  }	  
+	}
       }
+      // final pixels set to start pixels; will subract later
+      final_sum_nu_pix = orig_sum_nu_pix;
+      final_sum_cosm_pix = orig_sum_cosm_pix;
     }
-    // final pixels set to start pixels; will subract later
-    final_sum_nu_pix = orig_sum_nu_pix;
-    final_sum_cosm_pix = orig_sum_cosm_pix;
-
     // loop over all clusters
     // last one is a collection of unclustered hits
     for(unsigned int i=0; i<ev_cluster->size(); i++){
@@ -345,23 +356,23 @@ int main( int nargs, char** argv ) {
        shower_flag[i] = 0;
        bkgd_flag[i] = 0;
      }
-     
-     if ( (out_of_time[i] != 0) || (outside_flag[i] != 0) ||( bkgd_flag[i] != 0 ) || (is_crossmu[i] !=-1) ){
-       // loop over larflow3dhits in cluster
-       for(auto& hit : ev_cluster->at(i)){
-	 int tick = hit.tick; //time tick
-	 int wire = hit.srcwire; // Y wire
-	 if ( wire_meta.min_x()<=wire && wire<wire_meta.max_x()
-	      && wire_meta.min_y()<=tick && tick<wire_meta.max_y() ) {
-	   int col = wire_meta.col( wire );
-	   int row = wire_meta.row( tick );
-	   if(image_hist1.GetBinContent(row+1,col+1)==2) final_sum_nu_pix--;
-	   else if(image_hist1.GetBinContent(row+1,col+1)==1) final_sum_cosm_pix--;
-	   image_hist1.SetBinContent(row+1,col+1,0);
-	   
+
+     if(doeff){
+       if ( (out_of_time[i] != 0) || (outside_flag[i] != 0) ||( bkgd_flag[i] != 0 ) || (is_crossmu[i] !=-1) ){
+	 // loop over larflow3dhits in cluster
+	 for(auto& hit : ev_cluster->at(i)){
+	   int tick = hit.tick; //time tick
+	   int wire = hit.srcwire; // Y wire
+	   if ( wire_meta.min_x()<=wire && wire<wire_meta.max_x()
+		&& wire_meta.min_y()<=tick && tick<wire_meta.max_y() ) {
+	     int col = wire_meta.col( wire );
+	     int row = wire_meta.row( tick );
+	     if(image_hist1->GetBinContent(row+1,col+1)==2) final_sum_nu_pix--;
+	     else if(image_hist1->GetBinContent(row+1,col+1)==1) final_sum_cosm_pix--;
+	     image_hist1->SetBinContent(row+1,col+1,0);	     
+	   }
 	 }
        }
-       
      }
      // fill save_idx
      if( out_of_time[i]==0 && outside_flag[i]==0 && bkgd_flag[i]==0 && is_crossmu[i]==-1){
@@ -370,36 +381,28 @@ int main( int nargs, char** argv ) {
 
     }//end of cluster loop
 
-    if(savehist){
+    if(savehist && doeff){
       fout->cd();
-      image_hist0.Write();
-      image_hist1.Write();
+      image_hist0->Write();
+      image_hist1->Write();
     }
     //Lets get some figures of merit:
     gStyle->SetPalette(107);
 
+    if(doeff){
+      float neutrino_efficiency = final_sum_nu_pix/orig_sum_nu_pix;
+      float cosmic_rejection = 1 - (final_sum_cosm_pix/orig_sum_cosm_pix);
+      std::cout << orig_sum_nu_pix << " Orig Count Nu" << std::endl;
+      std::cout << final_sum_nu_pix << " Final Count Nu" << std::endl;
+      std::cout << neutrino_efficiency << " Fract " << std::endl;
+      
+      std::cout << orig_sum_cosm_pix << " Orig Count Cosm" << std::endl;
+      std::cout << final_sum_cosm_pix << " Final Count Cosm" << std::endl;
+      std::cout << cosmic_rejection << " Cosmic Rejection" << std::endl;
+      
+      eff_hist->Fill(neutrino_efficiency,cosmic_rejection);
 
-    float neutrino_efficiency = final_sum_nu_pix/orig_sum_nu_pix;
-    float cosmic_rejection = 1 - (final_sum_cosm_pix/orig_sum_cosm_pix);
-    std::cout << orig_sum_nu_pix << " Orig Count Nu" << std::endl;
-    std::cout << final_sum_nu_pix << " Final Count Nu" << std::endl;
-    std::cout << neutrino_efficiency << " Fract " << std::endl;
-
-    std::cout << orig_sum_cosm_pix << " Orig Count Cosm" << std::endl;
-    std::cout << final_sum_cosm_pix << " Final Count Cosm" << std::endl;
-    std::cout << cosmic_rejection << " Cosmic Rejection" << std::endl;
-
-    eff_hist.Fill(neutrino_efficiency,cosmic_rejection);
-    if (neutrino_efficiency >= 0.9){
-      rej_hist.Fill(cosmic_rejection);
     }
-
-    image_hist0.Reset();
-    image_hist1.Reset();
-
-    // std::cout << count_neut << " Neutrino Pixels" << std::endl;
-    // std::cout << count_neut_thresh << " Neutrino Pixels when adc thresholded" << std::endl;
-    // std::cout << count_neut_thresh/count_neut << " Fraction kept by that" << std::endl;
 
 
     // fill output
@@ -412,6 +415,23 @@ int main( int nargs, char** argv ) {
       
   }//end of entry loop
 
+  if(doeff){
+    TCanvas can2("can", "histograms ", 800, 800);
+    can2.cd();
+    eff_hist->Draw();    
+    can2.SaveAs("Eff_Rej.root");
+    gStyle->SetStatY(0.9);
+    gStyle->SetStatX(0.30);
+
+    TH1D* rej_hist = eff_hist->ProjectionY();
+    rej_hist->Draw();
+    can2.SaveAs("Rej_1d.root");
+
+    TH1D* keep_hist = eff_hist->ProjectionX();
+    keep_hist->Draw();
+    can2.SaveAs("Eff_1d.root");
+  }
+  
   if(savehist){
     fout->cd();
     hnu->Write();
@@ -421,18 +441,6 @@ int main( int nargs, char** argv ) {
     fout->Close();
   }
   
-  TCanvas can2("can", "histograms ", 800, 800);
-  can2.cd();
-  eff_hist.Draw();
-  // eff_hist.Write();
-  can2.SaveAs("Eff_Rej_outside.png");
-  gStyle->SetStatY(0.9);
-  gStyle->SetStatX(0.30);
-  rej_hist.Draw();
-  // rej_hist.Write();
-
-  // can2.SaveAs("Eff_Rej_outside.png");
-  can2.SaveAs("Rej_1d.png");
 
   io_ubpost_larcv.finalize();
   io_ubpost_larlite.close();
