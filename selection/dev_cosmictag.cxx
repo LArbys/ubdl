@@ -60,7 +60,15 @@ int main( int nargs, char** argv ) {
   std::string ancestor = argv[5];
   std::string ssnet = argv[6];
   //std::string infill = argv[7];
+  std::string outfile_larlite = argv[7];
 
+  std::string saveme = "";  
+  if(nargs>8){
+    saveme = argv[8];
+  }
+  bool savehist=false;
+  if(saveme=="save") savehist=true; //only if we give "save" as last argument save histograms
+  
   int run, subrun, event;
 
   // input
@@ -89,13 +97,14 @@ int main( int nargs, char** argv ) {
   io_ssnet.initialize();
 
   // output
-  std::string outfile_larlite = "out_larflowclust.root"; //temp
+  //std::string outfile_larlite = "out_larflowclust.root"; //temp
   larlite::storage_manager out_larlite( larlite::storage_manager::kWRITE );
   out_larlite.set_out_filename( outfile_larlite );
   out_larlite.open();
 
   std::string output_hist = "outhist.root";
-  TFile fout( output_hist.c_str(), "recreate" );
+  TFile* fout;
+  if(savehist) fout = new TFile( output_hist.c_str(), "recreate" );
 
   const float drift_vel = larutil::LArProperties::GetME()->DriftVelocity();
   const float width = larutil::Geometry::GetME()->DetHalfWidth() * 2;
@@ -142,7 +151,7 @@ int main( int nargs, char** argv ) {
   TH1D* hcrPointsOut = new TH1D("hPointsOut_cr","",200,0,400.);
 
   int nentries = io_ubpost_larcv.get_n_entries();
-  nentries = 10; //temp
+  //nentries = 10; //temp
   for (int i=0; i<nentries; i++) {
 
     io_ubpost_larcv.read_entry(i);
@@ -219,9 +228,9 @@ int main( int nargs, char** argv ) {
 
     std::string str_title = "Y-Plane All Run:" +std::to_string(run) + " Event: " + std::to_string(event);
     TH2F image_hist0(Form("Y_Plane_all_run%d_event%d",run,event), str_title.c_str(),
-		     wire_meta.cols(), 0.0, wire_meta.cols(), wire_meta.rows(), 0.0, wire_meta.rows());
+		     wire_meta.rows(), 0.0, wire_meta.rows(), wire_meta.cols(), 0.0, wire_meta.cols());
     TH2F image_hist1(Form("Y_Plane_cuts_run%d_event%d",run,event), str_title.c_str(),
-		     wire_meta.cols(), 0.0, wire_meta.cols(), wire_meta.rows(), 0.0, wire_meta.rows());
+		     wire_meta.rows(), 0.0, wire_meta.rows(), wire_meta.cols(), 0.0, wire_meta.cols());
     image_hist0.SetOption("COLZ");
     image_hist1.SetOption("COLZ");
     image_hist1.SetTitle("Y-Plane Cuts");
@@ -231,20 +240,30 @@ int main( int nargs, char** argv ) {
     larcv::Image2D binarized_instance =  inst_img;
     binarized_instance.binary_threshold(-1.0, 0.0, 1.0);
     binarized_instance.eltwise(binarized_adc);
-    larcv::Image2D neut_or_cosmic = binarized_adc;
 
+    float orig_sum_nu_pix = 0;
+    float final_sum_nu_pix = 0;
+    float orig_sum_cosm_pix = 0;
+    float final_sum_cosm_pix = 0;
+    
     for (int r=0;r<wire_meta.rows();r++){
       for (int c=0;c<wire_meta.cols();c++){
         if (binarized_instance.pixel(r,c) == 1){
-          neut_or_cosmic.set_pixel(r,c,2);
+	  image_hist0.SetBinContent(r+1,c+1,2);
+	  image_hist1.SetBinContent(r+1,c+1,2);
+	  orig_sum_nu_pix++;
         }
-        image_hist0.SetBinContent(r,c, neut_or_cosmic.pixel(r,c));
-	image_hist1.SetBinContent(r,c, neut_or_cosmic.pixel(r,c));
+	else if(binarized_adc.pixel(r,c) ==1){
+	  image_hist0.SetBinContent(r+1,c+1,1);
+	  image_hist1.SetBinContent(r+1,c+1,1);
+	  orig_sum_cosm_pix++;
+        }
+
       }
     }
-    std::string str = "Neut_or_Cosm_All_"+std::to_string(i)+".png";
-    // can.SaveAs(str.c_str());
-
+    // final pixels set to start pixels; will subract later
+    final_sum_nu_pix = orig_sum_nu_pix;
+    final_sum_cosm_pix = orig_sum_cosm_pix;
 
     // loop over all clusters
     // last one is a collection of unclustered hits
@@ -270,7 +289,7 @@ int main( int nargs, char** argv ) {
 	//fill pos
 	float dWall = calc_dWall(hit[0],hit[1],hit[2]);
 	position.push_back(std::make_pair(dWall,i));
-	if(dWall<10.0) dwall_frac++;
+	if(dWall < dwall_thresh) dwall_frac++;
 
       	if ( wire_meta.min_x()<=wire && wire<wire_meta.max_x()
       	    && wire_meta.min_y()<=tick && tick<wire_meta.max_y() ) {
@@ -332,12 +351,14 @@ int main( int nargs, char** argv ) {
        for(auto& hit : ev_cluster->at(i)){
 	 int tick = hit.tick; //time tick
 	 int wire = hit.srcwire; // Y wire
-	 if ( neut_or_cosmic.meta().min_x()<=wire && wire<neut_or_cosmic.meta().max_x()
-	      && neut_or_cosmic.meta().min_y()<=tick && tick<neut_or_cosmic.meta().max_y() ) {
-	   int col = neut_or_cosmic.meta().col( wire );
-	   int row = neut_or_cosmic.meta().row( tick );
-	   neut_or_cosmic.set_pixel(row,col,0);
-	   image_hist1.SetBinContent(row,col,0);
+	 if ( wire_meta.min_x()<=wire && wire<wire_meta.max_x()
+	      && wire_meta.min_y()<=tick && tick<wire_meta.max_y() ) {
+	   int col = wire_meta.col( wire );
+	   int row = wire_meta.row( tick );
+	   if(image_hist1.GetBinContent(row+1,col+1)==2) final_sum_nu_pix--;
+	   else if(image_hist1.GetBinContent(row+1,col+1)==1) final_sum_cosm_pix--;
+	   image_hist1.SetBinContent(row+1,col+1,0);
+	   
 	 }
        }
        
@@ -349,35 +370,13 @@ int main( int nargs, char** argv ) {
 
     }//end of cluster loop
 
-    fout.cd();
-    image_hist0.Write();
-    image_hist1.Write();
-
-    //Lets get some figures of merit:
-    TCanvas can("can", "histograms ", 2400, 800);
-    can.cd();
-    gStyle->SetPalette(107);
-
-    float orig_sum_nu_pix = 0;
-    float final_sum_nu_pix = 0;
-    float orig_sum_cosm_pix = 0;
-    float final_sum_cosm_pix = 0;
-    for (int r=0;r<1008;r++){
-      for (int c=0;c<3456;c++){
-        if (binarized_instance.pixel(r,c) == 1){
-          orig_sum_nu_pix++;
-        }
-        else if(binarized_adc.pixel(r,c) ==1){
-          orig_sum_cosm_pix++;
-        }
-        if (image_hist1.GetBinContent(r,c) ==2){
-          final_sum_nu_pix++;
-        }
-        else if (image_hist1.GetBinContent(r,c) ==1){
-          final_sum_cosm_pix++;
-        }
-      }
+    if(savehist){
+      fout->cd();
+      image_hist0.Write();
+      image_hist1.Write();
     }
+    //Lets get some figures of merit:
+    gStyle->SetPalette(107);
 
 
     float neutrino_efficiency = final_sum_nu_pix/orig_sum_nu_pix;
@@ -395,8 +394,6 @@ int main( int nargs, char** argv ) {
       rej_hist.Fill(cosmic_rejection);
     }
 
-    str = "Neut_or_Cosm_Removed_"+std::to_string(i)+".png";
-    // can.SaveAs(cstr.c_str());
     image_hist0.Reset();
     image_hist1.Reset();
 
@@ -415,13 +412,15 @@ int main( int nargs, char** argv ) {
       
   }//end of entry loop
 
-  fout.cd();
-  hnu->Write();
-  hcr->Write();
-  hnuPointsOut->Write();
-  hcrPointsOut->Write();
-  fout.Close();
-
+  if(savehist){
+    fout->cd();
+    hnu->Write();
+    hcr->Write();
+    hnuPointsOut->Write();
+    hcrPointsOut->Write();
+    fout->Close();
+  }
+  
   TCanvas can2("can", "histograms ", 800, 800);
   can2.cd();
   eff_hist.Draw();
@@ -447,20 +446,20 @@ int main( int nargs, char** argv ) {
 }
 
 int is_clust_out_bounds(int early_count, int late_count, int threshold){
-/*
-This function takes in a count of how many hits are early and late.
-There is an optional argument for the threshold of how many hits too early or
-late is too many. Defaulted to 0. Funtion returns:
-1 if too many hits are early
-2 if too many hits are late
-1 if both too early and too late
-0 otherwise
-*/
-int result =0;
-if (early_count > threshold) {result =1;}
-else if (late_count > threshold) {result =2;}
-else if (late_count+early_count > threshold) { result =1;}
-return result;
+  /*
+    This function takes in a count of how many hits are early and late.
+    There is an optional argument for the threshold of how many hits too early or
+    late is too many. Defaulted to 0. Funtion returns:
+    1 if too many hits are early
+    2 if too many hits are late
+    1 if both too early and too late
+    0 otherwise
+  */
+  int result =0;
+  if (early_count > threshold) {result =1;}
+  else if (late_count > threshold) {result =2;}
+  else if (late_count+early_count > threshold) { result =1;}
+  return result;
 }
 
 int is_cluster_outsidefrac_cut(float outsidefrac, float threshold){
