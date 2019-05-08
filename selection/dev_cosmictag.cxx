@@ -54,20 +54,20 @@ int main( int nargs, char** argv ) {
   gStyle->SetStatX(0.30);
 
   std::string ubpost_larcv  = argv[1];
-  std::string ubpost_larlite = argv[2];
-  std::string ubmrcnn = argv[3];
-  std::string ubclust = argv[4];
-  std::string ancestor = argv[5];
-  std::string ssnet = argv[6];
+  //std::string ubpost_larlite = argv[2];
+  //std::string ubmrcnn = argv[3];
+  std::string ubclust = argv[2];
+  std::string ancestor = argv[3];
+  std::string ssnet = argv[4];
   //std::string infill = argv[7];
-  std::string outfile_larlite = argv[7];
+  std::string outfile_larlite = argv[5];
 
   std::string saveme = "";
   std::string calc_eff="";
-  if(nargs>8){
-    saveme = argv[8];
-    calc_eff = argv[8];
-    if(nargs>9) saveme = argv[9];
+  if(nargs>6){
+    saveme = argv[6];
+    calc_eff = argv[6];
+    if(nargs>7) saveme = argv[7];
   }
   bool savehist=false;
   if(saveme=="save") savehist=true; //only if we give "save" as last argument save histograms
@@ -80,19 +80,19 @@ int main( int nargs, char** argv ) {
   larcv::IOManager io_ubpost_larcv( larcv::IOManager::kREAD, "", larcv::IOManager::kTickForward );
   io_ubpost_larcv.add_in_file( ubpost_larcv );
   io_ubpost_larcv.initialize();
-
+  /*
   larlite::storage_manager io_ubpost_larlite( larlite::storage_manager::kREAD );
   io_ubpost_larlite.add_in_filename( ubpost_larlite );
   io_ubpost_larlite.open();
-
+  */
   larlite::storage_manager io_ubclust( larlite::storage_manager::kREAD );
   io_ubclust.add_in_filename( ubclust );
   io_ubclust.open();
-
+  /*
   larcv::IOManager io_ubmrcnn( larcv::IOManager::kREAD, "", larcv::IOManager::kTickBackward );
   io_ubmrcnn.add_in_file( ubmrcnn );
   io_ubmrcnn.initialize();
-
+  */
   larcv::IOManager io_larcvtruth( larcv::IOManager::kREAD, "", larcv::IOManager::kTickBackward );
   io_larcvtruth.add_in_file( ancestor );
   io_larcvtruth.initialize();
@@ -102,7 +102,6 @@ int main( int nargs, char** argv ) {
   io_ssnet.initialize();
 
   // output
-  //std::string outfile_larlite = "out_larflowclust.root"; //temp
   larlite::storage_manager out_larlite( larlite::storage_manager::kWRITE );
   out_larlite.set_out_filename( outfile_larlite );
   out_larlite.open();
@@ -155,13 +154,13 @@ int main( int nargs, char** argv ) {
   TH1D* hcrPointsOut = new TH1D("hPointsOut_cr","",200,0,400.);
 
   int nentries = io_ubpost_larcv.get_n_entries();
-  nentries = 10; //temp
+  //nentries = 10; //temp
   for (int i=0; i<nentries; i++) {
 
     io_ubpost_larcv.read_entry(i);
-    io_ubpost_larlite.go_to(i);
+    //io_ubpost_larlite.go_to(i);
     io_ubclust.go_to(i);
-    io_ubmrcnn.read_entry(i);
+    //io_ubmrcnn.read_entry(i);
     io_larcvtruth.read_entry(i);
     io_ssnet.read_entry(i);
 
@@ -169,22 +168,22 @@ int main( int nargs, char** argv ) {
 
     // in
     auto ev_img            = (larcv::EventImage2D*)io_ubpost_larcv.get_data( larcv::kProductImage2D, "wire" );
-    auto ev_chstatus       = (larcv::EventChStatus*)io_ubpost_larcv.get_data( larcv::kProductChStatus,"wire");
+    //auto ev_chstatus       = (larcv::EventChStatus*)io_ubpost_larcv.get_data( larcv::kProductChStatus,"wire");
 
     auto ev_cluster        = (larlite::event_larflowcluster*)io_ubclust.get_data(larlite::data::kLArFlowCluster,  "rawmrcnn" );
-
+    /*
     auto ev_mctrack        = (larlite::event_mctrack*)io_ubpost_larlite.get_data(larlite::data::kMCTrack,  "mcreco" );
     auto ev_mcshower       = (larlite::event_mcshower*)io_ubpost_larlite.get_data(larlite::data::kMCShower, "mcreco" );
 
     auto ev_opflash_beam   = (larlite::event_opflash*)io_ubpost_larlite.get_data(larlite::data::kOpFlash, "simpleFlashBeam" );
     auto ev_opflash_cosmic = (larlite::event_opflash*)io_ubpost_larlite.get_data(larlite::data::kOpFlash, "simpleFlashCosmic" );
-
-    auto ev_ancestor       = (larcv::EventImage2D*)io_larcvtruth.get_data( larcv::kProductImage2D, "ancestor" );
+    */
+    //auto ev_ancestor       = (larcv::EventImage2D*)io_larcvtruth.get_data( larcv::kProductImage2D, "ancestor" );
     auto ev_instance       = (larcv::EventImage2D*)io_larcvtruth.get_data( larcv::kProductImage2D, "instance" );
 
     auto ev_ssnet          = (larcv::EventImage2D*)io_ssnet.get_data( larcv::kProductImage2D, "uburn_plane2" );
 
-    auto ev_clustermask    = (larcv::EventClusterMask*)io_ubmrcnn.get_data( larcv::kProductClusterMask, "mrcnn_masks");
+    //auto ev_clustermask    = (larcv::EventClusterMask*)io_ubmrcnn.get_data( larcv::kProductClusterMask, "mrcnn_masks");
 
 
     //out
@@ -392,6 +391,7 @@ int main( int nargs, char** argv ) {
     if(doeff){
       float neutrino_efficiency = final_sum_nu_pix/orig_sum_nu_pix;
       float cosmic_rejection = 1 - (final_sum_cosm_pix/orig_sum_cosm_pix);
+      /*
       std::cout << orig_sum_nu_pix << " Orig Count Nu" << std::endl;
       std::cout << final_sum_nu_pix << " Final Count Nu" << std::endl;
       std::cout << neutrino_efficiency << " Fract " << std::endl;
@@ -399,7 +399,7 @@ int main( int nargs, char** argv ) {
       std::cout << orig_sum_cosm_pix << " Orig Count Cosm" << std::endl;
       std::cout << final_sum_cosm_pix << " Final Count Cosm" << std::endl;
       std::cout << cosmic_rejection << " Cosmic Rejection" << std::endl;
-      
+      */
       eff_hist->Fill(neutrino_efficiency,cosmic_rejection);
 
     }
@@ -443,9 +443,9 @@ int main( int nargs, char** argv ) {
   
 
   io_ubpost_larcv.finalize();
-  io_ubpost_larlite.close();
+  //io_ubpost_larlite.close();
   io_ubclust.close();
-  io_ubmrcnn.finalize();
+  //io_ubmrcnn.finalize();
   io_larcvtruth.finalize();
   io_ssnet.finalize();
   out_larlite.close();
