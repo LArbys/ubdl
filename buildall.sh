@@ -24,6 +24,7 @@ cd $workdir
 
 cd cilantro
 mkdir -p build
+cd build
 cmake ../
 make
 cd $workdir
