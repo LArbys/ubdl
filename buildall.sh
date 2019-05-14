@@ -15,9 +15,17 @@ cd LArOpenCV
 make -j4
 cd $workdir
 
-cd larcv/build
+cd larcv
+mkdir -p build
+cd build
 cmake -DUSE_PYTHON2=ON -DUSE_OPENCV=ON ../
 make install
+cd $workdir
+
+cd cilantro
+mkdir -p build
+cmake ../
+make
 cd $workdir
 
 mkdir -p ublarcvapp/build

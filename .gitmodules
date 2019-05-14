@@ -16,3 +16,6 @@
 [submodule "ublarcvserver"]
 	path = ublarcvserver
 	url = https://github.com/larbys/ublarcvserver
+[submodule "cilantro"]
+	path = cilantro
+	url = https://github.com/NuTufts/cilantro.git
