@@ -24,6 +24,7 @@ cd $workdir
 
 cd cilantro
 mkdir -p build
+cd build
 cmake ../
 make
 cd $workdir
@@ -32,7 +33,7 @@ mkdir -p ublarcvapp/build
 cd ublarcvapp
 source configure.sh
 cd build
-cmake ../
+cmake -DUSE_OPENCV=ON ../
 make install
 cd $workdir
 
