@@ -4,7 +4,7 @@
 flist_vtx1=$1
 flist_vtx2=$2
 flist_clust=$3
-flist_ublarcv=$4
+flist_larcvtruth=$4
 tag=$5
 arrayid=$SLURM_ARRAY_TASK_ID
 
@@ -15,7 +15,8 @@ let line=${arrayid}+1
 vtx1file=`sed -n ${line}p ${flist_vtx1}`
 vtx2file=`sed -n ${line}p ${flist_vtx2}`
 ubclustfile=`sed -n ${line}p ${flist_clust}`
-larcvtruthfile=`sed -n ${line}p ${flist_ublarcv} | sed 's%ubdlserver%stage1%g' | sed 's%ubpost-noinfill-larcv-mcc9v12_intrinsicoverlay%larcvtruth%g'`
+#larcvtruthfile=`sed -n ${line}p ${flist_ublarcv} | sed 's%ubdlserver%stage1%g' | sed 's%ubpost-noinfill-larcv-mcc9v12_intrinsicoverlay%larcvtruth%g'`
+larcvtruthfile=`sed -n ${line}p ${flist_larcvtruth}`
 superafile=`echo "$larcvtruthfile" | sed 's%larcvtruth%supera%g'`
 mcinfofile=`echo "$larcvtruthfile" | sed 's%larcvtruth%mcinfo%g'`
 

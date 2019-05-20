@@ -5,8 +5,8 @@
 // ROOT
 #include "TFile.h"
 #include "TTree.h"
-#include "TH2D.h"
-#include "TH1D.h"
+#include "TH2F.h"
+#include "TH1F.h"
 #include "TCanvas.h"
 #include "TStyle.h"
 #include "TGraph.h"
@@ -84,7 +84,7 @@ int main( int nargs, char** argv ) {
   io_ubclust.add_in_filename( ubclust );
   io_ubclust.open();
 
-  //info about interaction type
+  // MCTruth
   larlite::storage_manager io_mctruth( larlite::storage_manager::kREAD );
   io_mctruth.add_in_filename( mctruth );
   io_mctruth.open();
@@ -94,6 +94,9 @@ int main( int nargs, char** argv ) {
   //io_ubmrcnn.initialize();
 
   // Ana tree
+  TFile* fout = new TFile("cosmictag_vertexana.root","recreate");
+  TTree* tree = NULL;
+  bool saveTree=true;
   
   int run=-1;
   int subrun=-1;
@@ -102,7 +105,8 @@ int main( int nargs, char** argv ) {
   int interaction_type;
   int interaction_mode;
   int ccnc;
-  int num_nu;
+  int num_nue;
+  int num_numu;
   int num_good_vtx;
   int num_bad_vtx;
   int num_good_vtx_tagger;
@@ -126,6 +130,31 @@ int main( int nargs, char** argv ) {
   std::vector<std::vector<float> > good_vtx_tag_pixel;
   std::vector<std::vector<float> > bad_vtx_tag_pixel;
 
+  // final state particles
+  // this is what gets handed from Genie to Geant
+  int NumPiPlus;
+  int NumPiMinus;
+  int NumPi0;
+  int NumProton;
+  int NumNeutron;
+  int NumGamma;
+  int NumElectron;
+  int NumMuon;
+  
+  std::vector<int> FinalStatePDG; // Note: in NC the neutrino is the outgoing lepton
+
+  // ADC images
+  // before DL tagger
+  TH2F* hwoTagger[3];
+  hwoTagger[0] = new TH2F("hUwoTagger","w/o CR tagger;U wire; time tick",3456,0.,3456,1008,0.,1008.);
+  hwoTagger[1] = new TH2F("hVwoTagger","w/o CR tagger;V wire; time tick",3456,0.,3456,1008,0.,1008.);
+  hwoTagger[2] = new TH2F("hYwoTagger","w/o CR tagger;Y wire; time tick",3456,0.,3456,1008,0.,1008.);
+  // after DL tagger
+  TH2F* hwiTagger[3];
+  hwiTagger[0] = new TH2F("hUwiTagger","w/ CR tagger;U wire; time tick",3456,0.,3456,1008,0.,1008.);
+  hwiTagger[1] = new TH2F("hVwiTagger","w/ CR tagger;V wire; time tick",3456,0.,3456,1008,0.,1008.);
+  hwiTagger[2] = new TH2F("hYwiTagger","w/ CR tagger;Y wire; time tick",3456,0.,3456,1008,0.,1008.);
+  
   /*
     Interaction modes:
     kUnknownInteraction        = -1,
@@ -150,18 +179,27 @@ int main( int nargs, char** argv ) {
   // vector of vectors: for each type of interaction, add number of vertex types
   std::vector<std::vector<int>> vertex_totals(15, std::vector<int>(9,0));
   
-  TFile* fout = new TFile("cosmictag_vertexana.root","recreate");
-  TTree* tree = NULL;
-  bool saveTree=true;
   if(saveTree){
     tree = new TTree("tree","event tree");
+    tree->Branch("hYwoTagger","TH2F",&hwoTagger[2]);
+    tree->Branch("hYwiTagger","TH2F",&hwiTagger[2]);
     tree->Branch("run",&run,"run/I");
     tree->Branch("subrun",&subrun,"subrun/I");
     tree->Branch("event",&event,"event/I");
     tree->Branch("interaction_type",&interaction_type,"interaction_type/I");
     tree->Branch("interaction_mode",&interaction_mode,"interaction_mode/I");
     tree->Branch("CCNC",&ccnc,"CCNC/I");
-    tree->Branch("num_nu",&num_nu,"num_nu/I");
+    tree->Branch("FinalStatePDG",&FinalStatePDG);
+    tree->Branch("num_piplus",&NumPiPlus,"num_piplus/I");
+    tree->Branch("num_piminus",&NumPiMinus,"num_piminus/I");
+    tree->Branch("num_pi0",&NumPi0,"num_pi0/I");
+    tree->Branch("num_p",&NumProton,"num_p/I");
+    tree->Branch("num_n",&NumNeutron,"num_n/I");
+    tree->Branch("num_e",&NumElectron,"num_e/I");
+    tree->Branch("num_mu",&NumMuon,"num_mu/I");
+    tree->Branch("num_gamma",&NumGamma,"num_gamma/I");
+    tree->Branch("num_nue",&num_nue,"num_nue/I");
+    tree->Branch("num_numu",&num_numu,"num_numu/I");
     tree->Branch("num_good_vtx",&num_good_vtx,"num_good_vtx/I");
     tree->Branch("num_bad_vtx",&num_bad_vtx,"num_bad_vtx/I");
     tree->Branch("num_good_vtx_tagger",&num_good_vtx_tagger,"num_good_vtx_tagger/I");
@@ -188,7 +226,7 @@ int main( int nargs, char** argv ) {
   ::larutil::SpaceChargeMicroBooNE* sce = new ::larutil::SpaceChargeMicroBooNE;
   
   int nentries = io_larcv.get_n_entries();
-  //nentries = 10; //temp
+  //nentries = 3; //temp
   for (int i=0; i<nentries; i++) {
 
     io_larcv.read_entry(i);
@@ -204,28 +242,14 @@ int main( int nargs, char** argv ) {
     auto ev_partroi        = (larcv::EventROI*)(io_larcvtruth.get_data( larcv::kProductROI,"segment"));
     auto ev_pgraph         = (larcv::EventPGraph*) io_vtx.get_data( larcv::kProductPGraph,"test");
     auto ev_pgraph2        = (larcv::EventPGraph*) io_vtx2.get_data( larcv::kProductPGraph,"test");
-    auto ev_interaction    = (larlite::event_mctruth*)io_mctruth.get_data(larlite::data::kMCTruth,  "generator" );
+    auto ev_mctruth        = (larlite::event_mctruth*)io_mctruth.get_data(larlite::data::kMCTruth,  "generator" );
     
     run    = io_larcv.event_id().run();
     subrun = io_larcv.event_id().subrun();
     event  = io_larcv.event_id().event();
     std::cout <<"run "<< run <<" subrun " << subrun <<" event " << event << std::endl;
 
-    auto& wire_img = ev_img->Image2DArray();
-    auto& wire_meta = wire_img.at(2).meta(); 
-
-    // only one neutrino interaction per entry
-    auto& neutrinoinfo = ev_interaction->at(0).GetNeutrino();
-    int interaction = neutrinoinfo.Mode();
-    interaction_mode = interaction;
-    interaction_type = neutrinoinfo.InteractionType();
-    ccnc = neutrinoinfo.CCNC();
-
-    if(interaction>=0){
-      interaction_totals[interaction]+=1;
-    }
-    if (interaction == -1) interaction_totals[14]+=1;
-    
+    //************ INITIALIZATION *********//
     float _tx=0;
     float _ty=0;
     float _tz=0;
@@ -247,6 +271,53 @@ int main( int nargs, char** argv ) {
     bad_vtx_tag_pixel.clear();
     good_vtx_lf_pixel.clear();
     bad_vtx_lf_pixel.clear();
+    num_nue=0;
+    num_numu=0;
+    NumPiPlus=0;
+    NumPiMinus=0;
+    NumPi0=0;
+    NumProton=0;
+    NumNeutron=0;
+    NumElectron=0;
+    NumMuon=0;
+    NumGamma=0;
+    FinalStatePDG.clear();
+    
+
+    auto& wire_img = ev_img->Image2DArray();
+    auto& wire_meta = wire_img.at(2).meta(); 
+    
+    // only one neutrino interaction per entry
+    auto& neutrinoinfo = ev_mctruth->at(0).GetNeutrino();
+    int interaction = neutrinoinfo.Mode();
+    interaction_mode = interaction;
+    interaction_type = neutrinoinfo.InteractionType();
+    ccnc = neutrinoinfo.CCNC();
+    if(interaction>=0){
+      interaction_totals[interaction]+=1;
+    }
+    if (interaction == -1) interaction_totals[14]+=1;
+
+    if(neutrinoinfo.Nu().PdgCode()==12) num_nue++;
+    else if(neutrinoinfo.Nu().PdgCode()==14) num_numu++;
+    
+    const std::vector<larlite::mcpart> partlist = ev_mctruth->at(0).GetParticles();
+    for(int ipart=1; ipart< partlist.size(); ipart++){ // i=0 is incoming neutrino
+      int pdg = partlist[ipart].PdgCode();
+      int status = partlist[ipart].StatusCode(); // status==1 is final state
+      if( status!=1 || pdg==2000000101) continue; // skip non-final state & bindino
+      //std::cout << "particle " << ipart <<" PDG " << pdg <<" status " << status << std::endl;
+      FinalStatePDG.push_back( pdg );
+      if(pdg==11 || pdg==-11 ) NumElectron++;
+      else if(pdg==13 || pdg==-13 ) NumMuon++;
+      else if(pdg==22) NumGamma++;
+      else if(pdg==111) NumPi0++;
+      else if(pdg==211) NumPiPlus++;
+      else if(pdg==-211) NumPiMinus++;
+      else if(pdg==2212) NumProton++;
+      else if(pdg==2112) NumNeutron++;
+    }
+
     
     for(auto const& roi : ev_partroi->ROIArray()){
       if(std::abs(roi.PdgCode()) == 12 || std::abs(roi.PdgCode()) == 14) {
@@ -259,12 +330,10 @@ int main( int nargs, char** argv ) {
 	_scex[0] = _tx - offset[0] + 0.7;
 	_scex[1] = _ty + offset[1];
 	_scex[2] = _tz + offset[2];
-	//nupixel = ublarcvapp::UBWireTool::getProjectedImagePixel(pos, wire_meta, 3);
 	nupixel = getProjectedPixel(_scex, wire_meta, 3);
 
       }      
     }
-    //std::cout <<"nu vtx "<< _scex[0] << " "<< _scex[1] << " "<< _scex[2] << std::endl;
     
     for(size_t pgraph_id = 0; pgraph_id < ev_pgraph->PGraphArray().size(); ++pgraph_id) {
       auto const& pgraph = ev_pgraph->PGraphArray().at(pgraph_id);
@@ -274,7 +343,7 @@ int main( int nargs, char** argv ) {
       pixel = getProjectedPixel(_x, wire_meta, 3);
       for(int kk=0; kk<pixel.size(); kk++) floatpixel.push_back(pixel[kk]);
 
-      //std::cout << _x[0] <<" "<< _x[1] <<" "<< _x[2] <<" "<< pixel[0] <<" "<< pixel[3] << std::endl;
+
       if(std::sqrt(std::pow(_x[0]-_scex[0],2)+std::pow(_x[1]-_scex[1],2)+std::pow(_x[2]-_scex[2],2))<=5.0){
 	good_vtx.push_back(_x);
 	good_vtx_pixel.push_back(floatpixel);
@@ -290,7 +359,7 @@ int main( int nargs, char** argv ) {
       _x[2] = pgraph.ParticleArray().front().Z();
       pixel = getProjectedPixel(_x, wire_meta, 3);
       for(int kk=0; kk<pixel.size(); kk++) floatpixel.push_back(pixel[kk]);
-      //std::cout << _x[0] <<" "<< _x[1] <<" "<< _x[2] << std::endl;
+
       if(std::sqrt(std::pow(_x[0]-_scex[0],2)+std::pow(_x[1]-_scex[1],2)+std::pow(_x[2]-_scex[2],2))<=5.0){
 	good_vtx_tag.push_back(_x);
 	good_vtx_tag_pixel.push_back(floatpixel);
@@ -312,10 +381,24 @@ int main( int nargs, char** argv ) {
 	     && wire_meta.min_y()<=tick && tick<wire_meta.max_y() ) {
 	  int col = wire_meta.col( wire );
 	  int row = wire_meta.row( tick );
-	  remaining.set_pixel(row,col,wire_img.at(2).pixel(row,col));
+	  float pixel= wire_img.at(2).pixel(row,col);
+	  if(pixel>=10.) remaining.set_pixel(row,col,pixel);
 	}
       }
     }
+
+    // fill in adc
+    for(int ip=2; ip<3; ip++){
+      for(int row=0; row<wire_meta.rows(); row++){
+	for(int col=0; col<wire_meta.cols(); col++){
+	  float pixel=wire_img.at(ip).pixel(row,col);
+	  if(pixel>=10.) hwoTagger[ip]->SetBinContent(col+1,row+1,pixel);
+	  pixel = remaining.pixel(row,col);
+	  hwiTagger[ip]->SetBinContent(col+1,row+1,pixel);
+	}
+      }
+    }
+
     // now check if we rejected any vertices
     // we keep vertices that are w/in 3 pix from a larflow3dhit
     for(int k=0; k<good_vtx_pixel.size(); k++){
@@ -403,7 +486,6 @@ int main( int nargs, char** argv ) {
 
     }
       
-    num_nu =1;
     num_good_vtx = good_vtx.size();
     num_bad_vtx = bad_vtx.size();
     num_good_vtx_tagger = good_vtx_tag.size();
