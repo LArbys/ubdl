@@ -380,8 +380,8 @@ int main( int nargs, char** argv ) {
       _x[1] = pgraph.ParticleArray().front().Y();
       _x[2] = pgraph.ParticleArray().front().Z();
       pixel = getProjectedPixel(_x, wire_meta, 3);
+      floatpixel.clear();
       for(int kk=0; kk<pixel.size(); kk++) floatpixel.push_back(pixel[kk]);
-
 
       if(std::sqrt(std::pow(_x[0]-_scex[0],2)+std::pow(_x[1]-_scex[1],2)+std::pow(_x[2]-_scex[2],2))<=5.0){
 	good_vtx.push_back(_x);
@@ -391,12 +391,14 @@ int main( int nargs, char** argv ) {
 	bad_vtx_pixel.push_back(floatpixel);
       }
     }
+    _x[0]=_x[1]=_x[2] = 0.;
     for(size_t pgraph_id = 0; pgraph_id < ev_pgraph2->PGraphArray().size(); ++pgraph_id) {
       auto const& pgraph = ev_pgraph2->PGraphArray().at(pgraph_id);
       _x[0] = pgraph.ParticleArray().front().X();
       _x[1] = pgraph.ParticleArray().front().Y();
       _x[2] = pgraph.ParticleArray().front().Z();
       pixel = getProjectedPixel(_x, wire_meta, 3);
+      floatpixel.clear();
       for(int kk=0; kk<pixel.size(); kk++) floatpixel.push_back(pixel[kk]);
 
       if(std::sqrt(std::pow(_x[0]-_scex[0],2)+std::pow(_x[1]-_scex[1],2)+std::pow(_x[2]-_scex[2],2))<=5.0){
@@ -443,42 +445,18 @@ int main( int nargs, char** argv ) {
     for(int k=0; k<good_vtx_pixel.size(); k++){
       int row = good_vtx_pixel.at(k)[0];
       int col = good_vtx_pixel.at(k)[3];
-      if(row>=0 && col>=0 && row<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row,col)>0){
-	good_vtx_lf.push_back(good_vtx.at(k));
-	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
-      }
-      else if(row>=0 && (col-1)>=0 && row<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row,col-1)>0){
-	good_vtx_lf.push_back(good_vtx.at(k));
-	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
-      }
-      else if(row>=0 && (col+1)>=0 && row<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row,col+1)>0){
-	good_vtx_lf.push_back(good_vtx.at(k));
-	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
-      }
-
-      else if((row-1)>=0 && (col-1)>=0 && (row-1)<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row-1,col-1)>0){
-	good_vtx_lf.push_back(good_vtx.at(k));
-	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
-      }
-      else if((row-1)>=0 && col>=0 && (row-1)<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row-1,col)>0){
-	good_vtx_lf.push_back(good_vtx.at(k));
-	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
-      }
-      else if((row-1)>=0 && (col+1)>=0 && (row-1)<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row-1,col+1)>0){
-	good_vtx_lf.push_back(good_vtx.at(k));
-	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
-      }
-      else if((row+1)>=0 && (col-1)>=0 && (row+1)<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row+1,col-1)>0){
-	good_vtx_lf.push_back(good_vtx.at(k));
-	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
-      }
-      else if((row+1)>=0 && col>=0 && (row+1)<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row+1,col)>0){
-	good_vtx_lf.push_back(good_vtx.at(k));
-	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
-      }
-      else if((row+1)>=0 && (col+1)>=0 && (row+1)<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row+1,col+1)>0){
-	good_vtx_lf.push_back(good_vtx.at(k));
-	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
+      bool found_vtx=false;
+      for(int rr=row-1; rr<row+2; rr++){
+	if( found_vtx ) break;
+	for(int cc=col-1; cc<col+2; cc++){
+	  if(rr>=0 && cc>=0 && rr<remaining.meta().rows() && cc<remaining.meta().cols() && remaining.pixel(rr,cc)>0){
+	    good_vtx_lf.push_back(good_vtx.at(k));
+	    good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
+	    found_vtx=true;
+	    break;
+	  }
+	  
+	}
       }
     }
 
@@ -486,44 +464,18 @@ int main( int nargs, char** argv ) {
     for(int k=0; k<bad_vtx_pixel.size(); k++){
       int row = bad_vtx_pixel.at(k)[0];
       int col = bad_vtx_pixel.at(k)[3];
-      if(row>=0 && col>=0 && row<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row,col)>0){
-	bad_vtx_lf.push_back(bad_vtx.at(k));
-	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
+      bool found_vtx=false;
+      for(int rr=row-1; rr<row+2; rr++){
+	if( found_vtx ) break;
+	for(int cc=col-1; cc<col+2; cc++){
+	  if(rr>=0 && cc>=0 && rr<remaining.meta().rows() && cc<remaining.meta().cols() && remaining.pixel(rr,cc)>0){
+	    bad_vtx_lf.push_back(bad_vtx.at(k));
+	    bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
+	    found_vtx=true;
+	    break;
+	  }
+	}
       }
-      else if(row>=0 && (col-1)>=0 && row<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row,col-1)>0){
-	bad_vtx_lf.push_back(bad_vtx.at(k));
-	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
-      }
-      else if(row>=0 && (col+1)>=0 && row<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row,col+1)>0){
-	bad_vtx_lf.push_back(bad_vtx.at(k));
-	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
-      }
-
-      else if((row-1)>=0 && (col-1)>=0 && (row-1)<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row-1,col-1)>0){
-	bad_vtx_lf.push_back(bad_vtx.at(k));
-	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
-      }
-      else if((row-1)>=0 && col>=0 && (row-1)<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row-1,col)>0){
-	bad_vtx_lf.push_back(bad_vtx.at(k));
-	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
-      }
-      else if((row-1)>=0 && (col+1)>=0 && (row-1)<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row-1,col+1)>0){
-	bad_vtx_lf.push_back(bad_vtx.at(k));
-	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
-      }
-      else if((row+1)>=0 && (col-1)>=0 && (row+1)<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row+1,col-1)>0){
-	bad_vtx_lf.push_back(bad_vtx.at(k));
-	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
-      }
-      else if((row+1)>=0 && col>=0 && (row+1)<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row+1,col)>0){
-	bad_vtx_lf.push_back(bad_vtx.at(k));
-	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
-      }
-      else if((row+1)>=0 && (col+1)>=0 && (row+1)<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row+1,col+1)>0){
-	bad_vtx_lf.push_back(bad_vtx.at(k));
-	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
-      }
-
     }
     
     num_good_vtx = good_vtx.size();
