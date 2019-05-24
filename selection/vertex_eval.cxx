@@ -57,7 +57,7 @@ int main( int nargs, char** argv ) {
   std::string ubclust = argv[3];
   std::string supera = argv[4];
   std::string larcvtruth = argv[5];
-  std::string mctruth = argv[6];
+  std::string mcinfo = argv[6];
 
   // ADC 
   larcv::IOManager io_larcv( larcv::IOManager::kREAD, "", larcv::IOManager::kTickBackward );
@@ -85,9 +85,9 @@ int main( int nargs, char** argv ) {
   io_ubclust.open();
 
   // MCTruth
-  larlite::storage_manager io_mctruth( larlite::storage_manager::kREAD );
-  io_mctruth.add_in_filename( mctruth );
-  io_mctruth.open();
+  larlite::storage_manager io_mcinfo( larlite::storage_manager::kREAD );
+  io_mcinfo.add_in_filename( mcinfo );
+  io_mcinfo.open();
   
   //larcv::IOManager io_ubmrcnn( larcv::IOManager::kREAD, "", larcv::IOManager::kTickBackward );
   //io_ubmrcnn.add_in_file( ubmrcnn );
@@ -113,6 +113,11 @@ int main( int nargs, char** argv ) {
   int num_bad_vtx_tagger;
   int num_good_vtx_lf;
   int num_bad_vtx_lf;
+
+  std::vector<float> PrimaryPEnergy; // deposited energy of primary p
+  std::vector<float> PrimaryEEnergy; // deposited energy of primary e
+  std::vector<float> PrimaryMuEnergy; // deposited energy of primary mu
+  
   std::vector<float> _scex;
   std::vector<int> nupixel; //tick u v y wire
 
@@ -200,6 +205,9 @@ int main( int nargs, char** argv ) {
     tree->Branch("num_gamma",&NumGamma,"num_gamma/I");
     tree->Branch("num_nue",&num_nue,"num_nue/I");
     tree->Branch("num_numu",&num_numu,"num_numu/I");
+    tree->Branch("p_enedep",&PrimaryPEnergy);
+    tree->Branch("e_enedep",&PrimaryEEnergy);
+    tree->Branch("mu_enedep",&PrimaryMuEnergy);
     tree->Branch("num_good_vtx",&num_good_vtx,"num_good_vtx/I");
     tree->Branch("num_bad_vtx",&num_bad_vtx,"num_bad_vtx/I");
     tree->Branch("num_good_vtx_tagger",&num_good_vtx_tagger,"num_good_vtx_tagger/I");
@@ -234,15 +242,17 @@ int main( int nargs, char** argv ) {
     io_vtx.read_entry(i);
     io_vtx2.read_entry(i);
     io_ubclust.go_to(i);
-    io_mctruth.go_to(i);
+    io_mcinfo.go_to(i);
 
-    auto ev_cluster        = (larlite::event_larflowcluster*)io_ubclust.get_data(larlite::data::kLArFlowCluster,  "cosmictag" );
-    auto ev_img            = (larcv::EventImage2D*)io_larcv.get_data( larcv::kProductImage2D, "wire" );
-    auto ev_instance       = (larcv::EventImage2D*)io_larcvtruth.get_data( larcv::kProductImage2D, "instance" );
-    auto ev_partroi        = (larcv::EventROI*)(io_larcvtruth.get_data( larcv::kProductROI,"segment"));
-    auto ev_pgraph         = (larcv::EventPGraph*) io_vtx.get_data( larcv::kProductPGraph,"test");
-    auto ev_pgraph2        = (larcv::EventPGraph*) io_vtx2.get_data( larcv::kProductPGraph,"test");
-    auto ev_mctruth        = (larlite::event_mctruth*)io_mctruth.get_data(larlite::data::kMCTruth,  "generator" );
+    const  auto ev_cluster        = (larlite::event_larflowcluster*)io_ubclust.get_data(larlite::data::kLArFlowCluster,  "cosmictag" );
+    const auto ev_img            = (larcv::EventImage2D*)io_larcv.get_data( larcv::kProductImage2D, "wire" );
+    const auto ev_instance       = (larcv::EventImage2D*)io_larcvtruth.get_data( larcv::kProductImage2D, "instance" );
+    const auto ev_partroi        = (larcv::EventROI*)(io_larcvtruth.get_data( larcv::kProductROI,"segment"));
+    const auto ev_pgraph         = (larcv::EventPGraph*) io_vtx.get_data( larcv::kProductPGraph,"test");
+    const auto ev_pgraph2        = (larcv::EventPGraph*) io_vtx2.get_data( larcv::kProductPGraph,"test");
+    const auto ev_mctruth        = (larlite::event_mctruth*)io_mcinfo.get_data(larlite::data::kMCTruth,  "generator" );
+    const auto& ev_mctrack       = *((larlite::event_mctrack*)io_mcinfo.get_data(larlite::data::kMCTrack,  "mcreco" ));
+    const auto& ev_mcshower      = *((larlite::event_mcshower*)io_mcinfo.get_data(larlite::data::kMCShower,  "mcreco" ));
     
     run    = io_larcv.event_id().run();
     subrun = io_larcv.event_id().subrun();
@@ -282,7 +292,11 @@ int main( int nargs, char** argv ) {
     NumMuon=0;
     NumGamma=0;
     FinalStatePDG.clear();
-    
+    PrimaryPEnergy.clear();
+    PrimaryEEnergy.clear();
+    PrimaryMuEnergy.clear();
+    hwoTagger[2]->Reset();
+    hwiTagger[2]->Reset();
 
     auto& wire_img = ev_img->Image2DArray();
     auto& wire_meta = wire_img.at(2).meta(); 
@@ -318,7 +332,32 @@ int main( int nargs, char** argv ) {
       else if(pdg==2112) NumNeutron++;
     }
 
+    // fill deposited energy of primary protons & muon
+    for(auto const& track: ev_mctrack){
+      if(track.Origin() != 1) continue; // not neutrino-induced
+      if(track.TrackID()!=track.MotherTrackID()) continue; // not primary
+      float enedep = track.Start().E() - track.End().E();
+      if(track.PdgCode()==2212){
+	PrimaryPEnergy.push_back(enedep);
+      }
+      else if(track.PdgCode()==13 || track.PdgCode()==-13){
+	PrimaryMuEnergy.push_back(enedep);
+      }
+    }
+    // fill deposited energy of primary electron
+    for(auto const& shower: ev_mcshower){
+      if(shower.Origin() != 1) continue; // not neutrino-induced
+      if(shower.TrackID()!=shower.MotherTrackID()) continue; // not primary
+      float enedep = shower.DetProfile().E();
+      if(shower.PdgCode()!=11 && shower.PdgCode()!=-11) continue; //not electron
+      PrimaryEEnergy.push_back(enedep);
+    }
+
+    //std::cout <<"NumE "<< NumElectron << " mcshower primary e " << PrimaryEEnergy.size() << std::endl;
+    //std::cout <<"NumP "<< NumProton << " mctrack primary p " << PrimaryPEnergy.size() << std::endl;
+    //std::cout <<"NumMu "<< NumMuon << " mctrack primary mu " << PrimaryMuEnergy.size() << std::endl;
     
+    // grab true neutrino vtx
     for(auto const& roi : ev_partroi->ROIArray()){
       if(std::abs(roi.PdgCode()) == 12 || std::abs(roi.PdgCode()) == 14) {
 	_tx = roi.X();
@@ -404,88 +443,89 @@ int main( int nargs, char** argv ) {
     for(int k=0; k<good_vtx_pixel.size(); k++){
       int row = good_vtx_pixel.at(k)[0];
       int col = good_vtx_pixel.at(k)[3];
-      if(remaining.pixel(row,col)>0){
+      if(row>=0 && col>=0 && row<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row,col)>0){
 	good_vtx_lf.push_back(good_vtx.at(k));
 	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row,col-1)>0){
+      else if(row>=0 && (col-1)>=0 && row<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row,col-1)>0){
 	good_vtx_lf.push_back(good_vtx.at(k));
 	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row,col+1)>0){
+      else if(row>=0 && (col+1)>=0 && row<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row,col+1)>0){
 	good_vtx_lf.push_back(good_vtx.at(k));
 	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
       }
 
-      else if(remaining.pixel(row-1,col-1)>0){
+      else if((row-1)>=0 && (col-1)>=0 && (row-1)<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row-1,col-1)>0){
 	good_vtx_lf.push_back(good_vtx.at(k));
 	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row-1,col)>0){
+      else if((row-1)>=0 && col>=0 && (row-1)<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row-1,col)>0){
 	good_vtx_lf.push_back(good_vtx.at(k));
 	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row-1,col+1)>0){
+      else if((row-1)>=0 && (col+1)>=0 && (row-1)<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row-1,col+1)>0){
 	good_vtx_lf.push_back(good_vtx.at(k));
 	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row+1,col-1)>0){
+      else if((row+1)>=0 && (col-1)>=0 && (row+1)<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row+1,col-1)>0){
 	good_vtx_lf.push_back(good_vtx.at(k));
 	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row+1,col)>0){
+      else if((row+1)>=0 && col>=0 && (row+1)<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row+1,col)>0){
 	good_vtx_lf.push_back(good_vtx.at(k));
 	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row+1,col+1)>0){
+      else if((row+1)>=0 && (col+1)>=0 && (row+1)<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row+1,col+1)>0){
 	good_vtx_lf.push_back(good_vtx.at(k));
 	good_vtx_lf_pixel.push_back(good_vtx_pixel.at(k));
       }
     }
+
 
     for(int k=0; k<bad_vtx_pixel.size(); k++){
       int row = bad_vtx_pixel.at(k)[0];
       int col = bad_vtx_pixel.at(k)[3];
-      if(remaining.pixel(row,col)>0){
+      if(row>=0 && col>=0 && row<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row,col)>0){
 	bad_vtx_lf.push_back(bad_vtx.at(k));
 	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row,col-1)>0){
+      else if(row>=0 && (col-1)>=0 && row<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row,col-1)>0){
 	bad_vtx_lf.push_back(bad_vtx.at(k));
 	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row,col+1)>0){
+      else if(row>=0 && (col+1)>=0 && row<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row,col+1)>0){
 	bad_vtx_lf.push_back(bad_vtx.at(k));
 	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
       }
 
-      else if(remaining.pixel(row-1,col-1)>0){
+      else if((row-1)>=0 && (col-1)>=0 && (row-1)<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row-1,col-1)>0){
 	bad_vtx_lf.push_back(bad_vtx.at(k));
 	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row-1,col)>0){
+      else if((row-1)>=0 && col>=0 && (row-1)<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row-1,col)>0){
 	bad_vtx_lf.push_back(bad_vtx.at(k));
 	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row-1,col+1)>0){
+      else if((row-1)>=0 && (col+1)>=0 && (row-1)<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row-1,col+1)>0){
 	bad_vtx_lf.push_back(bad_vtx.at(k));
 	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row+1,col-1)>0){
+      else if((row+1)>=0 && (col-1)>=0 && (row+1)<remaining.meta().rows() && (col-1)<remaining.meta().cols() && remaining.pixel(row+1,col-1)>0){
 	bad_vtx_lf.push_back(bad_vtx.at(k));
 	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row+1,col)>0){
+      else if((row+1)>=0 && col>=0 && (row+1)<remaining.meta().rows() && col<remaining.meta().cols() && remaining.pixel(row+1,col)>0){
 	bad_vtx_lf.push_back(bad_vtx.at(k));
 	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
       }
-      else if(remaining.pixel(row+1,col+1)>0){
+      else if((row+1)>=0 && (col+1)>=0 && (row+1)<remaining.meta().rows() && (col+1)<remaining.meta().cols() && remaining.pixel(row+1,col+1)>0){
 	bad_vtx_lf.push_back(bad_vtx.at(k));
 	bad_vtx_lf_pixel.push_back(bad_vtx_pixel.at(k));
       }
 
     }
-      
+    
     num_good_vtx = good_vtx.size();
     num_bad_vtx = bad_vtx.size();
     num_good_vtx_tagger = good_vtx_tag.size();
@@ -493,6 +533,7 @@ int main( int nargs, char** argv ) {
     num_good_vtx_lf = good_vtx_lf.size();
     num_bad_vtx_lf = bad_vtx_lf.size();
 
+    /*
     if (interaction >= 0){
       vertex_totals[interaction][0] +=num_good_vtx;
       vertex_totals[interaction][1] +=num_bad_vtx;
@@ -504,7 +545,7 @@ int main( int nargs, char** argv ) {
       if (num_good_vtx_tagger>0 || num_bad_vtx_tagger >0) {vertex_totals[interaction][7] ++;};
       if (num_good_vtx_lf>0 || num_bad_vtx_lf >0) {vertex_totals[interaction][8] ++;};
     }
-    if (interaction == -1){
+    else if (interaction == -1){
       vertex_totals[14][0] +=num_good_vtx;
       vertex_totals[14][1] +=num_bad_vtx;
       vertex_totals[14][2] +=num_good_vtx_tagger;
@@ -515,19 +556,26 @@ int main( int nargs, char** argv ) {
       if (num_good_vtx_tagger>0 || num_bad_vtx_tagger >0) {vertex_totals[14][7] ++;};
       if (num_good_vtx_lf>0 || num_bad_vtx_lf >0) {vertex_totals[14][8] ++;};
     }
-    
+    */
     
     tree->Fill();
     
   }
 
   // print interaction and vertex stats
-  PrintInteractionStats(interaction_totals,vertex_totals);
+  //PrintInteractionStats(interaction_totals,vertex_totals);
   
   
   fout->cd();
   tree->Write();
   fout->Close();
+
+  io_larcv.finalize();
+  io_larcvtruth.finalize();
+  io_vtx.finalize();
+  io_vtx2.finalize();
+  io_ubclust.close();
+  io_mcinfo.close();
   
   return 0;
 }
