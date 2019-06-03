@@ -5,6 +5,7 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TH2D.h"
+#include "TH3F.h"
 #include "TCanvas.h"
 #include "TStyle.h"
 #include "TGraph.h"
@@ -129,11 +130,12 @@ int main( int nargs, char** argv ) {
   io_vtx2.add_in_file( vtx2 );
   io_vtx2.initialize();
 
+  /*
   // output
   larcv::IOManager out_larcv( larcv::IOManager::kWRITE, "", larcv::IOManager::kTickForward );
   out_larcv.add_in_file( outfile_larcv );
   out_larcv.initialize();
-  /*
+  
   larlite::storage_manager out_larlite( larlite::storage_manager::kWRITE );
   out_larlite.set_out_filename( outfile_larlite );
   out_larlite.open();
@@ -294,8 +296,15 @@ int main( int nargs, char** argv ) {
     tree->Branch("bad_vtx_tag_pixel", &bad_vtx_tag_pixel);
   }
 
+  // MCC8 
   ::larutil::SpaceChargeMicroBooNE* sce = new ::larutil::SpaceChargeMicroBooNE;
+  // MCC9
+  TFile* newSCEFile = new TFile("/cluster/tufts/wongjiradlab/rshara01/ubdl/SCEoffsets_dataDriven_combined_fwd_Jan18.root");
+  TH3F* sceDx = (TH3F*) newSCEFile->Get("hDx");
+  TH3F* sceDy = (TH3F*) newSCEFile->Get("hDy");
+  TH3F* sceDz = (TH3F*) newSCEFile->Get("hDz");
 
+  
   /********* EVENT LOOP *************/
   int nentries = io_supera.get_n_entries();
   //nentries = 10; //temp
@@ -516,9 +525,15 @@ int main( int nargs, char** argv ) {
 	_tx[0] = roi.X();
 	_tx[1] = roi.Y();
 	_tx[2] = roi.Z();
-	auto const offset = sce->GetPosOffsets(_tx[0],_tx[1],_tx[2]);
+	//auto const offset = sce->GetPosOffsets(_tx[0],_tx[1],_tx[2]); //MCC8
+	float offset[3]={0.,0.,0.};
+        offset[0] = sceDx->Interpolate(_tx[0] / 100 , _tx[1] / 100 , _tx[2] / 100);
+	offset[1] = sceDy->Interpolate(_tx[0] / 100 , _tx[1] / 100 , _tx[2] / 100);
+	offset[2] = sceDz->Interpolate(_tx[0] / 100 , _tx[1] / 100 , _tx[2] / 100);
+	
 	_scex.resize(3,0);
-	_scex[0] = _tx[0] - offset[0] + 0.7;
+	//_scex[0] = _tx[0] - offset[0] + 0.7; //MCC8
+	_scex[0] = _tx[0] - offset[0];
 	_scex[1] = _tx[1] + offset[1];
 	_scex[2] = _tx[2] + offset[2];
 	nupixel = getProjectedPixel(_tx, wire_meta, 3);
@@ -770,7 +785,7 @@ int main( int nargs, char** argv ) {
   io_larcvtruth.finalize();
   io_ssnet.finalize();
   //out_larlite.close();
-  out_larcv.finalize();
+  //out_larcv.finalize();
   
   return 0;
 }

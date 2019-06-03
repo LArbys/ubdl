@@ -118,9 +118,11 @@ int main( int nargs, char** argv ) {
   std::vector<float> PrimaryEEnergy; // deposited energy of primary e
   std::vector<float> PrimaryMuEnergy; // deposited energy of primary mu
   
-  std::vector<float> _scex;
+  std::vector<float> _scex(3,0);
+  std::vector<float> _tx(3,0);
   std::vector<int> nupixel; //tick u v y wire
-
+  std::vector<int> scenupixel;
+  
   std::vector<std::vector<float> > good_vtx;
   std::vector<std::vector<float> > bad_vtx;
   std::vector<std::vector<float> > good_vtx_tag;
@@ -186,6 +188,8 @@ int main( int nargs, char** argv ) {
   
   if(saveTree){
     tree = new TTree("tree","event tree");
+    tree->Branch("hUwoTagger","TH2F",&hwoTagger[0]);
+    tree->Branch("hVwoTagger","TH2F",&hwoTagger[1]);
     tree->Branch("hYwoTagger","TH2F",&hwoTagger[2]);
     tree->Branch("hYwiTagger","TH2F",&hwiTagger[2]);
     tree->Branch("run",&run,"run/I");
@@ -214,8 +218,10 @@ int main( int nargs, char** argv ) {
     tree->Branch("num_bad_vtx_tagger",&num_bad_vtx_tagger,"num_bad_vtx_tagger/I");
     tree->Branch("num_good_vtx_lf",&num_good_vtx_lf,"num_good_vtx_lf/I");
     tree->Branch("num_bad_vtx_lf",&num_bad_vtx_lf,"num_bad_vtx_lf/I");
+    tree->Branch("_tx",&_tx);
     tree->Branch("_scex",&_scex);
     tree->Branch("nupixel",&nupixel);
+    tree->Branch("scenupixel",&scenupixel);
     tree->Branch("good_vtx", &good_vtx);
     tree->Branch("good_vtx_pixel", &good_vtx_pixel);
     tree->Branch("bad_vtx", &good_vtx);
@@ -260,15 +266,13 @@ int main( int nargs, char** argv ) {
     std::cout <<"run "<< run <<" subrun " << subrun <<" event " << event << std::endl;
 
     //************ INITIALIZATION *********//
-    float _tx=0;
-    float _ty=0;
-    float _tz=0;
-    float _tt=0;
     std::vector<float> _x(3,0);
     std::vector<int> pixel;
     std::vector<float> floatpixel; //cast int->float
+    _tx.clear();
     _scex.clear();
     nupixel.clear();
+    scenupixel.clear();
     good_vtx.clear();
     bad_vtx.clear();
     good_vtx_tag.clear();
@@ -295,9 +299,11 @@ int main( int nargs, char** argv ) {
     PrimaryPEnergy.clear();
     PrimaryEEnergy.clear();
     PrimaryMuEnergy.clear();
-    hwoTagger[2]->Reset();
-    hwiTagger[2]->Reset();
-
+    for(int ii=0; ii<3; ii++){
+      hwoTagger[ii]->Reset();
+      hwiTagger[ii]->Reset();
+    }
+    
     auto& wire_img = ev_img->Image2DArray();
     auto& wire_meta = wire_img.at(2).meta(); 
     
@@ -360,16 +366,17 @@ int main( int nargs, char** argv ) {
     // grab true neutrino vtx
     for(auto const& roi : ev_partroi->ROIArray()){
       if(std::abs(roi.PdgCode()) == 12 || std::abs(roi.PdgCode()) == 14) {
-	_tx = roi.X();
-	_ty = roi.Y();
-	_tz = roi.Z();
-	_tt = roi.T();
-	auto const offset = sce->GetPosOffsets(_tx,_ty,_tz);
+	_tx.resize(3,0);
+	_tx[0] = roi.X();
+	_tx[1] = roi.Y();
+	_tx[2] = roi.Z();
+	auto const offset = sce->GetPosOffsets(_tx[0],_tx[1],_tx[2]);
 	_scex.resize(3,0);
-	_scex[0] = _tx - offset[0] + 0.7;
-	_scex[1] = _ty + offset[1];
-	_scex[2] = _tz + offset[2];
-	nupixel = getProjectedPixel(_scex, wire_meta, 3);
+	_scex[0] = _tx[0] - offset[0] + 0.7;
+	_scex[1] = _tx[1] + offset[1];
+	_scex[2] = _tx[2] + offset[2];
+	nupixel = getProjectedPixel(_tx, wire_meta, 3);
+	scenupixel = getProjectedPixel(_scex, wire_meta, 3);
 
       }      
     }
@@ -429,13 +436,15 @@ int main( int nargs, char** argv ) {
     }
 
     // fill in adc
-    for(int ip=2; ip<3; ip++){
+    for(int ip=0; ip<3; ip++){
       for(int row=0; row<wire_meta.rows(); row++){
 	for(int col=0; col<wire_meta.cols(); col++){
 	  float pixel=wire_img.at(ip).pixel(row,col);
 	  if(pixel>=10.) hwoTagger[ip]->SetBinContent(col+1,row+1,pixel);
-	  pixel = remaining.pixel(row,col);
-	  hwiTagger[ip]->SetBinContent(col+1,row+1,pixel);
+	  if(ip>1){ // tagged img: Y plane only for now
+	    pixel = remaining.pixel(row,col);
+	    hwiTagger[ip]->SetBinContent(col+1,row+1,pixel);
+	  }
 	}
       }
     }
