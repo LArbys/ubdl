@@ -19,3 +19,6 @@
 [submodule "cilantro"]
 	path = cilantro
 	url = https://github.com/NuTufts/cilantro.git
+[submodule "sparse_infill"]
+	path = sparse_infill
+	url = https://github.com/NuTufts/sparse_infill.git
