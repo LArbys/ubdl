@@ -38,12 +38,24 @@
  * cosmic tag/rejection
  *
  */
+
+// MCC9 SCE correction
+std::vector<double> GetPosOffsets(std::vector<double> const& point, TH3F* hX, TH3F* hY, TH3F* hZ);
+std::vector<double> GetOffsetsVoxel(std::vector<double> const& point,TH3F* hX, TH3F* hY, TH3F* hZ);
+std::vector<double> Transform( std::vector<double> const& point);
+double TransformX(double x);
+double TransformY(double y);
+double TransformZ(double z);
+bool IsInsideBoundaries(std::vector<double> const& point);
+bool IsTooFarFromBoundaries(std::vector<double> const& point);
+std::vector<double> PretendAtBoundary(std::vector<double> const& point);
+
 int is_clust_out_bounds(int early_count, int late_count, int threshold=0);
 int is_cluster_bkgdfrac_cut(float bkgdfrac, float threshold);
 int is_cluster_showerfrac_cut(float showerfrac, float threshold);
 int is_cluster_outsidefrac_cut(float outsidefrac, float threshold);
 float calc_dWall(float x, float y, float z);
-std::vector<int> getProjectedPixel(const std::vector<float>& pos3d,
+std::vector<int> getProjectedPixel(const std::vector<double>& pos3d,
 				   const larcv::ImageMeta& meta,
 				   const int nplanes,
 				   const float fracpixborder=1.5 );
@@ -67,22 +79,22 @@ int main( int nargs, char** argv ) {
   std::string supera  = argv[1];
   std::string mcinfo = argv[2];
   std::string ubmrcnn = argv[3];
-  std::string ubclust = argv[2];
-  std::string larcvtruth = argv[3];
-  std::string ssnet = argv[4];
-  std::string vtx = argv[5];
-  std::string vtx2 = argv[6];
+  std::string ubclust = argv[4];
+  std::string larcvtruth = argv[5];
+  std::string ssnet = argv[6];
+  std::string vtx = argv[7];
+  std::string vtx2 = argv[8];
   //std::string infill = argv[7];
   //std::string outfile_larlite = argv[5];
-  std::string outfile_larcv = argv[7];
+  //std::string outfile_larcv = argv[7];
 
   std::string saveme = "";
   std::string calc_eff="";
   
-  if(nargs>8){
-    saveme = argv[8];
-    calc_eff = argv[8];
-    if(nargs>9) saveme = argv[9];
+  if(nargs>9){
+    saveme = argv[9];
+    calc_eff = argv[9];
+    if(nargs>10) saveme = argv[10];
   }
   
   bool saveana=false;
@@ -95,25 +107,35 @@ int main( int nargs, char** argv ) {
   io_supera.add_in_file( supera );
   io_supera.initialize();
 
+  std::cout <<"initialized io_supera with file " << supera << std::endl;
+
   // MCTruth
   larlite::storage_manager io_mcinfo( larlite::storage_manager::kREAD );
   io_mcinfo.add_in_filename( mcinfo );
   io_mcinfo.open();
 
+  std::cout <<"initialized io_mcinfo with file " << mcinfo << std::endl;
+
   // Larflowclusters
   larlite::storage_manager io_ubclust( larlite::storage_manager::kREAD );
   io_ubclust.add_in_filename( ubclust );
   io_ubclust.open();
+  
+  std::cout <<"initialized io_ubclust with file " << ubclust << std::endl;
 
   // Cluster masks
   larcv::IOManager io_ubmrcnn( larcv::IOManager::kREAD, "", larcv::IOManager::kTickBackward );
   io_ubmrcnn.add_in_file( ubmrcnn );
   io_ubmrcnn.initialize();
+  
+  std::cout <<"initialized io_ubmrcnn with file " << ubmrcnn << std::endl;
 
   // Instance & True ROI
   larcv::IOManager io_larcvtruth( larcv::IOManager::kREAD, "", larcv::IOManager::kTickBackward );
   io_larcvtruth.add_in_file( larcvtruth );
   io_larcvtruth.initialize();
+
+  std::cout <<"initialized io_larcvtruth with file " << larcvtruth << std::endl;
 
   // SSNet
   larcv::IOManager io_ssnet( larcv::IOManager::kREAD, "", larcv::IOManager::kTickBackward );
@@ -191,19 +213,19 @@ int main( int nargs, char** argv ) {
   std::vector<float> PrimaryEEnergy; // deposited energy of primary e
   std::vector<float> PrimaryMuEnergy; // deposited energy of primary mu
 
-  std::vector<float> _scex(3,0);
-  std::vector<float> _tx(3,0);
+  std::vector<double> _scex(3,0);
+  std::vector<double> _tx(3,0);
   std::vector<int> nupixel; //tick u v y wire
   std::vector<int> scenupixel;
 
-  std::vector<std::vector<float> > good_vtx;
-  std::vector<std::vector<float> > bad_vtx;
-  std::vector<std::vector<float> > good_vtx_tag;
-  std::vector<std::vector<float> > bad_vtx_tag;
-  std::vector<std::vector<float> > good_vtx_pixel;
-  std::vector<std::vector<float> > bad_vtx_pixel;
-  std::vector<std::vector<float> > good_vtx_tag_pixel;
-  std::vector<std::vector<float> > bad_vtx_tag_pixel;
+  std::vector<std::vector<double> > good_vtx;
+  std::vector<std::vector<double> > bad_vtx;
+  std::vector<std::vector<double> > good_vtx_tag;
+  std::vector<std::vector<double> > bad_vtx_tag;
+  std::vector<std::vector<int> > good_vtx_pixel;
+  std::vector<std::vector<int> > bad_vtx_pixel;
+  std::vector<std::vector<int> > good_vtx_tag_pixel;
+  std::vector<std::vector<int> > bad_vtx_tag_pixel;
 
   // final state particles
   int NumPiPlus;
@@ -303,17 +325,16 @@ int main( int nargs, char** argv ) {
   TH3F* sceDx = (TH3F*) newSCEFile->Get("hDx");
   TH3F* sceDy = (TH3F*) newSCEFile->Get("hDy");
   TH3F* sceDz = (TH3F*) newSCEFile->Get("hDz");
-
   
   /********* EVENT LOOP *************/
   int nentries = io_supera.get_n_entries();
-  //nentries = 10; //temp
+  //nentries = 1; //temp
   for (int i=0; i<nentries; i++) {
 
     io_supera.read_entry(i);
     io_mcinfo.go_to(i);
     io_ubclust.go_to(i);
-    io_ubmrcnn.read_entry(i);
+    //io_ubmrcnn.read_entry(i);
     io_larcvtruth.read_entry(i);
     io_ssnet.read_entry(i);
     io_vtx.read_entry(i);
@@ -321,9 +342,9 @@ int main( int nargs, char** argv ) {
     
     std::cout << "entry " << i << std::endl;
     //************ INITIALIZATION *********//
-    std::vector<float> _x(3,0);
+    std::vector<double> _x(3,0);
     std::vector<int> pixel;
-    std::vector<float> floatpixel; //cast int->float
+    //std::vector<float> floatpixel; //cast int->float
     _tx.clear();
     _scex.clear();
     nupixel.clear();
@@ -373,12 +394,10 @@ int main( int nargs, char** argv ) {
     const auto ev_pgraph         = (larcv::EventPGraph*) io_vtx.get_data( larcv::kProductPGraph,"test");
     const auto ev_pgraph2        = (larcv::EventPGraph*) io_vtx2.get_data( larcv::kProductPGraph,"test");
     const auto ev_mctruth        = (larlite::event_mctruth*)io_mcinfo.get_data(larlite::data::kMCTruth,  "generator" );
-    //auto ev_opflash_beam   = (larlite::event_opflash*)io_ubpost_larlite.get_data(larlite::data::kOpFlash, "simpleFlashBeam" );
-    //auto ev_opflash_cosmic = (larlite::event_opflash*)io_ubpost_larlite.get_data(larlite::data::kOpFlash, "simpleFlashCosmic" );
     //auto ev_ancestor       = (larcv::EventImage2D*)io_larcvtruth.get_data( larcv::kProductImage2D, "ancestor" );
     const auto ev_instance       = (larcv::EventImage2D*)io_larcvtruth.get_data( larcv::kProductImage2D, "instance" );
     const auto ev_ssnet          = (larcv::EventImage2D*)io_ssnet.get_data( larcv::kProductImage2D, "uburn_plane2" );
-    const auto ev_clustermask    = (larcv::EventClusterMask*)io_ubmrcnn.get_data( larcv::kProductClusterMask, "mrcnn_masks");
+    //const auto ev_clustermask    = (larcv::EventClusterMask*)io_ubmrcnn.get_data( larcv::kProductClusterMask, "mrcnn_masks");
 
     //out
     //auto evout_cluster     = (larlite::event_larflowcluster*)out_larlite.get_data(larlite::data::kLArFlowCluster, "cosmictag");
@@ -526,11 +545,8 @@ int main( int nargs, char** argv ) {
 	_tx[1] = roi.Y();
 	_tx[2] = roi.Z();
 	//auto const offset = sce->GetPosOffsets(_tx[0],_tx[1],_tx[2]); //MCC8
-	float offset[3]={0.,0.,0.};
-        offset[0] = sceDx->Interpolate(_tx[0] / 100 , _tx[1] / 100 , _tx[2] / 100);
-	offset[1] = sceDy->Interpolate(_tx[0] / 100 , _tx[1] / 100 , _tx[2] / 100);
-	offset[2] = sceDz->Interpolate(_tx[0] / 100 , _tx[1] / 100 , _tx[2] / 100);
-	
+	auto const offset = GetPosOffsets(_tx,sceDx,sceDy,sceDz);
+
 	_scex.resize(3,0);
 	//_scex[0] = _tx[0] - offset[0] + 0.7; //MCC8
 	_scex[0] = _tx[0] - offset[0];
@@ -547,15 +563,15 @@ int main( int nargs, char** argv ) {
       _x[1] = pgraph.ParticleArray().front().Y();
       _x[2] = pgraph.ParticleArray().front().Z();
       pixel = getProjectedPixel(_x, wire_meta, 3);
-      floatpixel.clear();
-      for(int kk=0; kk<pixel.size(); kk++) floatpixel.push_back(pixel[kk]);
+      //floatpixel.clear();
+      //for(int kk=0; kk<pixel.size(); kk++) floatpixel.push_back(pixel[kk]);
 
       if(std::sqrt(std::pow(_x[0]-_scex[0],2)+std::pow(_x[1]-_scex[1],2)+std::pow(_x[2]-_scex[2],2))<=5.0){
 	good_vtx.push_back(_x);
-	good_vtx_pixel.push_back(floatpixel);
+	good_vtx_pixel.push_back(pixel);
       }
       else{bad_vtx.push_back(_x);
-	bad_vtx_pixel.push_back(floatpixel);
+	bad_vtx_pixel.push_back(pixel);
       }
     }
     
@@ -567,15 +583,15 @@ int main( int nargs, char** argv ) {
       _x[1] = pgraph.ParticleArray().front().Y();
       _x[2] = pgraph.ParticleArray().front().Z();
       pixel = getProjectedPixel(_x, wire_meta, 3);
-      floatpixel.clear();
-      for(int kk=0; kk<pixel.size(); kk++) floatpixel.push_back(pixel[kk]);
+      //floatpixel.clear();
+      //for(int kk=0; kk<pixel.size(); kk++) floatpixel.push_back(pixel[kk]);
 
       if(std::sqrt(std::pow(_x[0]-_scex[0],2)+std::pow(_x[1]-_scex[1],2)+std::pow(_x[2]-_scex[2],2))<=5.0){
 	good_vtx_tag.push_back(_x);
-	good_vtx_tag_pixel.push_back(floatpixel);
+	good_vtx_tag_pixel.push_back(pixel);
       }else{
 	bad_vtx_tag.push_back(_x);
-	bad_vtx_tag_pixel.push_back(floatpixel);
+	bad_vtx_tag_pixel.push_back(pixel);
       }
     }
     
@@ -691,15 +707,15 @@ int main( int nargs, char** argv ) {
 	      && wire_meta.min_y()<=tick && tick<wire_meta.max_y() ) {
 	   int col = wire_meta.col( wire );
 	   int row = wire_meta.row( tick );
-	   hclusterid->SetBinContent(col+1,row+1,-1);
-	   hnufrac->SetBinContent(col+1,row+1,nufrac[i]);
-	   hcroi->SetBinContent(col+1,row+1,-1);
-	   hssnetbg->SetBinContent(col+1,row+1,-1);
-	   hssnetshower->SetBinContent(col+1,row+1,-1);
-	   hssnettrack->SetBinContent(col+1,row+1,-1);
-	   hearly->SetBinContent(col+1,row+1,-1);
-	   hlate->SetBinContent(col+1,row+1,-1);
-	   hdwall->SetBinContent(col+1,row+1,-1);
+	   hclusterid->SetBinContent(col+1,row+1,1000);
+	   hnufrac->SetBinContent(col+1,row+1,1000);
+	   hcroi->SetBinContent(col+1,row+1,1000);
+	   hssnetbg->SetBinContent(col+1,row+1,1000);
+	   hssnetshower->SetBinContent(col+1,row+1,1000);
+	   hssnettrack->SetBinContent(col+1,row+1,1000);
+	   hearly->SetBinContent(col+1,row+1,1000);
+	   hlate->SetBinContent(col+1,row+1,1000);
+	   hdwall->SetBinContent(col+1,row+1,1000);
 	 }
        }
        
@@ -730,6 +746,10 @@ int main( int nargs, char** argv ) {
 
     }//end of cluster loop
 
+    if(saveana){
+      tree->Fill();
+    }
+
     if(saveana && doeff){
       fout->cd();
       image_hist0->Write();
@@ -752,6 +772,12 @@ int main( int nargs, char** argv ) {
     out_larlite.set_id( run, subrun, event );
     out_larlite.next_event();
     */
+
+    TCanvas can("can", "histograms ", 800, 800);
+    can.cd();
+    hssnettrack->Draw("colz");    
+    can.SaveAs(Form("ssnettrack_%d.root",i));
+  
   }//end of entry loop
 
   if(doeff){
@@ -781,7 +807,7 @@ int main( int nargs, char** argv ) {
   io_supera.finalize();
   io_mcinfo.close();
   io_ubclust.close();
-  io_ubmrcnn.finalize();
+  //io_ubmrcnn.finalize();
   io_larcvtruth.finalize();
   io_ssnet.finalize();
   //out_larlite.close();
@@ -789,6 +815,104 @@ int main( int nargs, char** argv ) {
   
   return 0;
 }
+
+// below I copied functions from the updated spacecharge service
+// will update the larlite service in the future
+/////////////
+std::vector<double> GetPosOffsets(std::vector<double> const& point, TH3F* hX, TH3F* hY, TH3F* hZ){
+
+  std::vector<double> offset(3,0.);
+  std::vector<double> newpoint;
+  if (!IsInsideBoundaries(point) && !IsTooFarFromBoundaries(point)){
+    newpoint = PretendAtBoundary(point);
+    offset = GetOffsetsVoxel(newpoint,hX,hY,hZ);
+  }
+  else if(IsInsideBoundaries(point)){
+    newpoint = point;
+    offset = GetOffsetsVoxel(newpoint,hX,hY,hZ);
+  }
+
+  return offset;
+}
+
+/// Provides position offsets using voxelized interpolation  
+std::vector<double> GetOffsetsVoxel(std::vector<double> const& point,TH3F* hX, TH3F* hY, TH3F* hZ){       
+    std::vector<double> transformedPoint = Transform(point);
+ 
+    return {
+      hX->Interpolate(transformedPoint[0],transformedPoint[1],transformedPoint[2]),
+      hY->Interpolate(transformedPoint[0],transformedPoint[1],transformedPoint[2]),
+      hZ->Interpolate(transformedPoint[0],transformedPoint[1],transformedPoint[2])
+    };
+        
+  }
+//----------------------------------------------------------------------------
+/// Transform X to SCE X coordinate:  [2.56,0.0] --> [0.0,2.50]
+double TransformX(double xVal){
+  double xValNew;
+  xValNew = 2.50 - (2.50/2.56)*(xVal/100.0);
+  //xValNew -= 1.25;
+
+  return xValNew;
+}
+
+//----------------------------------------------------------------------------
+/// Transform Y to SCE Y coordinate:  [-1.165,1.165] --> [0.0,2.50]
+double TransformY(double yVal){
+  double yValNew;
+  yValNew = (2.50/2.33)*((yVal/100.0)+1.165);
+  //yValNew -= 1.25;
+
+  return yValNew;
+}
+
+//----------------------------------------------------------------------------
+/// Transform Z to SCE Z coordinate:  [0.0,10.37] --> [0.0,10.0]
+double TransformZ(double zVal){
+  double zValNew;
+  zValNew = (10.0/10.37)*(zVal/100.0);
+
+  return zValNew;
+}
+//----------------------------------------------------------------------------
+std::vector<double> Transform( std::vector<double> const& point){
+  return
+    { TransformX(point[0]), TransformY(point[1]), TransformZ(point[2]) };
+}
+
+//----------------------------------------------------------------------------
+/// Check to see if point is inside boundaries of map (allow to go slightly out of range)
+bool IsInsideBoundaries(std::vector<double> const& point){
+  return !(
+       (point[0] <    0.001) || (point[0] >  255.999)
+    || (point[1] < -116.499) || (point[1] > 116.499)
+    || (point[2] <    0.001) || (point[2] > 1036.999)
+    );
+}
+
+bool IsTooFarFromBoundaries(std::vector<double> const& point){
+  return (
+       (point[0] <    0.0) || (point[0] > 266.6)
+    || (point[1] < -126.5) || (point[1] > 126.5)
+    || (point[2] <    -10) || (point[2] > 1047.0)
+    );
+}
+
+std::vector<double> PretendAtBoundary(std::vector<double> const& point){ 
+  double x = point[0], y = point[1], z = point[2];
+  
+  if      (point[0] <   0.001)   x =   0.001;
+  else if (point[0] >   255.999) x = 255.999;
+  
+  if      (point[1] < -116.499) y = -116.499;
+  else if (point[1] >  116.499) y =  116.499;
+
+  if      (point[2] <    0.001) z =    0.001;
+  else if (point[2] > 1036.999) z = 1036.999;
+   
+  return {x,y,z};
+}
+
 
 int is_clust_out_bounds(int early_count, int late_count, int threshold){
   /*
@@ -855,7 +979,7 @@ float calc_dWall(float x, float y, float z){
 
 }
 
-std::vector<int> getProjectedPixel( const std::vector<float>& pos3d,
+std::vector<int> getProjectedPixel( const std::vector<double>& pos3d,
 				    const larcv::ImageMeta& meta,
 				    const int nplanes,
 				    const float fracpixborder ) {

@@ -18,7 +18,7 @@ cd $workdir
 cd larcv
 mkdir -p build
 cd build
-cmake -DUSE_PYTHON2=ON -DUSE_OPENCV=ON ../
+cmake -DUSE_PYTHON2=ON -DUSE_OPENCV=ON -DUSE_TORCH=ON -DON_FNAL=ON ../
 make install
 cd $workdir
 
