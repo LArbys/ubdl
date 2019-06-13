@@ -35,8 +35,10 @@ We provide a number of scripts to set the environment variables and perform the 
 | script       | purpose | do I have to edit it? | when do I run it? |
 |:-----------: |:-------:|:---------------------:| :---------------- |
 | setenv.sh    | set envionroment variables for packages and libraries not included in this repository (e.g. ROOT, opencv, pytorch) | YES (machine dependent) | every new shell |
+| setenv_fnal.sh    | set envionroment variables for external packages and libraries ON FNAL (e.g. ROOT, opencv, pytorch) | NO | every new shell |
 | configure.sh | setup the environment variables of packages included in `ubdl`. | NO | every new shell |
 | buildall.sh  | run commands to build all the modules inside this repo | NO (but call to compile) | NO | every time changes are made to source. and after first cloning the repo |
+| cleanall.sh  | run `make clean` in all repo folders | NO | NO | when you want to hit the reset button |
 | first_setup.sh | loads all of the gitsubmodules. call this the first time you clone the repository | NO | after the first time cloning the repo |
 
 
