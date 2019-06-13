@@ -1,6 +1,7 @@
 #!/bin/bash
 
 workdir=$PWD
+
 cd larlite
 make
 cd UserDev/BasicTool
