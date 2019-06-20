@@ -179,9 +179,10 @@ void read_vtxana(){
     TH2F* h2dbox_adc_bwo = new TH2F("h2dbox_adc_bwo","",20,0.,20.,50,0.,10000.);
     TH2F* h2dbox_adc_gwi = new TH2F("h2dbox_adc_gwi","",20,0.,20.,50,0.,10000.);
     TH2F* h2dbox_adc_bwi = new TH2F("h2dbox_adc_bwi","",20,0.,20.,50,0.,10000.);
+
     int Nentries = tree->GetEntries();
     std::cout << "Nentries " << Nentries << std::endl;
-    // Nentries = 200;
+    // Nentries = 400;
     for(int i=0; i<Nentries; i++){
       num_good_vtx_lf =0;
       num_bad_vtx_lf = 0;
@@ -302,7 +303,7 @@ void read_vtxana(){
           bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
           bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && box_dim_needed<=3);
         	if ((unclustered == true) || (passes_cuts == true)) {
-            num_bad_vtx_lf++;
+            num_good_vtx_lf++;
             for (int i=0;i<10;i++){
               int dim = i*2+1;
               // std::cout << "Dim: " << dim << std::endl;
@@ -322,12 +323,12 @@ void read_vtxana(){
                   }
                 }
               }
-              if (tot_adc_wo > 0){
+              // if (tot_adc_wo > 0){
                 h2dbox_adc_gwo->Fill(dim,tot_adc_wo);
-              }
-              if (tot_adc_wi > 0){
+              // }
+              // if (tot_adc_wi > 0){
                 h2dbox_adc_gwi->Fill(dim,tot_adc_wi);
-              }
+              // }
             }
           } //if unclustered keep vtx
       }
@@ -400,12 +401,12 @@ void read_vtxana(){
 
                 }
               }
-              if (tot_adc_wo > 0){
+              // if (tot_adc_wo > 0){
                 h2dbox_adc_bwo->Fill(dim,tot_adc_wo);
-              }
-              if (tot_adc_wi > 0){
+              // }
+              // if (tot_adc_wi > 0){
                 h2dbox_adc_bwi->Fill(dim,tot_adc_wi);
-              }
+              // }
             }
           } //if unclustered keep vtx
       }
@@ -500,13 +501,42 @@ void read_vtxana(){
       }
 
   }
+    TCanvas cane("can", "histograms ", 1200, 800);
+    cane.SetLeftMargin(0.2);
+    cane.SetRightMargin(0.2);
+    TH2F h2dbox_adc_b_g_ratio_wo = (*h2dbox_adc_bwo)/(*h2dbox_adc_gwo);
+    h2dbox_adc_b_g_ratio_wo.SetOption("COLZ");
+    h2dbox_adc_b_g_ratio_wo.SetTitle("Radio Original ADC, Bad/Good");
+    h2dbox_adc_b_g_ratio_wo.SetXTitle("Box Size (AxA)");
+    h2dbox_adc_b_g_ratio_wo.SetYTitle("Charge Total");
+    h2dbox_adc_b_g_ratio_wo.Draw();
+    cane.SaveAs("ratio_dlcut_wo_b_g.png");
 
+    TCanvas canf("can", "histograms ", 1200, 800);
+    canf.SetLeftMargin(0.2);
+    canf.SetRightMargin(0.2);
+    TH2F h2dbox_adc_b_g_ratio_wi = (*h2dbox_adc_bwi)/(*h2dbox_adc_gwi);
+    h2dbox_adc_b_g_ratio_wi.SetOption("COLZ");
+    h2dbox_adc_b_g_ratio_wi.SetTitle("Radio DL REMOVED ADC, Bad/Good");
+    h2dbox_adc_b_g_ratio_wi.SetXTitle("Box Size (AxA)");
+    h2dbox_adc_b_g_ratio_wi.SetYTitle("Charge Total");
+    h2dbox_adc_b_g_ratio_wi.Draw();
+    canf.SaveAs("ratio_dlcut_wi_b_g.png");
+
+    TH1D  *projbwiX_ratio = h2dbox_adc_b_g_ratio_wi.ProjectionX();
+    projbwiX_ratio->SetXTitle("Box Size (AxA)");
+    projbwiX_ratio->SetYTitle("Count");
+    TCanvas can_bwiX_rat("can_bwoX","can_bwoX", 1200, 800);
+    can_bwiX_rat.SetLeftMargin(0.2);
+    can_bwiX_rat.SetRightMargin(0.2);
+    projbwiX_ratio->Draw();
+    can_bwiX_rat.SaveAs("projx_bbox_ratio_wi.png");
 
     TCanvas cana("can", "histograms ", 1200, 800);
     cana.SetLeftMargin(0.2);
     cana.SetRightMargin(0.2);
     h2dbox_adc_gwo->SetOption("COLZ");
-    h2dbox_adc_gwo->SetTitle("Bad Vtx Charge Enclosed in Box AxA");
+    h2dbox_adc_gwo->SetTitle("Good Vtx Original ADC");
     h2dbox_adc_gwo->SetXTitle("Box Size (AxA)");
     h2dbox_adc_gwo->SetYTitle("Charge Total");
     h2dbox_adc_gwo->Draw();
@@ -525,7 +555,7 @@ void read_vtxana(){
     canb.SetLeftMargin(0.2);
     canb.SetRightMargin(0.2);
     h2dbox_adc_bwo->SetOption("COLZ");
-    h2dbox_adc_bwo->SetTitle("Good Vtx Charge Enclosed in Box AxA");
+    h2dbox_adc_bwo->SetTitle("Bad Vtx Original ADC");
     h2dbox_adc_bwo->SetXTitle("Box Size (AxA)");
     h2dbox_adc_bwo->SetYTitle("Charge Total");
     h2dbox_adc_bwo->Draw();
@@ -540,15 +570,25 @@ void read_vtxana(){
     projbwoX->Draw();
     can_bwoX.SaveAs("box_adc_bwoX_post_dlcut.png");
 
-    TCanvas canc("can", "histograms ", 800, 800);
+    TCanvas canc("can", "histograms ", 1200, 800);
+    canc.SetLeftMargin(0.2);
+    canc.SetRightMargin(0.2);
+    h2dbox_adc_bwi->SetTitle("Bad Vtx DL Cut ADC");
+    h2dbox_adc_bwi->SetXTitle("Box Size (AxA)");
+    h2dbox_adc_bwi->SetYTitle("Charge Total");
     h2dbox_adc_bwi->SetOption("COLZ");
     h2dbox_adc_bwi->Draw();
-    canc.SaveAs("h2dbox_adc_bwi.png");
+    canc.SaveAs("h2dbox_adc_bwi_post_dlcut.png");
 
-    TCanvas cand("can", "histograms ", 800, 800);
+    TCanvas cand("can", "histograms ", 1200, 800);
+    cand.SetLeftMargin(0.2);
+    cand.SetRightMargin(0.2);
+    h2dbox_adc_gwi->SetTitle("Good Vtx DL Cut ADC");
+    h2dbox_adc_gwi->SetXTitle("Box Size (AxA)");
+    h2dbox_adc_gwi->SetYTitle("Charge Total");
     h2dbox_adc_gwi->SetOption("COLZ");
     h2dbox_adc_gwi->Draw();
-    cand.SaveAs("h2dbox_adc_gwi.png");
+    cand.SaveAs("h2dbox_adc_gwi_post_dlcut.png");
 
     TCanvas* can1  = new TCanvas("can1","",500,500);
     can1->cd();
