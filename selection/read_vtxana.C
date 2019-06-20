@@ -65,7 +65,7 @@ void read_vtxana(){
     TH2F* hearly = NULL;
     TH2F* hlate = NULL;
     TH2F* hdwall = NULL;
-    
+
     tree->SetBranchAddress("hYwoTagger", &hywo);
     tree->SetBranchAddress("hUwoTagger", &huwo);
     tree->SetBranchAddress("hVwoTagger", &hvwo);
@@ -75,7 +75,7 @@ void read_vtxana(){
     tree->SetBranchAddress("hearly", &hearly);
     tree->SetBranchAddress("hlate", &hlate);
     tree->SetBranchAddress("hdwall", &hdwall);
-    
+
     tree->SetBranchAddress("run",&run);
     tree->SetBranchAddress("subrun",&subrun);
     tree->SetBranchAddress("event",&event);
@@ -153,7 +153,7 @@ void read_vtxana(){
     int tot_other_has_vtx_lf = 0;
     int tot_other_has_gvtx_lf = 0;
     int tot_other_bvtx_lf = 0;
-    
+
     int total_pass = 0;
     int total_eene_pass = 0;
     int total_fs_pass = 0;
@@ -169,11 +169,11 @@ void read_vtxana(){
     float zmin = .3;
     float thresh = 10;
 
-    TH2F* h2dcutg = new TH2F("h2dcutg","",10,0.,10.,300,0.,3000.);
-    TH2F* h2dcutb = new TH2F("h2dcutb","",10,0.,10.,300,0.,3000.);
+    TH2F* h2dcutg = new TH2F("h2dcutg","",20,0.,20.,30,0.,3000.);
+    TH2F* h2dcutb = new TH2F("h2dcutb","",20,0.,20.,30,0.,3000.);
 
     int Nentries = tree->GetEntries();
-    //Nentries = 20;
+    Nentries = 200;
     for(int i=0; i<Nentries; i++){
       num_good_vtx_lf =0;
       num_bad_vtx_lf = 0;
@@ -182,245 +182,257 @@ void read_vtxana(){
       bool e_energy_cut = false;
       bool vtx_fiducial_cut = false;
       bool fs_number_cut = false;
-      
+
       tree->GetEntry(i);
-      //std::cout<<"Entry: "<< i <<std::endl;
+      std::cout<<"Entry: "<< i <<std::endl;
       tot_nu +=num_numu;
       tot_nu +=num_nue;
-      
+
       // p_energy_cut
       int total_highen_p = 0;
       if (p_enedep->size() > 0){
-	for (int j = 0; j<p_enedep->size();j++){
-	  if(p_enedep->at(j) > 60){
-	    total_highen_p ++;
-	  }
-	}
+	       for (int j = 0; j<p_enedep->size();j++){
+	          if(p_enedep->at(j) > 60){
+	             total_highen_p ++;
+	          }
+	       }
       }
       if (total_highen_p == 1){
-	p_energy_cut = true;
-	total_pene_pass ++;
+        p_energy_cut = true;
+        total_pene_pass ++;
       }
       else continue;
-      
+
       //e_energy_cut
       int total_highen_e = 0;
       if (e_enedep->size() > 0){
-	for (int j = 0; j<e_enedep->size();j++){
-	  if(e_enedep->at(j) > 35){
-	    total_highen_e ++;
-	  }
-	}
+	       for (int j = 0; j<e_enedep->size();j++){
+	          if(e_enedep->at(j) > 35){
+	             total_highen_e ++;
+	          }
+	       }
       }
       if (total_highen_e == 1){
-	e_energy_cut = true;
-	total_eene_pass++;
+        	e_energy_cut = true;
+        	total_eene_pass++;
       }
       else continue;
-      
+
       // final state particles cut
       if (num_pi0 == 0 && num_piplus ==0 && num_piminus == 0 && num_n ==0){
-	fs_number_cut = true;
-	total_fs_pass ++;
+        	fs_number_cut = true;
+        	total_fs_pass ++;
       }
       else continue;
-      
+
       //vtx fiducial cut
       float x_coor = _scex->at(0);
       float y_coor = _scex->at(1);
       float z_coor = _scex->at(2);
       // std::cout << x_coor << " " << (thresh+xmin) <<std::endl;
       if(x_coor > (thresh + xmin) && x_coor < (xmax-thresh)){
-	if(y_coor > (thresh + ymin) && y_coor < (ymax-thresh)){
-	  if(z_coor > (thresh + zmin) && z_coor < (zmax-thresh)){
-	    vtx_fiducial_cut = true;
-	    total_loc_pass++;
-	  }
-	}
+        	if(y_coor > (thresh + ymin) && y_coor < (ymax-thresh)){
+          	  if(z_coor > (thresh + zmin) && z_coor < (zmax-thresh)){
+            	    vtx_fiducial_cut = true;
+            	    total_loc_pass++;
+          	  }
+        	}
       }
       else continue;
-      
+
       /************** DL cuts **********/
       for(int j=0; j<good_vtx_pixel->size(); j++){
-	int binx = good_vtx_pixel->at(j)[3];
-	int biny = good_vtx_pixel->at(j)[0];
-	
-	//croi
-	float croi = hcroi->GetBinContent(binx+1,biny+1);
-	
-	//ssnetbg
-	float ssnetbg = hssnetbg->GetBinContent(binx+1,biny+1);
-	
-	//early
-	float early = hearly->GetBinContent(binx+1,biny+1);
-	
-	//late
-	float late = hlate->GetBinContent(binx+1,biny+1);
-	
-	//dwall
-	float dwall = hdwall->GetBinContent(binx+1,biny+1);
-	
-	//adc
-	float adc[5][5];
-	float tot_adc=0;
-	float mindist=10; //larger than actual range
-	float xdist=0;
-	float ydist=0;
-	for(int jk=-2; jk<2; jk++ ){
-	  for(int kl=-2; kl<2; kl++){
-	    adc[jk+2][kl+2] = hywo->GetBinContent(binx+1+jk,biny+1+kl);
-	    tot_adc += adc[jk+2][kl+2];
-	    if(adc[jk+2][kl+2]>0.){
-	      xdist = std::fabs(jk);
-	      ydist = std::fabs(kl);
-	    }
-	    if(xdist<mindist) mindist = xdist;
-	    if(ydist<mindist) mindist = ydist;
-	  }
-	}
-	h2dcutg->Fill(mindist,tot_adc);
-	//	 std::cout << "good vtx " << j <<" binx " << binx << " biny " << biny << " croi frac " << croi << " ssnetbg " << ssnetbg
-	//<< " num early " << early << " num late " << late << " num dwall " << dwall <<" 5pix tot adc " << tot_adc << std::endl;	 
-	
-	if(croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000) num_good_vtx_lf++; //if unclustered keep vtx
-	else if(croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && mindist<=1) num_good_vtx_lf++; //passes dl cuts
+        	int binx = good_vtx_pixel->at(j)[3];
+        	int biny = good_vtx_pixel->at(j)[0];
+
+        	//croi
+        	float croi = hcroi->GetBinContent(binx+1,biny+1);
+
+        	//ssnetbg
+        	float ssnetbg = hssnetbg->GetBinContent(binx+1,biny+1);
+
+        	//early
+        	float early = hearly->GetBinContent(binx+1,biny+1);
+
+        	//late
+        	float late = hlate->GetBinContent(binx+1,biny+1);
+
+        	//dwall
+        	float dwall = hdwall->GetBinContent(binx+1,biny+1);
+
+        	//adc
+        	float adc[5][5];
+        	float tot_adc=0;
+        	float xdist=0;
+        	float ydist=0;
+          int box_dim_needed = 10; // larger than acutal range
+        	for(int jk=-2; jk<2; jk++ ){
+          	  for(int kl=-2; kl<2; kl++){
+            	    adc[jk+2][kl+2] = hywo->GetBinContent(binx+1+jk,biny+1+kl);
+            	    tot_adc += adc[jk+2][kl+2];
+            	    if(adc[jk+2][kl+2]>0.){
+              	      xdist = std::fabs(jk);
+              	      ydist = std::fabs(kl);
+                      int box_dim =  (int)(std::max(xdist,ydist)*2+1); //*2+1 to get box dim
+                      if (box_dim < box_dim_needed){box_dim_needed = box_dim;}
+            	    }
+          	  }
+        	}
+          h2dcutg->Fill(box_dim_needed,tot_adc);
+          if (i == 196){
+              TCanvas can2("can", "histograms ", 800, 800);
+              h2dcutg->SetOption("COLZ");
+              h2dcutg->Draw();
+              can2.SaveAs("h2dcutg.png");
+          }
+        	//	 std::cout << "good vtx " << j <<" binx " << binx << " biny " << biny << " croi frac " << croi << " ssnetbg " << ssnetbg
+        	//<< " num early " << early << " num late " << late << " num dwall " << dwall <<" 5pix tot adc " << tot_adc << std::endl;
+
+        	if(croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000) num_good_vtx_lf++; //if unclustered keep vtx
+        	else if(croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && box_dim_needed<=1) num_good_vtx_lf++; //passes dl cuts
       }
 
       for(int j=0; j<bad_vtx_pixel->size(); j++){
-	int binx = bad_vtx_pixel->at(j)[3];
-	int biny = bad_vtx_pixel->at(j)[0];
-	
-	//croi
-	float croi = hcroi->GetBinContent(binx+1,biny+1);
-	
-	//ssnetbg
-	float ssnetbg = hssnetbg->GetBinContent(binx+1,biny+1);
-	
-	//early
-	float early = hearly->GetBinContent(binx+1,biny+1);
-	
-	//late
-	float late = hlate->GetBinContent(binx+1,biny+1);
-	
-	//dwall
-	float dwall = hdwall->GetBinContent(binx+1,biny+1);
-	
-	//adc
-	float adc[5][5];
-	float tot_adc=0;
-	float mindist=10; //larger than actual range
-	float xdist=0;
-	float ydist=0;
-	for(int jk=-2; jk<2; jk++ ){
-	  for(int kl=-2; kl<2; kl++){
-	    adc[jk+2][kl+2] = hywo->GetBinContent(binx+1+jk,biny+1+kl);
-	    tot_adc += adc[jk+2][kl+2];
-	    if(adc[jk+2][kl+2]>0.){
-	      xdist = std::fabs(jk);
-	      ydist = std::fabs(kl);
-	    }
-	    if(xdist<mindist) mindist = xdist;
-	    if(ydist<mindist) mindist = ydist;
-	  }
-	}
+        	int binx = bad_vtx_pixel->at(j)[3];
+        	int biny = bad_vtx_pixel->at(j)[0];
 
-	h2dcutb->Fill(mindist,tot_adc);
-	if(croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000) num_bad_vtx_lf++; //if unclustered keep vtx
-	else if(croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && mindist<=1) num_bad_vtx_lf++; //passes dl cuts
+        	//croi
+        	float croi = hcroi->GetBinContent(binx+1,biny+1);
+
+        	//ssnetbg
+        	float ssnetbg = hssnetbg->GetBinContent(binx+1,biny+1);
+
+        	//early
+        	float early = hearly->GetBinContent(binx+1,biny+1);
+
+        	//late
+        	float late = hlate->GetBinContent(binx+1,biny+1);
+
+        	//dwall
+        	float dwall = hdwall->GetBinContent(binx+1,biny+1);
+
+        	//adc
+        	float adc[5][5];
+        	float tot_adc=0;
+        	float xdist=0;
+        	float ydist=0;
+          int box_dim_needed = 10; // larger than actual range
+
+        	for(int jk=-2; jk<2; jk++ ){
+          	  for(int kl=-2; kl<2; kl++){
+            	    adc[jk+2][kl+2] = hywo->GetBinContent(binx+1+jk,biny+1+kl);
+            	    tot_adc += adc[jk+2][kl+2];
+            	    if(adc[jk+2][kl+2]>0.){
+              	      xdist = std::fabs(jk);
+              	      ydist = std::fabs(kl);
+                      int box_dim =  (int)(std::max(xdist,ydist)*2+1); //*2+1 to get box dim
+                      if (box_dim < box_dim_needed){box_dim_needed = box_dim;}
+            	    }
+          	  }
+        	}
+
+        	h2dcutb->Fill(box_dim_needed,tot_adc);
+          if (i == 196){
+              TCanvas can2("can", "histograms ", 800, 800);
+              h2dcutb->SetOption("COLZ");
+
+              h2dcutb->Draw();
+              can2.SaveAs("h2dcutb.png");
+          }
+        	if(croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000) num_bad_vtx_lf++; //if unclustered keep vtx
+        	else if(croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && box_dim_needed<=1) num_bad_vtx_lf++; //passes dl cuts
       }
 
-      
+
       if (e_energy_cut && p_energy_cut && fs_number_cut && vtx_fiducial_cut){
-	total_pass ++;
-	if (ccnc == 0 && interaction_mode == 0) tot_ccqe +=1;
-	if (ccnc == 0 && interaction_mode == 10) tot_mec +=1;
-	if (!(ccnc==0 && interaction_mode == 10) && !(ccnc==0 && interaction_mode ==0)) tot_other +=1;
-	
-	
-	// w/o tagger
-	if(num_good_vtx>0 || num_bad_vtx>0){
-	  tot_has_vtx ++;
-	  tot_bvtx += num_bad_vtx;
-	  if(ccnc==0 && interaction_mode==0){
-	    tot_ccqe_has_vtx ++;
-	    tot_ccqe_bvtx += num_bad_vtx;
-	  }
-	  if(ccnc==0 && interaction_mode==10){
-	    tot_mec_has_vtx ++;
-	    tot_mec_bvtx += num_bad_vtx;
-	  }
-	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)){
-	    tot_other_has_vtx ++;
-	    tot_other_bvtx += num_bad_vtx;
-	  }
-	}
-	if(num_good_vtx>0){
-	  tot_has_gvtx ++;
-	  tot_gvtx += num_good_vtx;
-	  if(ccnc==0 && interaction_mode==0) tot_ccqe_has_gvtx ++;
-	  if(ccnc==0 && interaction_mode==10) tot_mec_has_gvtx ++;
-	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)) tot_other_has_gvtx ++;
-	}
-	
-	// w/ tagger
-	if(num_good_vtx_tagger>0 || num_bad_vtx_tagger>0){
-	  tot_has_vtx_tag ++;
-	  tot_bvtx_tag += num_bad_vtx_tagger;
-	  if(ccnc==0 && interaction_mode==0){
-	    tot_ccqe_has_vtx_tag ++;
-	    tot_ccqe_bvtx_tag += num_bad_vtx_tagger;
-	  }
-	  if(ccnc==0 && interaction_mode==10){
-	    tot_mec_has_vtx_tag ++;
-	    tot_mec_bvtx_tag += num_bad_vtx_tagger;
-	  }
-	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)){
-	    tot_other_has_vtx_tag ++;
-	    tot_other_bvtx_tag += num_bad_vtx_tagger;
-	  }
-	  
-	}
-	if(num_good_vtx_tagger>0){
-	  tot_has_gvtx_tag ++;
-	  tot_gvtx_tag += num_good_vtx_tagger;
-	  if(ccnc==0 && interaction_mode==0) tot_ccqe_has_gvtx_tag ++;
-	  if(ccnc==0 && interaction_mode==10) tot_mec_has_gvtx_tag ++;
-	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)) tot_other_has_gvtx_tag ++;
-	  
-	}
-	
-	// w/ DL tagger
-	if(num_good_vtx_lf>0 || num_bad_vtx_lf>0){
-	  tot_has_vtx_lf ++;
-	  tot_bvtx_lf += num_bad_vtx_lf;
-	  if(ccnc==0 && interaction_mode==0){
-	    tot_ccqe_has_vtx_lf ++;
-	    tot_ccqe_bvtx_lf += num_bad_vtx_lf;
-	  }
-	  if(ccnc==0 && interaction_mode==10){
-	    tot_mec_has_vtx_lf ++;
-	    tot_mec_bvtx_lf += num_bad_vtx_lf;
-	  }
-	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)){
-	    tot_other_has_vtx_lf ++;
-	    tot_other_bvtx_lf += num_bad_vtx_lf;
-	  }
-	  
-	}
-	if(num_good_vtx_lf>0){
-	  tot_has_gvtx_lf ++;
-	  tot_gvtx_lf += num_good_vtx_lf;
-	  if(ccnc==0 && interaction_mode==0) tot_ccqe_has_gvtx_lf ++;
-	  if(ccnc==0 && interaction_mode==10) tot_mec_has_gvtx_lf ++;
-	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)) tot_other_has_gvtx_lf ++;
-	  
-	}
+          total_pass ++;
+        	if (ccnc == 0 && interaction_mode == 0) tot_ccqe +=1;
+        	if (ccnc == 0 && interaction_mode == 10) tot_mec +=1;
+        	if (!(ccnc==0 && interaction_mode == 10) && !(ccnc==0 && interaction_mode ==0)) tot_other +=1;
 
-	//if(num_good_vtx_tagger>0 && num_good_vtx_lf==0)
-	//  std::cout <<"Entry "<< i <<" "<< run <<" "<< subrun <<" "<< event <<" has tagger good vtx, no DL good vtx" << std::endl;
+
+        	// w/o tagger
+        	if(num_good_vtx>0 || num_bad_vtx>0){
+          	  tot_has_vtx ++;
+          	  tot_bvtx += num_bad_vtx;
+          	  if(ccnc==0 && interaction_mode==0){
+            	    tot_ccqe_has_vtx ++;
+            	    tot_ccqe_bvtx += num_bad_vtx;
+          	  }
+          	  if(ccnc==0 && interaction_mode==10){
+            	    tot_mec_has_vtx ++;
+            	    tot_mec_bvtx += num_bad_vtx;
+          	  }
+          	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)){
+            	    tot_other_has_vtx ++;
+            	    tot_other_bvtx += num_bad_vtx;
+          	  }
+        	}
+        	if(num_good_vtx>0){
+          	  tot_has_gvtx ++;
+          	  tot_gvtx += num_good_vtx;
+          	  if(ccnc==0 && interaction_mode==0) tot_ccqe_has_gvtx ++;
+          	  if(ccnc==0 && interaction_mode==10) tot_mec_has_gvtx ++;
+          	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)) tot_other_has_gvtx ++;
+        	}
+
+        	// w/ tagger
+        	if(num_good_vtx_tagger>0 || num_bad_vtx_tagger>0){
+          	  tot_has_vtx_tag ++;
+          	  tot_bvtx_tag += num_bad_vtx_tagger;
+          	  if(ccnc==0 && interaction_mode==0){
+            	    tot_ccqe_has_vtx_tag ++;
+            	    tot_ccqe_bvtx_tag += num_bad_vtx_tagger;
+          	  }
+          	  if(ccnc==0 && interaction_mode==10){
+            	    tot_mec_has_vtx_tag ++;
+            	    tot_mec_bvtx_tag += num_bad_vtx_tagger;
+          	  }
+          	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)){
+            	    tot_other_has_vtx_tag ++;
+            	    tot_other_bvtx_tag += num_bad_vtx_tagger;
+          	  }
+
+        	}
+        	if(num_good_vtx_tagger>0){
+          	  tot_has_gvtx_tag ++;
+          	  tot_gvtx_tag += num_good_vtx_tagger;
+          	  if(ccnc==0 && interaction_mode==0) tot_ccqe_has_gvtx_tag ++;
+          	  if(ccnc==0 && interaction_mode==10) tot_mec_has_gvtx_tag ++;
+          	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)) tot_other_has_gvtx_tag ++;
+
+        	}
+
+        	// w/ DL tagger
+        	if(num_good_vtx_lf>0 || num_bad_vtx_lf>0){
+          	  tot_has_vtx_lf ++;
+          	  tot_bvtx_lf += num_bad_vtx_lf;
+          	  if(ccnc==0 && interaction_mode==0){
+            	    tot_ccqe_has_vtx_lf ++;
+            	    tot_ccqe_bvtx_lf += num_bad_vtx_lf;
+          	  }
+          	  if(ccnc==0 && interaction_mode==10){
+            	    tot_mec_has_vtx_lf ++;
+            	    tot_mec_bvtx_lf += num_bad_vtx_lf;
+          	  }
+          	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)){
+            	    tot_other_has_vtx_lf ++;
+            	    tot_other_bvtx_lf += num_bad_vtx_lf;
+          	  }
+        	}
+        	if(num_good_vtx_lf>0){
+          	  tot_has_gvtx_lf ++;
+          	  tot_gvtx_lf += num_good_vtx_lf;
+          	  if(ccnc==0 && interaction_mode==0) tot_ccqe_has_gvtx_lf ++;
+          	  if(ccnc==0 && interaction_mode==10) tot_mec_has_gvtx_lf ++;
+          	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)) tot_other_has_gvtx_lf ++;
+        	}
+
+        	//if(num_good_vtx_tagger>0 && num_good_vtx_lf==0)
+        	//  std::cout <<"Entry "<< i <<" "<< run <<" "<< subrun <<" "<< event <<" has tagger good vtx, no DL good vtx" << std::endl;
       }
-      
-    }
+
+  }
 
     TCanvas* can1  = new TCanvas("can1","",500,500);
     can1->cd();
@@ -430,7 +442,7 @@ void read_vtxana(){
     can2->cd();
     h2dcutb->Draw("colz");
     can2->SaveAs("2Dcut_bad.root");
-    
+
     //std::cout<<"pass p energy cut: "<<total_pene_pass<<std::endl;
     //std::cout<<"pass e energy cut: "<<total_eene_pass<<std::endl;
     //std::cout<<"pass final state cut: "<<total_fs_pass<<std::endl;
@@ -551,7 +563,7 @@ void read_vtxana(){
       int col = vtxvec_wo[3];
       vtxmarkers_bad_old_tagger.Fill(col,row);
     }
-    
+
     TH2F vtxmarkers_good_dl("vtxmarkers_good_dl","vtxmarkers_good_dl",3456,0.,3456,1008,0.,1008.);
     for (int i = 0; i<good_vtx_lf_pixel->size(); i++){
       std::vector<int> vtxvec_wi =good_vtx_lf_pixel->at(i);
@@ -567,7 +579,7 @@ void read_vtxana(){
       float col = vtxvec_wi[3];
       vtxmarkers_bad_dl.Fill(col,row);
     }
-    
+
     //Set Marker Formats
     vtxmarkers_good_no_tag.SetMarkerColor(kBlack);
     vtxmarkers_good_no_tag.SetMarkerStyle(kOpenCross);
@@ -582,14 +594,14 @@ void read_vtxana(){
     vtxmarkers_bad_old_tagger.SetMarkerColor(kMagenta );
     vtxmarkers_bad_old_tagger.SetMarkerStyle(kOpenTriangleUp);
     vtxmarkers_bad_old_tagger.SetMarkerSize(size1);
-    
+
     vtxmarkers_good_dl.SetMarkerColor(kRed );
     vtxmarkers_good_dl.SetMarkerStyle(kOpenCross);
     vtxmarkers_good_dl.SetMarkerSize(size1);
     vtxmarkers_bad_dl.SetMarkerColor(kRed);
     vtxmarkers_bad_dl.SetMarkerStyle(kOpenTriangleUp);
     vtxmarkers_bad_dl.SetMarkerSize(size1);
-    
+
     TCanvas* c3 = new TCanvas("c3","Y plane without tagger - zoom",1000, 600);
     hywo->GetXaxis()->SetRange(zoomcmin,zoomcmax);
     hywo->GetYaxis()->SetRange(zoomrmin,zoomrmax);
@@ -600,7 +612,7 @@ void read_vtxana(){
     vtxmarkers_good_old_tagger.Draw("SAME");
     vtxmarkers_bad_old_tagger.Draw("SAME");
     c3->SaveAs(("hywo_zoom_2766.root"));
-    
+
     TCanvas* c4 = new TCanvas("c4","Y plane with tagger - zoom",1000, 600);
     hywi->GetXaxis()->SetRange(zoomcmin,zoomcmax);
     hywi->GetYaxis()->SetRange(zoomrmin,zoomrmax);
