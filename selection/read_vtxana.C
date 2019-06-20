@@ -56,6 +56,7 @@ void read_vtxana(){
     TH2F* huwo = NULL;
     TH2F* hvwo = NULL;
     TH2F* hywo = NULL;
+    // TH2F* hywi = NULL;
     TH2F* hclusterid = NULL;
     TH2F* hcnufrac = NULL;
     TH2F* hcroi = NULL;
@@ -67,6 +68,8 @@ void read_vtxana(){
     TH2F* hdwall = NULL;
 
     tree->SetBranchAddress("hYwoTagger", &hywo);
+    // tree->SetBranchAddress("hYwiTagger", &hywi);
+
     tree->SetBranchAddress("hUwoTagger", &huwo);
     tree->SetBranchAddress("hVwoTagger", &hvwo);
 
@@ -172,8 +175,13 @@ void read_vtxana(){
     TH2F* h2dcutg = new TH2F("h2dcutg","",20,0.,20.,30,0.,3000.);
     TH2F* h2dcutb = new TH2F("h2dcutb","",20,0.,20.,30,0.,3000.);
 
+    TH2F* h2dbox_adc_gwo = new TH2F("h2dbox_adc_gwo","",20,0.,20.,50,0.,10000.);
+    TH2F* h2dbox_adc_bwo = new TH2F("h2dbox_adc_bwo","",20,0.,20.,50,0.,10000.);
+    TH2F* h2dbox_adc_gwi = new TH2F("h2dbox_adc_gwi","",20,0.,20.,50,0.,10000.);
+    TH2F* h2dbox_adc_bwi = new TH2F("h2dbox_adc_bwi","",20,0.,20.,50,0.,10000.);
     int Nentries = tree->GetEntries();
-    Nentries = 200;
+    std::cout << "Nentries " << Nentries << std::endl;
+    // Nentries = 200;
     for(int i=0; i<Nentries; i++){
       num_good_vtx_lf =0;
       num_bad_vtx_lf = 0;
@@ -184,7 +192,9 @@ void read_vtxana(){
       bool fs_number_cut = false;
 
       tree->GetEntry(i);
-      std::cout<<"Entry: "<< i <<std::endl;
+      if (i%100 == 0){
+        std::cout<<"Entry: "<< i <<std::endl;
+      }
       tot_nu +=num_numu;
       tot_nu +=num_nue;
 
@@ -266,8 +276,8 @@ void read_vtxana(){
         	float xdist=0;
         	float ydist=0;
           int box_dim_needed = 10; // larger than acutal range
-        	for(int jk=-2; jk<2; jk++ ){
-          	  for(int kl=-2; kl<2; kl++){
+        	for(int jk=-2; jk<2+1; jk++ ){
+          	  for(int kl=-2; kl<2+1; kl++){
             	    adc[jk+2][kl+2] = hywo->GetBinContent(binx+1+jk,biny+1+kl);
             	    tot_adc += adc[jk+2][kl+2];
             	    if(adc[jk+2][kl+2]>0.){
@@ -278,18 +288,48 @@ void read_vtxana(){
             	    }
           	  }
         	}
+
+
+
           h2dcutg->Fill(box_dim_needed,tot_adc);
-          if (i == 196){
-              TCanvas can2("can", "histograms ", 800, 800);
-              h2dcutg->SetOption("COLZ");
-              h2dcutg->Draw();
-              can2.SaveAs("h2dcutg.png");
-          }
+
+
+
         	//	 std::cout << "good vtx " << j <<" binx " << binx << " biny " << biny << " croi frac " << croi << " ssnetbg " << ssnetbg
         	//<< " num early " << early << " num late " << late << " num dwall " << dwall <<" 5pix tot adc " << tot_adc << std::endl;
 
-        	if(croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000) num_good_vtx_lf++; //if unclustered keep vtx
-        	else if(croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && box_dim_needed<=1) num_good_vtx_lf++; //passes dl cuts
+
+          bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
+          bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && box_dim_needed<=3);
+        	if ((unclustered == true) || (passes_cuts == true)) {
+            num_bad_vtx_lf++;
+            for (int i=0;i<10;i++){
+              int dim = i*2+1;
+              // std::cout << "Dim: " << dim << std::endl;
+              int dim_loop = ((dim-1)/2);
+              float tot_adc_wo = 0;
+              float tot_adc_wi = 0;
+              for (int x=-dim_loop;x<dim_loop+1;x++){
+                for (int y = -dim_loop;y<dim_loop+1;y++){
+                  tot_adc_wo += hywo->GetBinContent(binx+1+x,biny+1+y);
+                  if( (hcroi->GetBinContent(binx+1+x,biny+1+y) <= 0.1  )&&
+                      (hssnetbg->GetBinContent(binx+1+x,biny+1+y) <= 0.3 ) &&
+                      (hearly->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
+                      (hlate->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
+                      (hdwall->GetBinContent(binx+1+x,biny+1+y) <= 20 ) )
+                      {
+                      tot_adc_wi += hywo->GetBinContent(binx+1+x,biny+1+y);
+                  }
+                }
+              }
+              if (tot_adc_wo > 0){
+                h2dbox_adc_gwo->Fill(dim,tot_adc_wo);
+              }
+              if (tot_adc_wi > 0){
+                h2dbox_adc_gwi->Fill(dim,tot_adc_wi);
+              }
+            }
+          } //if unclustered keep vtx
       }
 
       for(int j=0; j<bad_vtx_pixel->size(); j++){
@@ -318,8 +358,8 @@ void read_vtxana(){
         	float ydist=0;
           int box_dim_needed = 10; // larger than actual range
 
-        	for(int jk=-2; jk<2; jk++ ){
-          	  for(int kl=-2; kl<2; kl++){
+        	for(int jk=-2; jk<2+1; jk++ ){
+          	  for(int kl=-2; kl<2+1; kl++){
             	    adc[jk+2][kl+2] = hywo->GetBinContent(binx+1+jk,biny+1+kl);
             	    tot_adc += adc[jk+2][kl+2];
             	    if(adc[jk+2][kl+2]>0.){
@@ -331,16 +371,43 @@ void read_vtxana(){
           	  }
         	}
 
-        	h2dcutb->Fill(box_dim_needed,tot_adc);
-          if (i == 196){
-              TCanvas can2("can", "histograms ", 800, 800);
-              h2dcutb->SetOption("COLZ");
 
-              h2dcutb->Draw();
-              can2.SaveAs("h2dcutb.png");
-          }
-        	if(croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000) num_bad_vtx_lf++; //if unclustered keep vtx
-        	else if(croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && box_dim_needed<=1) num_bad_vtx_lf++; //passes dl cuts
+
+        	h2dcutb->Fill(box_dim_needed,tot_adc);
+
+
+          bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
+          bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && box_dim_needed<=3);
+        	if ((unclustered == true) || (passes_cuts == true)) {
+            num_bad_vtx_lf++;
+            for (int i=0;i<10;i++){
+              int dim = i*2+1;
+              // std::cout << "Dim: " << dim << std::endl;
+              int dim_loop = ((dim-1)/2);
+              float tot_adc_wo = 0;
+              float tot_adc_wi = 0;
+              for (int x=-dim_loop;x<dim_loop+1;x++){
+                for (int y = -dim_loop;y<dim_loop+1;y++){
+                  tot_adc_wo += hywo->GetBinContent(binx+1+x,biny+1+y);
+                  if( (hcroi->GetBinContent(binx+1+x,biny+1+y) <= 0.1  )&&
+                      (hssnetbg->GetBinContent(binx+1+x,biny+1+y) <= 0.3 ) &&
+                      (hearly->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
+                      (hlate->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
+                      (hdwall->GetBinContent(binx+1+x,biny+1+y) <= 20 ) )
+                      {
+                      tot_adc_wi += hywo->GetBinContent(binx+1+x,biny+1+y);
+                  }
+
+                }
+              }
+              if (tot_adc_wo > 0){
+                h2dbox_adc_bwo->Fill(dim,tot_adc_wo);
+              }
+              if (tot_adc_wi > 0){
+                h2dbox_adc_bwi->Fill(dim,tot_adc_wi);
+              }
+            }
+          } //if unclustered keep vtx
       }
 
 
@@ -433,6 +500,55 @@ void read_vtxana(){
       }
 
   }
+
+
+    TCanvas cana("can", "histograms ", 1200, 800);
+    cana.SetLeftMargin(0.2);
+    cana.SetRightMargin(0.2);
+    h2dbox_adc_gwo->SetOption("COLZ");
+    h2dbox_adc_gwo->SetTitle("Bad Vtx Charge Enclosed in Box AxA");
+    h2dbox_adc_gwo->SetXTitle("Box Size (AxA)");
+    h2dbox_adc_gwo->SetYTitle("Charge Total");
+    h2dbox_adc_gwo->Draw();
+    cana.SaveAs("h2dbox_adc_gwo_post_dlcut.png");
+
+    TH1D  *projgwoX = h2dbox_adc_gwo->ProjectionX();
+    projgwoX->SetXTitle("Box Size (AxA)");
+    projgwoX->SetYTitle("Count");
+    TCanvas can_gwoX("can_gwoX","can_gwoX", 1200, 800);
+    can_gwoX.SetLeftMargin(0.2);
+    can_gwoX.SetRightMargin(0.2);
+    projgwoX->Draw();
+    can_gwoX.SaveAs("box_adc_gwoX_post_dlcut.png");
+
+    TCanvas canb("can", "histograms ", 1200, 800);
+    canb.SetLeftMargin(0.2);
+    canb.SetRightMargin(0.2);
+    h2dbox_adc_bwo->SetOption("COLZ");
+    h2dbox_adc_bwo->SetTitle("Good Vtx Charge Enclosed in Box AxA");
+    h2dbox_adc_bwo->SetXTitle("Box Size (AxA)");
+    h2dbox_adc_bwo->SetYTitle("Charge Total");
+    h2dbox_adc_bwo->Draw();
+    canb.SaveAs("h2dbox_adc_bwo_post_dlcut.png");
+
+    TH1D  *projbwoX = h2dbox_adc_bwo->ProjectionX();
+    projbwoX->SetXTitle("Box Size (AxA)");
+    projbwoX->SetYTitle("Count");
+    TCanvas can_bwoX("can_bwoX","can_bwoX", 1200, 800);
+    can_bwoX.SetLeftMargin(0.2);
+    can_bwoX.SetRightMargin(0.2);
+    projbwoX->Draw();
+    can_bwoX.SaveAs("box_adc_bwoX_post_dlcut.png");
+
+    TCanvas canc("can", "histograms ", 800, 800);
+    h2dbox_adc_bwi->SetOption("COLZ");
+    h2dbox_adc_bwi->Draw();
+    canc.SaveAs("h2dbox_adc_bwi.png");
+
+    TCanvas cand("can", "histograms ", 800, 800);
+    h2dbox_adc_gwi->SetOption("COLZ");
+    h2dbox_adc_gwi->Draw();
+    cand.SaveAs("h2dbox_adc_gwi.png");
 
     TCanvas* can1  = new TCanvas("can1","",500,500);
     can1->cd();
