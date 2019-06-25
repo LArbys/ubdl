@@ -357,6 +357,10 @@ int main( int nargs, char** argv ) {
     bad_vtx_pixel.clear();
     good_vtx_tag_pixel.clear();
     bad_vtx_tag_pixel.clear();
+    num_good_vtx=0;
+    num_bad_vtx=0;
+    num_good_vtx_tagger=0;
+    num_bad_vtx_tagger=0;
     num_nue=0;
     num_numu=0;
     NumPiPlus=0;
@@ -570,7 +574,8 @@ int main( int nargs, char** argv ) {
 	good_vtx.push_back(_x);
 	good_vtx_pixel.push_back(pixel);
       }
-      else{bad_vtx.push_back(_x);
+      else{
+	bad_vtx.push_back(_x);
 	bad_vtx_pixel.push_back(pixel);
       }
     }
@@ -594,6 +599,11 @@ int main( int nargs, char** argv ) {
 	bad_vtx_tag_pixel.push_back(pixel);
       }
     }
+
+    num_good_vtx = good_vtx.size();
+    num_bad_vtx = bad_vtx.size();
+    num_good_vtx_tagger = good_vtx_tag.size();
+    num_bad_vtx_tagger = bad_vtx_tag.size();
     
     /********* FILL ADC ********/
     // fill in adc
