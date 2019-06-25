@@ -13,7 +13,7 @@ Qualifiers = "e17:prof"
     setupRequired( python   v2_7_14b )
     setupRequired( numpy    v1_14_3   -q e17:p2714b:prof )
     setupRequired( numpydev v1_14_3   -q e17:p2714b:prof )
-    setupRequired( libtorch v1_0_1_nonuma -q e17:prof )
+    setupRequired( libtorch v1_0_1_nnpack -q e17:prof )
 
 Common:
   Action = setup
@@ -23,6 +23,9 @@ Common:
 
     # Set up required products, which is root
     exeActionRequired(GetProducts)
+
+    # UBDL
+    envSet(UBDL_BASEDIR,${UPS_PROD_DIR})
 
     # set key environment variables for sub-packages
     envSet(OPENCV_LIBDIR,${OPENCV_LIB})
@@ -67,6 +70,11 @@ Common:
     envSet(UBLARCVAPP_BASEDIR, ${UPS_PROD_DIR}/ublarcvapp)
     envSet(UBLARCVAPP_INCDIR,  ${UPS_PROD_DIR}/ublarcvapp/build/include)
     envSet(UBLARCVAPP_LIBDIR,  ${UPS_PROD_DIR}/ublarcvapp/build/lib)
+
+    # larflow
+    envSet(LARFLOW_BASEDIR, ${UPS_PROD_DIR}/larflow)
+    envSet(LARFLOW_INCDIR,  ${UPS_PROD_DIR}/larflow/build/include)
+    envSet(LARFLOW_LIBDIR,  ${UPS_PROD_DIR}/larflow/build/lib)
 
     if ( test `uname` = "Darwin" )
       envSet(LARCV_CXX,clang++)
