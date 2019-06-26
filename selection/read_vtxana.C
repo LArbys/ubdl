@@ -281,7 +281,7 @@ void read_vtxana(){
             bool fails_cuts = (croi >0.1 || ssnetbg >0.3 || early>100 || late>100 || dwall>20);
             // bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
             // bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20);
-            // bool box_dim_bool = (box_dim_needed <=7);
+            // bool box_dim_bool = (box_dim_needed <=5);
           	if (fails_cuts) {
               after_cuts.SetBinContent(x+1,y+1,0.0);
             }
@@ -357,7 +357,7 @@ void read_vtxana(){
 
           bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
           bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20);
-          bool box_dim_bool = (box_dim_needed <=7);
+          bool box_dim_bool = (box_dim_needed <=5);
         	if (((unclustered == true) || (passes_cuts == true)) && box_dim_bool) {
             num_good_vtx_lf++;
           }
@@ -443,7 +443,7 @@ void read_vtxana(){
 
           bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
           bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20);
-          bool box_dim_bool = (box_dim_needed <=7);
+          bool box_dim_bool = (box_dim_needed <=5);
 
         	if (((unclustered == true) || (passes_cuts == true)) && box_dim_bool) {
             num_bad_vtx_lf++;
@@ -458,7 +458,7 @@ void read_vtxana(){
                 std::cout << "This point was unclustered." << std::endl;
               }
               else{
-                std::cout << "Croi (<=0.1) :: "<< croi << "  SSNETBG (<=0.3) :: "<< ssnetbg <<"  Early (<=100) :: "<< early <<"  Late (<=100) :: "<< late <<"  DWALL (<=20) :: "<< dwall  <<"  Box Needed (<=7) :: "<< box_dim_needed<< std::endl;
+                std::cout << "Croi (<=0.1) :: "<< croi << "  SSNETBG (<=0.3) :: "<< ssnetbg <<"  Early (<=100) :: "<< early <<"  Late (<=100) :: "<< late <<"  DWALL (<=20) :: "<< dwall  <<"  Box Needed (<=5) :: "<< box_dim_needed<< std::endl;
               }
             }
 
@@ -654,7 +654,7 @@ void read_vtxana(){
     h2dbox_adc_b_g_ratio_wo.SetXTitle("Box Size (AxA)");
     h2dbox_adc_b_g_ratio_wo.SetYTitle("Charge Total");
     h2dbox_adc_b_g_ratio_wo.Draw();
-    // cane.SaveAs("ratio_dlcut_wo_b_g_5.png");
+    cane.SaveAs("ratio_dlcut_wo_b_g_5.png");
 
     TCanvas canf("can", "histograms ", 1200, 800);
     canf.SetLeftMargin(0.2);
@@ -665,7 +665,7 @@ void read_vtxana(){
     h2dbox_adc_b_g_ratio_wi.SetXTitle("Box Size (AxA)");
     h2dbox_adc_b_g_ratio_wi.SetYTitle("Charge Total");
     h2dbox_adc_b_g_ratio_wi.Draw();
-    // canf.SaveAs("ratio_dlcut_wi_b_g_5.png");
+    canf.SaveAs("ratio_dlcut_wi_b_g_5.png");
 
     TH1D  *projbwiX_ratio = h2dbox_adc_b_g_ratio_wi.ProjectionX();
     projbwiX_ratio->SetXTitle("Box Size (AxA)");
@@ -674,7 +674,7 @@ void read_vtxana(){
     can_bwiX_rat.SetLeftMargin(0.2);
     can_bwiX_rat.SetRightMargin(0.2);
     projbwiX_ratio->Draw();
-    // can_bwiX_rat.SaveAs("projx_bbox_ratio_wi_5.png");
+    can_bwiX_rat.SaveAs("projx_bbox_ratio_wi_5.png");
 
     TCanvas cana("can", "histograms ", 1200, 800);
     cana.SetLeftMargin(0.2);
@@ -684,7 +684,7 @@ void read_vtxana(){
     h2dbox_adc_gwo->SetXTitle("Box Size (AxA)");
     h2dbox_adc_gwo->SetYTitle("Charge Total");
     h2dbox_adc_gwo->Draw();
-    // cana.SaveAs("h2dbox_adc_gwo_post_dlcut_5.png");
+    cana.SaveAs("h2dbox_adc_gwo_post_dlcut_5.png");
 
     TH1D  *projgwoX = h2dbox_adc_gwo->ProjectionX();
     projgwoX->SetXTitle("Box Size (AxA)");
@@ -693,7 +693,7 @@ void read_vtxana(){
     can_gwoX.SetLeftMargin(0.2);
     can_gwoX.SetRightMargin(0.2);
     projgwoX->Draw();
-    // can_gwoX.SaveAs("box_adc_gwoX_post_dlcut_5.png");
+    can_gwoX.SaveAs("box_adc_gwoX_post_dlcut_5.png");
 
     TCanvas canb("can", "histograms ", 1200, 800);
     canb.SetLeftMargin(0.2);
@@ -703,7 +703,7 @@ void read_vtxana(){
     h2dbox_adc_bwo->SetXTitle("Box Size (AxA)");
     h2dbox_adc_bwo->SetYTitle("Charge Total");
     h2dbox_adc_bwo->Draw();
-    // canb.SaveAs("h2dbox_adc_bwo_post_dlcut_5.png");
+    canb.SaveAs("h2dbox_adc_bwo_post_dlcut_5.png");
 
     TH1D  *projbwoX = h2dbox_adc_bwo->ProjectionX();
     projbwoX->SetXTitle("Box Size (AxA)");
@@ -712,7 +712,7 @@ void read_vtxana(){
     can_bwoX.SetLeftMargin(0.2);
     can_bwoX.SetRightMargin(0.2);
     projbwoX->Draw();
-    // can_bwoX.SaveAs("box_adc_bwoX_post_dlcut_5.png");
+    can_bwoX.SaveAs("box_adc_bwoX_post_dlcut_5.png");
 
     TCanvas canc("can", "histograms ", 1200, 800);
     canc.SetLeftMargin(0.2);
@@ -722,7 +722,7 @@ void read_vtxana(){
     h2dbox_adc_bwi->SetYTitle("Charge Total");
     h2dbox_adc_bwi->SetOption("COLZ");
     h2dbox_adc_bwi->Draw();
-    // canc.SaveAs("h2dbox_adc_bwi_post_dlcut_5.png");
+    canc.SaveAs("h2dbox_adc_bwi_post_dlcut_5.png");
 
     TCanvas cand("can", "histograms ", 1200, 800);
     cand.SetLeftMargin(0.2);
@@ -732,7 +732,7 @@ void read_vtxana(){
     h2dbox_adc_gwi->SetYTitle("Charge Total");
     h2dbox_adc_gwi->SetOption("COLZ");
     h2dbox_adc_gwi->Draw();
-    // cand.SaveAs("h2dbox_adc_gwi_post_dlcut_5.png");
+    cand.SaveAs("h2dbox_adc_gwi_post_dlcut_5.png");
 
     TCanvas* can1  = new TCanvas("can1","",500,500);
     can1->cd();
@@ -741,7 +741,7 @@ void read_vtxana(){
     TCanvas* can2  = new TCanvas("can2","",500,500);
     can2->cd();
     h2dcutb->Draw("colz");
-    // can2->SaveAs("2Dcut_bad_5.root");
+    can2->SaveAs("2Dcut_bad_5.root");
 
     //std::cout<<"pass p energy cut: "<<total_pene_pass<<std::endl;
     //std::cout<<"pass e energy cut: "<<total_eene_pass<<std::endl;
