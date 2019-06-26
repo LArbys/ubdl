@@ -186,12 +186,14 @@ void read_vtxana(){
     std::vector<int> bad_ev;
     std::vector<int> good_ev;
     // Nentries = 400;
-    // std::vector<int> specific_entries = {3, 168, 175, 260, 282, 306, 346, 516, 519, 553, 560, 562, 601, 703, 1004, 1084, 1137, 1196, 1272, 1341, 1526, 1547, 1576, 1596, 1611, 1660, 1697, 1720, 1912, 1971, 2011, 2030, 2042, 2107, 2167, 2213, 2283, 2322, 2327, 2448, 2450, 2538, 2654, 2837, 2844, 2924, 3011, 3068, 3117, 3184, 3201, 3283, 3342, 3398, 3433, 3446, 3449, 3554, 3689, 3731, 3741, 3802, 3809, 3875, 3914, 3915, 3922, 3932, 3935, 3973, 4035, 4041, 4235, 4316, 4394, 4414, 4591, 4618, 4642, 4794, 4860, 4911, 4968, 5072, 5089, 5284, 5317, 5434, 5465, 5690, 5763, 5764, 5920, 5944, 5974, 6024, 6036, 6100, 6125, 6147, 6270, 6278, 6330, 6428, 6469, 6532, 6563, 6567, 6622, 6725, 6747, 6885, 7062, 7085, 7166, 7191, 7196, 7415, 7423, 7471, 7561, 7590, 7594, 7599, 7647, 7772, 7851, 7872, 7976, 7999, 8077, 8101, 8105, 8192, 8233, 8282, 8300, 8327, 8343, 8355, 8361, 8414, 8678, 8783, 8924, 9014, 9096, 9132, 9159, 9163, 9333, 9376, 9397, 9418, 9465, 9482, 9538};
+    // std::vector<int> specific_entries = {175, 224, 248, 260, 282, 306, 346, 429, 562, 852, 921, 1084, 1196, 1219, 1255, 1547, 1570, 1630, 1660, 1697, 1777, 1912, 1918, 1971, 2011, 2042, 2156, 2283, 2322, 2837, 2844, 2990, 3017, 3049, 3050, 3068, 3117, 3184, 3283, 3417, 3433, 3554, 3628, 3689, 3802, 3914, 3915, 3922, 3932, 3973, 4035, 4262, 4298, 4400, 4414, 4427, 4561, 4618, 4750, 4828, 4860, 4911, 5072, 5089, 5317, 5399, 5429, 5434, 5465, 5583, 5682, 5748, 5764, 5772, 5917, 5944, 6036, 6125, 6279, 6330, 6428, 6469, 6567, 6747, 6885, 6896, 7062, 7085, 7191, 7196, 7415, 7423, 7487, 7561, 7599, 7620, 7645, 7647, 7769, 7851, 7870, 7904, 7915, 8077, 8105, 8106, 8115, 8355, 8414, 8678, 8783, 8924, 9096, 9163, 9333, 9376, 9418, 9465, 9482, 9581};
     for(int i=0; i<Nentries; i++){
     // for (int ii=0; ii<specific_entries.size(); ii++){
-    // int i = specific_entries[ii];
+      // int i = specific_entries[ii];
 
       bool make_before_after = false;
+      bool draw_lost_good = false;
+      bool draw_kept_bad = false;
       num_good_vtx_lf =0;
       num_bad_vtx_lf = 0;
       // set bools for cuts on events
@@ -266,36 +268,36 @@ void read_vtxana(){
       TH2F after_cuts(*hywo);
       TH2F before("before","before",3456,0.,3456,1008,0.,1008.);
       TH2F after("after","after",3456,0.,3456,1008,0.,1008.);
-      if (make_before_after){
-        for (int x=0;x<3456;x++){
-          for (int y=0;y<1008;y++){
-            float croi = hcroi->GetBinContent(x+1,y+1);
-          	//ssnetbg
-          	float ssnetbg = hssnetbg->GetBinContent(x+1,y+1);
-          	//early
-          	float early = hearly->GetBinContent(x+1,y+1);
-          	//late
-          	float late = hlate->GetBinContent(x+1,y+1);
-          	//dwall
-          	float dwall = hdwall->GetBinContent(x+1,y+1);
-            bool fails_cuts = (croi >0.1 || ssnetbg >0.3 || early>100 || late>100 || dwall>20);
-            // bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
-            // bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20);
-            // bool box_dim_bool = (box_dim_needed <=5);
-          	if (fails_cuts) {
-              after_cuts.SetBinContent(x+1,y+1,0.0);
-            }
-            // else{
-            //   // after_cuts.SetBinContent()
-            // }
+      TH2F old_tagger("old_tagger","old_tagger",3456,0.,3456,1008,0.,1008.);
 
+      for (int x=0;x<3456;x++){
+        for (int y=0;y<1008;y++){
+          float croi = hcroi->GetBinContent(x+1,y+1);
+        	//ssnetbg
+        	float ssnetbg = hssnetbg->GetBinContent(x+1,y+1);
+        	//early
+        	float early = hearly->GetBinContent(x+1,y+1);
+        	//late
+        	float late = hlate->GetBinContent(x+1,y+1);
+        	//dwall
+        	float dwall = hdwall->GetBinContent(x+1,y+1);
+          bool fails_cuts = (croi >0.1 || ssnetbg >0.3 || early>100 || late>100 || dwall>20);
+          bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
+          // bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20);
+          // bool box_dim_bool = (box_dim_needed <=5);
+        	if ((fails_cuts) && (unclustered == false)) {
+            after_cuts.SetBinContent(x+1,y+1,0.0);
           }
         }
+
 
 
         before.SetMarkerColor(kBlack);
         before.SetMarkerStyle(kOpenCircle);
         before.SetMarkerSize(4);
+        old_tagger.SetMarkerColor(kRed);
+        old_tagger.SetMarkerStyle(kOpenSquare);
+        old_tagger.SetMarkerSize(4);
         after.SetMarkerColor(kBlack);
         after.SetMarkerStyle(kOpenCircle);
         after.SetMarkerSize(4);
@@ -304,6 +306,9 @@ void read_vtxana(){
       for(int j=0; j<good_vtx_pixel->size(); j++){
         	int binx = good_vtx_pixel->at(j)[3];
         	int biny = good_vtx_pixel->at(j)[0];
+          if (draw_lost_good && make_before_after){
+            before.Fill(binx+1,biny+1);
+          }
 
         	//croi
         	float croi = hcroi->GetBinContent(binx+1,biny+1);
@@ -325,23 +330,17 @@ void read_vtxana(){
         	float tot_adc=0;
         	float xdist=0;
         	float ydist=0;
-          int box_dim_needed = 10; // larger than acutal range
-          for(int jk=-2; jk<2+1; jk++ ){
-          	  for(int kl=-2; kl<2+1; kl++){
-                  if( (hcroi->GetBinContent(binx+1+jk,biny+1+kl) <= 0.1  )&&
-                      (hssnetbg->GetBinContent(binx+1+jk,biny+1+kl) <= 0.3 ) &&
-                      (hearly->GetBinContent(binx+1+jk,biny+1+kl) <= 100 ) &&
-                      (hlate->GetBinContent(binx+1+jk,biny+1+kl) <= 100 ) &&
-                      (hdwall->GetBinContent(binx+1+jk,biny+1+kl) <= 20 ) )
-                      {
-                      tot_adc += hywo->GetBinContent(binx+1+jk,biny+1+kl);
-                      if(hywo->GetBinContent(binx+1+jk,biny+1+kl)>0.){
-                          xdist = std::fabs(jk);
-                          ydist = std::fabs(kl);
-                          int box_dim =  (int)(std::max(xdist,ydist)*2+1); //*2+1 to get box dim
-                          if (box_dim < box_dim_needed){box_dim_needed = box_dim;}
-                      }
-                  }
+          int box_dim_needed = 11; // larger than acutal range
+          for(int jk=-box_dim_needed/2; jk<box_dim_needed/2+1; jk++ ){
+              for(int kl=-box_dim_needed/2; kl<box_dim_needed/2+1; kl++){
+                    tot_adc += after_cuts.GetBinContent(binx+1+jk,biny+1+kl);
+                    if(after_cuts.GetBinContent(binx+1+jk,biny+1+kl)>0.){
+                        xdist = std::fabs(jk);
+                        ydist = std::fabs(kl);
+                        int box_dim =  (int)(std::max(xdist,ydist)*2+1); //*2+1 to get box dim
+                        if (box_dim < box_dim_needed){box_dim_needed = box_dim;}
+                    }
+
           	  }
         	}
 
@@ -360,6 +359,10 @@ void read_vtxana(){
           bool box_dim_bool = (box_dim_needed <=5);
         	if (((unclustered == true) || (passes_cuts == true)) && box_dim_bool) {
             num_good_vtx_lf++;
+            if (draw_lost_good && make_before_after){
+              std::cout << "This shouldn't exist, this is saying that you drew a good vertex" << std::endl;
+              after.Fill(binx+1,biny+1);
+            }
           }
           if ((unclustered == true) || (passes_cuts == true)){
             for (int i=0;i<10;i++){
@@ -371,21 +374,15 @@ void read_vtxana(){
               for (int x=-dim_loop;x<dim_loop+1;x++){
                 for (int y = -dim_loop;y<dim_loop+1;y++){
                   tot_adc_wo += hywo->GetBinContent(binx+1+x,biny+1+y);
-                  if( (hcroi->GetBinContent(binx+1+x,biny+1+y) <= 0.1  )&&
-                      (hssnetbg->GetBinContent(binx+1+x,biny+1+y) <= 0.3 ) &&
-                      (hearly->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
-                      (hlate->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
-                      (hdwall->GetBinContent(binx+1+x,biny+1+y) <= 20 ) )
-                      {
-                      tot_adc_wi += hywo->GetBinContent(binx+1+x,biny+1+y);
-                  }
+                  tot_adc_wi += after_cuts.GetBinContent(binx+1+x,biny+1+y);
+
                 }
               }
               // if (tot_adc_wo > 0){
-                h2dbox_adc_gwo->Fill(dim,tot_adc_wo);
+              h2dbox_adc_gwo->Fill(dim,tot_adc_wo);
               // }
               // if (tot_adc_wi > 0){
-                h2dbox_adc_gwi->Fill(dim,tot_adc_wi);
+              h2dbox_adc_gwi->Fill(dim,tot_adc_wi);
               // }
             }
           } //if unclustered keep vtx
@@ -394,8 +391,9 @@ void read_vtxana(){
       for(int j=0; j<bad_vtx_pixel->size(); j++){
         	int binx = bad_vtx_pixel->at(j)[3];
         	int biny = bad_vtx_pixel->at(j)[0];
-          before.Fill(binx,biny);
-
+          if (draw_kept_bad && make_before_after){
+            before.Fill(binx+1,biny+1);
+          }
         	//croi
         	float croi = hcroi->GetBinContent(binx+1,biny+1);
         	//ssnetbg
@@ -415,24 +413,17 @@ void read_vtxana(){
         	float tot_adc=0;
         	float xdist=0;
         	float ydist=0;
-          int box_dim_needed = 10; // larger than actual range
+          int box_dim_needed = 11; // larger than acutal range
+          for(int jk=-box_dim_needed/2; jk<box_dim_needed/2+1; jk++ ){
+              for(int kl=-box_dim_needed/2; kl<box_dim_needed/2+1; kl++){
+                    tot_adc += after_cuts.GetBinContent(binx+1+jk,biny+1+kl);
+                    if(tot_adc>0.){
+                        xdist = std::fabs(jk);
+                        ydist = std::fabs(kl);
+                        int box_dim =  (int)(std::max(xdist,ydist)*2+1); //*2+1 to get box dim
+                        if (box_dim < box_dim_needed){box_dim_needed = box_dim;}
+                    }
 
-        	for(int jk=-2; jk<2+1; jk++ ){
-          	  for(int kl=-2; kl<2+1; kl++){
-                  if( (hcroi->GetBinContent(binx+1+jk,biny+1+kl) <= 0.1  )&&
-                      (hssnetbg->GetBinContent(binx+1+jk,biny+1+kl) <= 0.3 ) &&
-                      (hearly->GetBinContent(binx+1+jk,biny+1+kl) <= 100 ) &&
-                      (hlate->GetBinContent(binx+1+jk,biny+1+kl) <= 100 ) &&
-                      (hdwall->GetBinContent(binx+1+jk,biny+1+kl) <= 20 ) )
-                      {
-                      tot_adc += hywo->GetBinContent(binx+1+jk,biny+1+kl);
-                      if(hywo->GetBinContent(binx+1+jk,biny+1+kl)>0.){
-                          xdist = std::fabs(jk);
-                          ydist = std::fabs(kl);
-                          int box_dim =  (int)(std::max(xdist,ydist)*2+1); //*2+1 to get box dim
-                          if (box_dim < box_dim_needed){box_dim_needed = box_dim;}
-                      }
-                  }
           	  }
         	}
 
@@ -450,8 +441,8 @@ void read_vtxana(){
           }
 
           if ((unclustered == true) || (passes_cuts == true)){
-            if (make_before_after){
-              after.Fill(binx,biny);
+            if (make_before_after && draw_kept_bad){
+              after.Fill(binx+1,biny+1);
               std::cout << "Wire: "<< binx << "    Tick: " << biny << std::endl;
               std::cout << "unclustered: " << unclustered << "    passes_cuts: " << passes_cuts << std::endl;
               if (unclustered){
@@ -471,14 +462,8 @@ void read_vtxana(){
               for (int x=-dim_loop;x<dim_loop+1;x++){
                 for (int y = -dim_loop;y<dim_loop+1;y++){
                   tot_adc_wo += hywo->GetBinContent(binx+1+x,biny+1+y);
-                  if( (hcroi->GetBinContent(binx+1+x,biny+1+y) <= 0.1  )&&
-                      (hssnetbg->GetBinContent(binx+1+x,biny+1+y) <= 0.3 ) &&
-                      (hearly->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
-                      (hlate->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
-                      (hdwall->GetBinContent(binx+1+x,biny+1+y) <= 20 ) )
-                      {
-                      tot_adc_wi += hywo->GetBinContent(binx+1+x,biny+1+y);
-                  }
+                  tot_adc_wi += after_cuts.GetBinContent(binx+1+x,biny+1+y);
+
 
                 }
               }
@@ -509,7 +494,7 @@ void read_vtxana(){
         truevtx.Draw("SAME");
         before.Draw("SAME");
 
-        std::string str = "before_after_bad_vtx/before_cuts_"+std::to_string(i)+".png";
+        std::string str = "before_after_bad_vtx/"+std::to_string(i)+"_before_cuts.png";
         char cstr[str.size() + 1];
         str.copy(cstr,str.size()+1);
         cstr[str.size()] = '\0';
@@ -523,10 +508,13 @@ void read_vtxana(){
         after_cuts.SetTitle("After Cuts");
         after_cuts.Draw();
         truevtx.Draw("SAME");
+        if (draw_lost_good){
+          old_tagger.Draw("SAME");
+        }
         after.Draw("SAME");
 
 
-        str = "before_after_bad_vtx/after_cuts_"+std::to_string(i)+".png";
+        str = "before_after_bad_vtx/"+std::to_string(i)+"_after_cuts.png";
          cstr[str.size() + 1];
         str.copy(cstr,str.size()+1);
         cstr[str.size()] = '\0';
