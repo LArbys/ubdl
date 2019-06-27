@@ -1,6 +1,6 @@
 #!/bin/bash
 
-container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_ubdl_python3_040619.img
+container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_ubdl_python3_041619.img
 
 module load singularity
-singularity shell $container
+singularity shell --nv $container
