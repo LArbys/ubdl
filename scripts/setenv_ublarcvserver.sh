@@ -2,8 +2,9 @@
 
 startdir=$PWD
 here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+cd $here
 
-if [[ -z ${UBDL_BASEDIR} ]]; then
+if [[ ! -z ${UBDL_BASEDIR} ]]; then
   # need to setup ubdl
   source ../setenv.sh
   source ../configure.sh
@@ -50,3 +51,5 @@ echo "Ready to go."
 echo " Run ./start_ublarcvserver_broker.py to start the server"
 echo " Run ./start_ubssnet_worker.py to start a worker"
 echo " Run ./start_ubssnet_client.py to start a client"
+echo "back to start dir"
+cd $startdir

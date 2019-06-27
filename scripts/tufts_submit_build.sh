@@ -22,10 +22,10 @@ workdir=`echo ${workdir} | sed 's|scripts||'`
 echo "workdir: ${workdir}"
 
 # change name for dir when inside container
-workdir_ic=`echo ${workdir} | sed 's|kappa/90-days-archive|kappa|'`
-workdir_ic=`echo ${workdir_ic} | sed 's|tufts|kappa|'`
-echo "workdir_ic: ${workdir_ic}"
+#workdir_ic=`echo ${workdir} | sed 's|kappa/90-days-archive|kappa|'`
+#workdir_ic=`echo ${workdir_ic} | sed 's|tufts|kappa|'`
+#echo "workdir_ic: ${workdir_ic}"
 
 module load singularity
-srun singularity exec ${container} bash -c "cd ${workdir_ic} && source setenv.sh && source configure.sh && source buildall.sh >& build.log"
+srun singularity exec ${container} bash -c "cd ${workdir} && source setenv.sh && source configure.sh && source buildall.sh >& build.log"
 

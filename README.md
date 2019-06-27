@@ -17,8 +17,8 @@ All these steps use deep convolutional neural networks.
 ## Repositories
 
 * [LArCV](https://github.com/larbys/larcv): image format IO library. Version 1 (as opposed to incompatible LArCV2 library).
-  `ubdl_dev` branch which is quite different from LArCV1 version used in past chain.  Inroduces much of the chains in LArCV2.
-  But does maintain some backwards-compatibility (just reading of old-LArCV1 input).
+  `ubdl_dev` branch which is quite different from LArCV1 version used in past chain.  Inroduces much of the changes in LArCV2.
+  But does maintain some backwards-compatibility -- primarily reading of old-LArCV1 input.
 * [larlite](https://github.com/larlight/larlite): analysis framework for MicroBooNE. Uses `dlreco_larflow_merge` branch.
 * [Geo2D](https://github.com/LArbys/Geo2D): 2D geometry tools (based on OpenCV)
 * [LArOpenCV](https://github.com/NevisUB/LArOpenCV): pattern recognition for 1l1p neutrino vertices. Uses OpenCV algorithms.
@@ -35,10 +35,11 @@ We provide a number of scripts to set the environment variables and perform the 
 | script       | purpose | do I have to edit it? | when do I run it? |
 |:-----------: |:-------:|:---------------------:| :---------------- |
 | setenv.sh    | set envionroment variables for packages and libraries not included in this repository (e.g. ROOT, opencv, pytorch) | YES (machine dependent) | every new shell |
+| setenv_fnal.sh    | set envionroment variables for external packages and libraries ON FNAL (e.g. ROOT, opencv, pytorch) | NO | every new shell |
 | configure.sh | setup the environment variables of packages included in `ubdl`. | NO | every new shell |
 | buildall.sh  | run commands to build all the modules inside this repo | NO (but call to compile) | NO | every time changes are made to source. and after first cloning the repo |
+| cleanall.sh  | run `make clean` in all repo folders | NO | NO | when you want to hit the reset button |
 | first_setup.sh | loads all of the gitsubmodules. call this the first time you clone the repository | NO | after the first time cloning the repo |
-
 
 
 ## scripts directory
@@ -53,9 +54,14 @@ We provide a number of scripts to set the environment variables and perform the 
 | tufts_submit_build.sh    | launches a grid job on the Tufts cluster to build code | NO (but call to compile) | every time changes are made to source code |
 
 
-
 ## LArCV1 notes
 
 More details about the LArCV1 version used here.
 
 * to do
+
+## TO DO LIST
+
+* go back reconfigure build system to use cmake: geo2d, laropencv?
+* support a build mode that produces a folder for UPS product
+* documentation for how to setup the different net's workers

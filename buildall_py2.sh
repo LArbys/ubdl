@@ -1,6 +1,7 @@
 #!/bin/bash
 
 workdir=$PWD
+
 cd larlite
 make
 cd UserDev/BasicTool
@@ -15,16 +16,26 @@ cd LArOpenCV
 make -j4
 cd $workdir
 
-cd larcv/build
-cmake -DUSE_PYTHON2=ON -DUSE_OPENCV=OFF ../
+cd larcv
+mkdir -p build
+cd build
+cmake -DUSE_PYTHON2=ON -DUSE_OPENCV=ON -DON_FNAL=ON ../
+
 make install
+cd $workdir
+
+cd cilantro
+mkdir -p build
+cd build
+cmake ../
+make
 cd $workdir
 
 mkdir -p ublarcvapp/build
 cd ublarcvapp
 source configure.sh
 cd build
-cmake ../
+cmake -DUSE_OPENCV=ON ../
 make install
 cd $workdir
 

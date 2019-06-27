@@ -28,6 +28,10 @@ cd larcv
 source configure.sh
 cd $UBDL_BASEDIR
 
+# Cilantro (3rd party)
+cd cilantro
+cd $UBDL_BASEDIR
+
 # UB LArCV app
 cd ublarcvapp
 source configure.sh

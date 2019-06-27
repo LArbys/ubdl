@@ -16,3 +16,12 @@
 [submodule "ublarcvserver"]
 	path = ublarcvserver
 	url = https://github.com/larbys/ublarcvserver
+[submodule "cilantro"]
+	path = cilantro
+	url = https://github.com/NuTufts/cilantro.git
+[submodule "sparse_infill"]
+	path = sparse_infill
+	url = https://github.com/NuTufts/sparse_infill.git
+[submodule "larflow"]
+	path = larflow
+	url = https://github.com/nutufts/larflow
