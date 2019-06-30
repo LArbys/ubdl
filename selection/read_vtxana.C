@@ -46,6 +46,7 @@ std::vector<std::vector<int>>* good_vtx_tag_pixel = NULL;
 std::vector<std::vector<int>>* bad_vtx_tag_pixel = NULL;
 std::vector<float>* p_enedep = NULL;
 std::vector<float>* e_enedep = NULL;
+float nu_energy;
 
 
 void read_vtxana(){
@@ -182,8 +183,17 @@ void read_vtxana(){
 
     int Nentries = tree->GetEntries();
     std::cout << "Nentries " << Nentries << std::endl;
+    std::vector<int> bad_ev;
+    std::vector<int> good_ev;
     // Nentries = 400;
+    // std::vector<int> specific_entries = {175, 224, 248, 260, 282, 306, 346, 429, 562, 852, 921, 1084, 1196, 1219, 1255, 1547, 1570, 1630, 1660, 1697, 1777, 1912, 1918, 1971, 2011, 2042, 2156, 2283, 2322, 2837, 2844, 2990, 3017, 3049, 3050, 3068, 3117, 3184, 3283, 3417, 3433, 3554, 3628, 3689, 3802, 3914, 3915, 3922, 3932, 3973, 4035, 4262, 4298, 4400, 4414, 4427, 4561, 4618, 4750, 4828, 4860, 4911, 5072, 5089, 5317, 5399, 5429, 5434, 5465, 5583, 5682, 5748, 5764, 5772, 5917, 5944, 6036, 6125, 6279, 6330, 6428, 6469, 6567, 6747, 6885, 6896, 7062, 7085, 7191, 7196, 7415, 7423, 7487, 7561, 7599, 7620, 7645, 7647, 7769, 7851, 7870, 7904, 7915, 8077, 8105, 8106, 8115, 8355, 8414, 8678, 8783, 8924, 9096, 9163, 9333, 9376, 9418, 9465, 9482, 9581};
     for(int i=0; i<Nentries; i++){
+    // for (int ii=0; ii<specific_entries.size(); ii++){
+      // int i = specific_entries[ii];
+
+      bool make_before_after = false;
+      bool draw_lost_good = false;
+      bool draw_kept_bad = false;
       num_good_vtx_lf =0;
       num_bad_vtx_lf = 0;
       // set bools for cuts on events
@@ -191,13 +201,14 @@ void read_vtxana(){
       bool e_energy_cut = false;
       bool vtx_fiducial_cut = false;
       bool fs_number_cut = false;
-
+      // nu_energy = (float) i ;
       tree->GetEntry(i);
       if (i%100 == 0){
         std::cout<<"Entry: "<< i <<std::endl;
       }
       tot_nu +=num_numu;
       tot_nu +=num_nue;
+
 
       // p_energy_cut
       int total_highen_p = 0;
@@ -230,7 +241,9 @@ void read_vtxana(){
       else continue;
 
       // final state particles cut
-      if (num_pi0 == 0 && num_piplus ==0 && num_piminus == 0 && num_n ==0){
+      // if (num_pi0 == 0 && num_piplus ==0 && num_piminus == 0 && num_n ==0){
+      if (num_pi0 == 0 && num_piplus ==0 && num_piminus == 0 ){
+
         	fs_number_cut = true;
         	total_fs_pass ++;
       }
@@ -251,10 +264,51 @@ void read_vtxana(){
       }
       else continue;
 
+      TH2F before_cuts(*hywo);
+      TH2F after_cuts(*hywo);
+      TH2F before("before","before",3456,0.,3456,1008,0.,1008.);
+      TH2F after("after","after",3456,0.,3456,1008,0.,1008.);
+      TH2F old_tagger("old_tagger","old_tagger",3456,0.,3456,1008,0.,1008.);
+
+      for (int x=0;x<3456;x++){
+        for (int y=0;y<1008;y++){
+          float croi = hcroi->GetBinContent(x+1,y+1);
+        	//ssnetbg
+        	float ssnetbg = hssnetbg->GetBinContent(x+1,y+1);
+        	//early
+        	float early = hearly->GetBinContent(x+1,y+1);
+        	//late
+        	float late = hlate->GetBinContent(x+1,y+1);
+        	//dwall
+        	float dwall = hdwall->GetBinContent(x+1,y+1);
+          bool fails_cuts = (croi >0.1 || ssnetbg >0.3 || early>100 || late>100 || dwall>20);
+          bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
+          // bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20);
+          // bool box_dim_bool = (box_dim_needed <=5);
+        	if ((fails_cuts) && (unclustered == false)) {
+            after_cuts.SetBinContent(x+1,y+1,0.0);
+          }
+        }
+
+
+
+        before.SetMarkerColor(kBlack);
+        before.SetMarkerStyle(kOpenCircle);
+        before.SetMarkerSize(4);
+        old_tagger.SetMarkerColor(kRed);
+        old_tagger.SetMarkerStyle(kOpenSquare);
+        old_tagger.SetMarkerSize(4);
+        after.SetMarkerColor(kBlack);
+        after.SetMarkerStyle(kOpenCircle);
+        after.SetMarkerSize(4);
+      }
       /************** DL cuts **********/
       for(int j=0; j<good_vtx_pixel->size(); j++){
         	int binx = good_vtx_pixel->at(j)[3];
         	int biny = good_vtx_pixel->at(j)[0];
+          if (draw_lost_good && make_before_after){
+            before.Fill(binx+1,biny+1);
+          }
 
         	//croi
         	float croi = hcroi->GetBinContent(binx+1,biny+1);
@@ -276,17 +330,17 @@ void read_vtxana(){
         	float tot_adc=0;
         	float xdist=0;
         	float ydist=0;
-          int box_dim_needed = 10; // larger than acutal range
-        	for(int jk=-2; jk<2+1; jk++ ){
-          	  for(int kl=-2; kl<2+1; kl++){
-            	    adc[jk+2][kl+2] = hywo->GetBinContent(binx+1+jk,biny+1+kl);
-            	    tot_adc += adc[jk+2][kl+2];
-            	    if(adc[jk+2][kl+2]>0.){
-              	      xdist = std::fabs(jk);
-              	      ydist = std::fabs(kl);
-                      int box_dim =  (int)(std::max(xdist,ydist)*2+1); //*2+1 to get box dim
-                      if (box_dim < box_dim_needed){box_dim_needed = box_dim;}
-            	    }
+          int box_dim_needed = 11; // larger than acutal range
+          for(int jk=-box_dim_needed/2; jk<box_dim_needed/2+1; jk++ ){
+              for(int kl=-box_dim_needed/2; kl<box_dim_needed/2+1; kl++){
+                    tot_adc += after_cuts.GetBinContent(binx+1+jk,biny+1+kl);
+                    if(after_cuts.GetBinContent(binx+1+jk,biny+1+kl)>0.){
+                        xdist = std::fabs(jk);
+                        ydist = std::fabs(kl);
+                        int box_dim =  (int)(std::max(xdist,ydist)*2+1); //*2+1 to get box dim
+                        if (box_dim < box_dim_needed){box_dim_needed = box_dim;}
+                    }
+
           	  }
         	}
 
@@ -301,9 +355,16 @@ void read_vtxana(){
 
 
           bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
-          bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && box_dim_needed<=3);
-        	if ((unclustered == true) || (passes_cuts == true)) {
+          bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20);
+          bool box_dim_bool = (box_dim_needed <=5);
+        	if (((unclustered == true) || (passes_cuts == true)) && box_dim_bool) {
             num_good_vtx_lf++;
+            if (draw_lost_good && make_before_after){
+              std::cout << "This shouldn't exist, this is saying that you drew a good vertex" << std::endl;
+              after.Fill(binx+1,biny+1);
+            }
+          }
+          if ((unclustered == true) || (passes_cuts == true)){
             for (int i=0;i<10;i++){
               int dim = i*2+1;
               // std::cout << "Dim: " << dim << std::endl;
@@ -313,21 +374,15 @@ void read_vtxana(){
               for (int x=-dim_loop;x<dim_loop+1;x++){
                 for (int y = -dim_loop;y<dim_loop+1;y++){
                   tot_adc_wo += hywo->GetBinContent(binx+1+x,biny+1+y);
-                  if( (hcroi->GetBinContent(binx+1+x,biny+1+y) <= 0.1  )&&
-                      (hssnetbg->GetBinContent(binx+1+x,biny+1+y) <= 0.3 ) &&
-                      (hearly->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
-                      (hlate->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
-                      (hdwall->GetBinContent(binx+1+x,biny+1+y) <= 20 ) )
-                      {
-                      tot_adc_wi += hywo->GetBinContent(binx+1+x,biny+1+y);
-                  }
+                  tot_adc_wi += after_cuts.GetBinContent(binx+1+x,biny+1+y);
+
                 }
               }
               // if (tot_adc_wo > 0){
-                h2dbox_adc_gwo->Fill(dim,tot_adc_wo);
+              h2dbox_adc_gwo->Fill(dim,tot_adc_wo);
               // }
               // if (tot_adc_wi > 0){
-                h2dbox_adc_gwi->Fill(dim,tot_adc_wi);
+              h2dbox_adc_gwi->Fill(dim,tot_adc_wi);
               // }
             }
           } //if unclustered keep vtx
@@ -336,10 +391,11 @@ void read_vtxana(){
       for(int j=0; j<bad_vtx_pixel->size(); j++){
         	int binx = bad_vtx_pixel->at(j)[3];
         	int biny = bad_vtx_pixel->at(j)[0];
-
+          if (draw_kept_bad && make_before_after){
+            before.Fill(binx+1,biny+1);
+          }
         	//croi
         	float croi = hcroi->GetBinContent(binx+1,biny+1);
-
         	//ssnetbg
         	float ssnetbg = hssnetbg->GetBinContent(binx+1,biny+1);
 
@@ -357,18 +413,17 @@ void read_vtxana(){
         	float tot_adc=0;
         	float xdist=0;
         	float ydist=0;
-          int box_dim_needed = 10; // larger than actual range
+          int box_dim_needed = 11; // larger than acutal range
+          for(int jk=-box_dim_needed/2; jk<box_dim_needed/2+1; jk++ ){
+              for(int kl=-box_dim_needed/2; kl<box_dim_needed/2+1; kl++){
+                    tot_adc += after_cuts.GetBinContent(binx+1+jk,biny+1+kl);
+                    if(tot_adc>0.){
+                        xdist = std::fabs(jk);
+                        ydist = std::fabs(kl);
+                        int box_dim =  (int)(std::max(xdist,ydist)*2+1); //*2+1 to get box dim
+                        if (box_dim < box_dim_needed){box_dim_needed = box_dim;}
+                    }
 
-        	for(int jk=-2; jk<2+1; jk++ ){
-          	  for(int kl=-2; kl<2+1; kl++){
-            	    adc[jk+2][kl+2] = hywo->GetBinContent(binx+1+jk,biny+1+kl);
-            	    tot_adc += adc[jk+2][kl+2];
-            	    if(adc[jk+2][kl+2]>0.){
-              	      xdist = std::fabs(jk);
-              	      ydist = std::fabs(kl);
-                      int box_dim =  (int)(std::max(xdist,ydist)*2+1); //*2+1 to get box dim
-                      if (box_dim < box_dim_needed){box_dim_needed = box_dim;}
-            	    }
           	  }
         	}
 
@@ -378,9 +433,26 @@ void read_vtxana(){
 
 
           bool unclustered = (croi==1000 || ssnetbg==1000 || early==1000 || late==1000 || dwall==1000);
-          bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20 && box_dim_needed<=3);
-        	if ((unclustered == true) || (passes_cuts == true)) {
+          bool passes_cuts = (croi <=0.1 && ssnetbg <=0.3 && early<=100 && late<=100 && dwall<=20);
+          bool box_dim_bool = (box_dim_needed <=5);
+
+        	if (((unclustered == true) || (passes_cuts == true)) && box_dim_bool) {
             num_bad_vtx_lf++;
+          }
+
+          if ((unclustered == true) || (passes_cuts == true)){
+            if (make_before_after && draw_kept_bad){
+              after.Fill(binx+1,biny+1);
+              std::cout << "Wire: "<< binx << "    Tick: " << biny << std::endl;
+              std::cout << "unclustered: " << unclustered << "    passes_cuts: " << passes_cuts << std::endl;
+              if (unclustered){
+                std::cout << "This point was unclustered." << std::endl;
+              }
+              else{
+                std::cout << "Croi (<=0.1) :: "<< croi << "  SSNETBG (<=0.3) :: "<< ssnetbg <<"  Early (<=100) :: "<< early <<"  Late (<=100) :: "<< late <<"  DWALL (<=20) :: "<< dwall  <<"  Box Needed (<=5) :: "<< box_dim_needed<< std::endl;
+              }
+            }
+
             for (int i=0;i<10;i++){
               int dim = i*2+1;
               // std::cout << "Dim: " << dim << std::endl;
@@ -390,14 +462,8 @@ void read_vtxana(){
               for (int x=-dim_loop;x<dim_loop+1;x++){
                 for (int y = -dim_loop;y<dim_loop+1;y++){
                   tot_adc_wo += hywo->GetBinContent(binx+1+x,biny+1+y);
-                  if( (hcroi->GetBinContent(binx+1+x,biny+1+y) <= 0.1  )&&
-                      (hssnetbg->GetBinContent(binx+1+x,biny+1+y) <= 0.3 ) &&
-                      (hearly->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
-                      (hlate->GetBinContent(binx+1+x,biny+1+y) <= 100 ) &&
-                      (hdwall->GetBinContent(binx+1+x,biny+1+y) <= 20 ) )
-                      {
-                      tot_adc_wi += hywo->GetBinContent(binx+1+x,biny+1+y);
-                  }
+                  tot_adc_wi += after_cuts.GetBinContent(binx+1+x,biny+1+y);
+
 
                 }
               }
@@ -409,6 +475,50 @@ void read_vtxana(){
               // }
             }
           } //if unclustered keep vtx
+      }
+      if (make_before_after){
+        TH2F truevtx("vtxmarkers_true","vtxmarkers_true",3456,0.,3456,1008,0.,1008.);
+        truevtx.SetMarkerColor(kBlack);
+        truevtx.SetMarkerStyle(kOpenSquare);
+        truevtx.SetMarkerSize(4);
+        truevtx.Fill(nupixel[0][3],nupixel[0][0]);
+
+
+        TCanvas can_before("can_before", "can_before ", 3456, 1008);
+        // can_before.SetLeftMargin(0.2);
+        // can_before.SetRightMargin(0.2);
+
+        before_cuts.SetOption("COLZ");
+        before_cuts.SetTitle("Before Cuts");
+        before_cuts.Draw();
+        truevtx.Draw("SAME");
+        before.Draw("SAME");
+
+        std::string str = "before_after_bad_vtx/"+std::to_string(i)+"_before_cuts.png";
+        char cstr[str.size() + 1];
+        str.copy(cstr,str.size()+1);
+        cstr[str.size()] = '\0';
+        can_before.SaveAs(cstr);
+
+        TCanvas can_after("can_after", "can_after ", 3456, 1008);
+        // can_after.SetLeftMargin(0.2);
+        // can_after.SetRightMargin(0.2);
+
+        after_cuts.SetOption("COLZ");
+        after_cuts.SetTitle("After Cuts");
+        after_cuts.Draw();
+        truevtx.Draw("SAME");
+        if (draw_lost_good){
+          old_tagger.Draw("SAME");
+        }
+        after.Draw("SAME");
+
+
+        str = "before_after_bad_vtx/"+std::to_string(i)+"_after_cuts.png";
+         cstr[str.size() + 1];
+        str.copy(cstr,str.size()+1);
+        cstr[str.size()] = '\0';
+        can_after.SaveAs(cstr);
       }
 
 
@@ -470,7 +580,20 @@ void read_vtxana(){
           	  if(!(ccnc==0 && interaction_mode==0) && !(ccnc==0 && interaction_mode==10)) tot_other_has_gvtx_tag ++;
 
         	}
-
+          if((num_good_vtx_lf == 0) && (num_good_vtx_tagger > 0)){
+            // if (good_ev.size() < 10){
+              std::cout << "Missing Good Vtx:" << good_ev.size() <<std::endl;
+              good_ev.push_back(i);
+              // if ((bad_ev.size() == 10) && (good_ev.size() == 10) ) {break;}
+            // }
+          }
+          if((num_bad_vtx_tagger == 0) && (num_bad_vtx_lf > 0)){
+            // if (bad_ev.size() < 10){
+              std::cout << "Extra Bad Vtx:" << bad_ev.size() <<std::endl;
+              bad_ev.push_back(i);
+              // if ((bad_ev.size() == 10) && (good_ev.size() == 10) ) {break;}
+            // }
+          }
         	// w/ DL tagger
         	if(num_good_vtx_lf>0 || num_bad_vtx_lf>0){
           	  tot_has_vtx_lf ++;
@@ -501,6 +624,15 @@ void read_vtxana(){
       }
 
   }
+  std::cout << "Good Ev Vector:" <<std::endl;
+  for (int jj=0;jj<good_ev.size();jj++){
+    std::cout << good_ev.at(jj) << ", ";
+  }
+  std::cout << std::endl;
+  std::cout << "Bad Ev Vector:" <<std::endl;
+  for (int jj=0;jj<bad_ev.size();jj++){
+    std::cout << bad_ev.at(jj) << ", ";
+  }
     TCanvas cane("can", "histograms ", 1200, 800);
     cane.SetLeftMargin(0.2);
     cane.SetRightMargin(0.2);
@@ -510,7 +642,7 @@ void read_vtxana(){
     h2dbox_adc_b_g_ratio_wo.SetXTitle("Box Size (AxA)");
     h2dbox_adc_b_g_ratio_wo.SetYTitle("Charge Total");
     h2dbox_adc_b_g_ratio_wo.Draw();
-    cane.SaveAs("ratio_dlcut_wo_b_g.png");
+    cane.SaveAs("ratio_dlcut_wo_b_g_5.png");
 
     TCanvas canf("can", "histograms ", 1200, 800);
     canf.SetLeftMargin(0.2);
@@ -521,7 +653,7 @@ void read_vtxana(){
     h2dbox_adc_b_g_ratio_wi.SetXTitle("Box Size (AxA)");
     h2dbox_adc_b_g_ratio_wi.SetYTitle("Charge Total");
     h2dbox_adc_b_g_ratio_wi.Draw();
-    canf.SaveAs("ratio_dlcut_wi_b_g.png");
+    canf.SaveAs("ratio_dlcut_wi_b_g_5.png");
 
     TH1D  *projbwiX_ratio = h2dbox_adc_b_g_ratio_wi.ProjectionX();
     projbwiX_ratio->SetXTitle("Box Size (AxA)");
@@ -530,7 +662,7 @@ void read_vtxana(){
     can_bwiX_rat.SetLeftMargin(0.2);
     can_bwiX_rat.SetRightMargin(0.2);
     projbwiX_ratio->Draw();
-    can_bwiX_rat.SaveAs("projx_bbox_ratio_wi.png");
+    can_bwiX_rat.SaveAs("projx_bbox_ratio_wi_5.png");
 
     TCanvas cana("can", "histograms ", 1200, 800);
     cana.SetLeftMargin(0.2);
@@ -540,7 +672,7 @@ void read_vtxana(){
     h2dbox_adc_gwo->SetXTitle("Box Size (AxA)");
     h2dbox_adc_gwo->SetYTitle("Charge Total");
     h2dbox_adc_gwo->Draw();
-    cana.SaveAs("h2dbox_adc_gwo_post_dlcut.png");
+    cana.SaveAs("h2dbox_adc_gwo_post_dlcut_5.png");
 
     TH1D  *projgwoX = h2dbox_adc_gwo->ProjectionX();
     projgwoX->SetXTitle("Box Size (AxA)");
@@ -549,7 +681,7 @@ void read_vtxana(){
     can_gwoX.SetLeftMargin(0.2);
     can_gwoX.SetRightMargin(0.2);
     projgwoX->Draw();
-    can_gwoX.SaveAs("box_adc_gwoX_post_dlcut.png");
+    can_gwoX.SaveAs("box_adc_gwoX_post_dlcut_5.png");
 
     TCanvas canb("can", "histograms ", 1200, 800);
     canb.SetLeftMargin(0.2);
@@ -559,7 +691,7 @@ void read_vtxana(){
     h2dbox_adc_bwo->SetXTitle("Box Size (AxA)");
     h2dbox_adc_bwo->SetYTitle("Charge Total");
     h2dbox_adc_bwo->Draw();
-    canb.SaveAs("h2dbox_adc_bwo_post_dlcut.png");
+    canb.SaveAs("h2dbox_adc_bwo_post_dlcut_5.png");
 
     TH1D  *projbwoX = h2dbox_adc_bwo->ProjectionX();
     projbwoX->SetXTitle("Box Size (AxA)");
@@ -568,7 +700,7 @@ void read_vtxana(){
     can_bwoX.SetLeftMargin(0.2);
     can_bwoX.SetRightMargin(0.2);
     projbwoX->Draw();
-    can_bwoX.SaveAs("box_adc_bwoX_post_dlcut.png");
+    can_bwoX.SaveAs("box_adc_bwoX_post_dlcut_5.png");
 
     TCanvas canc("can", "histograms ", 1200, 800);
     canc.SetLeftMargin(0.2);
@@ -578,7 +710,7 @@ void read_vtxana(){
     h2dbox_adc_bwi->SetYTitle("Charge Total");
     h2dbox_adc_bwi->SetOption("COLZ");
     h2dbox_adc_bwi->Draw();
-    canc.SaveAs("h2dbox_adc_bwi_post_dlcut.png");
+    canc.SaveAs("h2dbox_adc_bwi_post_dlcut_5.png");
 
     TCanvas cand("can", "histograms ", 1200, 800);
     cand.SetLeftMargin(0.2);
@@ -588,16 +720,16 @@ void read_vtxana(){
     h2dbox_adc_gwi->SetYTitle("Charge Total");
     h2dbox_adc_gwi->SetOption("COLZ");
     h2dbox_adc_gwi->Draw();
-    cand.SaveAs("h2dbox_adc_gwi_post_dlcut.png");
+    cand.SaveAs("h2dbox_adc_gwi_post_dlcut_5.png");
 
     TCanvas* can1  = new TCanvas("can1","",500,500);
     can1->cd();
     h2dcutg->Draw("colz");
-    can1->SaveAs("2Dcut_good.root");
+    can1->SaveAs("2Dcut_good_5.root");
     TCanvas* can2  = new TCanvas("can2","",500,500);
     can2->cd();
     h2dcutb->Draw("colz");
-    can2->SaveAs("2Dcut_bad.root");
+    can2->SaveAs("2Dcut_bad_5.root");
 
     //std::cout<<"pass p energy cut: "<<total_pene_pass<<std::endl;
     //std::cout<<"pass e energy cut: "<<total_eene_pass<<std::endl;
@@ -686,7 +818,7 @@ void read_vtxana(){
     std::cout << "row: "<<truerow <<" col: "<<truecol<<std::endl;
     truevtx->SetMarkerColor(kBlack);
     truevtx->SetMarkerStyle(kOpenSquare);
-    truevtx->SetMarkerSize(size2);
+    truevtx->SetMarkerSize(4);
 
     TH2F vtxmarkers_good_no_tag("vtxmarkers_good_no_tag","vtxmarkers_good_no_tag",3456,0.,3456,1008,0.,1008.);
       for (int i = 0; i<good_vtx_pixel->size(); i++){
@@ -739,10 +871,10 @@ void read_vtxana(){
     //Set Marker Formats
     vtxmarkers_good_no_tag.SetMarkerColor(kBlack);
     vtxmarkers_good_no_tag.SetMarkerStyle(kOpenCross);
-    vtxmarkers_good_no_tag.SetMarkerSize(size2);
+    vtxmarkers_good_no_tag.SetMarkerSize(4);
     vtxmarkers_bad_no_tag.SetMarkerColor(kBlack);
     vtxmarkers_bad_no_tag.SetMarkerStyle(kOpenTriangleUp);
-    vtxmarkers_bad_no_tag.SetMarkerSize(size2);
+    vtxmarkers_bad_no_tag.SetMarkerSize(4);
 
     vtxmarkers_good_old_tagger.SetMarkerColor(kMagenta );
     vtxmarkers_good_old_tagger.SetMarkerStyle(kOpenCross);
