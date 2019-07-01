@@ -1,0 +1,9 @@
+source setenv.sh
+source configure.sh
+source buildall.sh
+source setenv.sh
+export LARCV_OPENCV=0
+
+python
+  import torch
+  from larcv import larcv

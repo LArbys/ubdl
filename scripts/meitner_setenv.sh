@@ -3,18 +3,20 @@
 # Note locations here are some defaults that typically work for ubuntu.
 # they are also the locations used in the [ubdl container](https://github.com/larbys/larbys-containers)
 
+alias python=python3
+alias python-config=python3-config
+
 # ROOT
-#source /usr/local/root6-python3/bin/thisroot.sh
-source /usr/local/root/build/bin/thisroot.sh
+source /usr/local/root6-python3/bin/thisroot.sh
 
 # CUDA
 # typical location of cuda in ubuntu
-export CUDA_HOME=/usr/local/cuda-10.0
+export CUDA_HOME=/usr/local/cuda-9.1
 [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
 
 # OPENCV
-export OPENCV_INCDIR=/usr/local/include
-export OPENCV_LIBDIR=/usr/local/lib
+#export OPENCV_INCDIR=/usr/local/include
+#export OPENCV_LIBDIR=/usr/local/lib
 
 # LIBTORCH
 # location below is typically where running `pip install torch` will put pytorch
