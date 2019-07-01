@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # setup the environment variables for all the components
-workdir=$PWD
+
+# save the folder where script is called
+__ubdl_configure_workdir__=$PWD
 
 # set the basedir
 export UBDL_BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
@@ -36,5 +38,4 @@ cd $UBDL_BASEDIR
 cd ublarcvapp
 source configure.sh
 
-
-cd $workdir
+cd ${__ubdl_configure_workdir__}

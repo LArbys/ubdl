@@ -19,7 +19,7 @@ make -j4
 cd $workdir
 
 cd larcv/build
-cmake -DUSE_PYTHON3=ON -DUSE_OPENCV=ON -DUSE_FNAL=OFF -DUSE_TORCH=ON ../
+cmake -DUSE_PYTHON3=ON -DUSE_OPENCV=ON -DUSE_FNAL=OFF -DUSE_TORCH=OFF ../
 make install
 cd $workdir
 
