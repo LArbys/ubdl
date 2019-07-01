@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=3
 
 
-container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/ubdl_singularity_031219.img
+container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_ubdl_051919.img
 
 # get dir where we called script
 workdir=$PWD
@@ -27,5 +27,5 @@ echo "workdir: ${workdir}"
 #echo "workdir_ic: ${workdir_ic}"
 
 module load singularity
-srun singularity exec ${container} bash -c "cd ${workdir} && source setenv.sh && source configure.sh && source buildall.sh >& build.log"
+srun singularity exec ${container} bash -c "cd ${workdir} && source setenv.sh && source configure.sh && source buildall_py2.sh"
 
