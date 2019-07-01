@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=3
 
 
-container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_ubdl_python3_040619.img
+container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_ubdl_py3_deponly_070119.img
 
 # get dir where we called script
 workdir=$PWD
@@ -22,5 +22,5 @@ workdir=`echo ${workdir} | sed 's|scripts||'`
 echo "workdir: ${workdir}"
 
 module load singularity
-srun singularity exec ${container} bash -c "cd ${workdir} && source setenv.sh && source configure.sh && source buildall_py3.sh >& build.log"
+srun singularity exec ${container} bash -c "cd ${workdir} && source setenv.sh && source configure.sh && source buildall_py3.sh"
 
