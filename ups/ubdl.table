@@ -1,6 +1,6 @@
 File=Table 
 Product=ubdl
-Version=current
+Version=v1_0_0
  
 Group:
 
@@ -13,7 +13,7 @@ Qualifiers = "e17:prof"
     setupRequired( python   v2_7_14b )
     setupRequired( numpy    v1_14_3   -q e17:p2714b:prof )
     setupRequired( numpydev v1_14_3   -q e17:p2714b:prof )
-    setupRequired( libtorch v1_0_1_nnpack -q e17:prof )
+    setupRequired( libtorch v1_0_1_nonuma -q e17:prof )
 
 Common:
   Action = setup
@@ -90,12 +90,14 @@ Common:
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/LArOpenCV/python )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/larcv/python )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvapp/python )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/larflow/python )
 
     # add lib dir to ld path
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larlite/lib )
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/Geo2D/lib )
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larcv/build/installed/lib )
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/lib )
+    pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larflow/build/lib )
 
 End:
 # End Group definition
