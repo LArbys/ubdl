@@ -99,6 +99,15 @@ Common:
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/lib )
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larflow/build/lib )
 
+    # add include dirst to root include path
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/core/ )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/UserDev )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/Geo2D/ )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/ )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larcv/build/installed/include )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/include )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larflow/build/include )
+
 End:
 # End Group definition
 #*************************************************
