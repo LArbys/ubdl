@@ -37,5 +37,11 @@ cd $UBDL_BASEDIR
 # UB LArCV app
 cd ublarcvapp
 source configure.sh
+cd $UBDL_BASEDIR
+
+# LArFlow
+cd larflow
+source configure.sh
+cd $UBDL_BASEDIR
 
 cd ${__ubdl_configure_workdir__}
