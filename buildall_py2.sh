@@ -7,7 +7,13 @@ build_log=${__ubdl_buildall_py2_workdir__}/build.log
 echo "<<< BUILD LARLITE >>>"
 cd larlite
 make >& $build_log 2>&1
+echo "<<< BUILD LARLITE/UserDev/BasicTool >>>"
 cd UserDev/BasicTool
+make -j4 >> $build_log 2>&1
+echo "<<< BUILD LARLITE/UserDev/SelectionTool/LEEPreCuts >>>"
+cd ../SelectionTool/LEEPreCuts
+git submodule init
+git submodule update
 make -j4 >> $build_log 2>&1
 cd $__ubdl_buildall_py2_workdir__
 
