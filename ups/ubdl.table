@@ -9,11 +9,15 @@ Qualifiers = "e17:prof"
 
   Action = GetProducts
     setupRequired( root     v6_12_06a -q e17:prof )
-    setupRequired( opencv   v3_4_2    -q e17 )
+    setupRequired( opencv   v3_1_0    -q e17 )
     setupRequired( python   v2_7_14b )
     setupRequired( numpy    v1_14_3   -q e17:p2714b:prof )
     setupRequired( numpydev v1_14_3   -q e17:p2714b:prof )
-    setupRequired( libtorch v1_0_1_nonuma -q e17:prof )
+    setupRequired( libtorch v1_0_1_mkldnn -q e17:prof )     
+    setupRequired( figcan   v0_0_4    -q e17:p2714b:prof )  
+    setupRequired( pyzmq    v18_0_2   -q e17:p2714b:prof )  
+    setupRequired( pyyaml   v3_12d    -q p2714b )
+    setupRequired( scipy    v1_1_0    -q e17:p2714b:prof )
 
 Common:
   Action = setup
@@ -76,6 +80,9 @@ Common:
     envSet(LARFLOW_INCDIR,  ${UPS_PROD_DIR}/larflow/build/include)
     envSet(LARFLOW_LIBDIR,  ${UPS_PROD_DIR}/larflow/build/lib)
 
+    # ublarcvserver
+    envSet(UBLARCVSERVER_BASEDIR, ${UPS_PROD_DIR}/ublarcvserver )
+
     if ( test `uname` = "Darwin" )
       envSet(LARCV_CXX,clang++)
       pathPrepend(DYLD_LIBRARY_PATH, ${LARCV_LIBDIR})
@@ -91,6 +98,9 @@ Common:
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/larcv/python )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvapp/python )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/larflow/python )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/python )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/networks/mask-rcnn.pytorch )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/app/ubmrcnn )
 
     # add lib dir to ld path
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larlite/lib )
