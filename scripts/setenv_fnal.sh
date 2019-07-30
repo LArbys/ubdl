@@ -6,10 +6,19 @@
 # ROOT
 # SETUP BY UPS
 
+setup root v6_12_06a -q e17:prof
+
+
 # CUDA
 # NO CUDA
 
 # OPENCV
+setup opencv v3_1_0 -q e17
+setup python v2_7_14b
+setup cmake v3_13_2
+setup numpy v1_14_3 -q e17:p2714b:prof
+setup libtorch v1_0_1_nonuma -q e17:prof
+
 # SETUP BY UPS, need slightly different version of variables for ubdl repos
 export OPENCV_INCDIR=${OPENCV_INC}
 export OPENCV_LIBDIR=${OPENCV_LIB}
