@@ -2,36 +2,47 @@
 
 __ubdl_cleanall_start_dir__=$PWD
 
-cd $UBDL_BASEDIR
-
 echo "<<< CLEAN LARLITE >>>"
+cd $UBDL_BASEDIR
 cd larlite
 make clean
 cd UserDev/BasicTool
 make clean
-cd $UBDL_BASEDIR
+cd ../SelectionTool/LEEPreCuts
+git submodule init
+git submodule update
+make clean
+
 
 echo "<<< CLEAN GEO2D >>>"
+cd $UBDL_BASEDIR
 cd Geo2D
 make clean
-cd $UBDL_BASEDIR
 
 echo "<<< CLEAN LAROPENCV >>>"
+cd $UBDL_BASEDIR
 cd LArOpenCV
 make clean
 cd $UBDL_BASEDIR
 
-echo "<<< CLEAN LARCV >>>"
-cd larcv/build && make clean
+echo "<<< CLEAN CILANTRO >>>"
 cd $UBDL_BASEDIR
+cd cilantro/build
+make clean
+
+echo "<<< CLEAN LARCV >>>"
+cd $UBDL_BASEDIR
+cd larcv/build && make clean
 
 echo "<<< CLEAN UBLARCVAPP >>>"
-cd ublarcvapp/build && make clean
 cd $UBDL_BASEDIR
+cd ublarcvapp/build && make clean
+
 
 echo "<<< CLEAN LARFLOW >>>"
-cd larflow/build && make clean
 cd $UBDL_BASEDIR
+cd larflow/build && make clean
+
 
 echo "cleaned ubdl repositories"
 cd $__ubdl_cleanall_start_dir__

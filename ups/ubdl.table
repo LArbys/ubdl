@@ -83,6 +83,12 @@ Common:
     # ublarcvserver
     envSet(UBLARCVSERVER_BASEDIR, ${UPS_PROD_DIR}/ublarcvserver )
 
+    # Mask R-CNN
+    envSet(UBMRCNN_DIR,${UBLARCVSERVER_BASEDIR}/networks/mask-rcnn.pytorch)
+
+    # Infill network
+    envSet(SPARSE_INFILL_DIR,${UBLARCVSERVER_BASEDIR}/networks/infill)
+
     if ( test `uname` = "Darwin" )
       envSet(LARCV_CXX,clang++)
       pathPrepend(DYLD_LIBRARY_PATH, ${LARCV_LIBDIR})
@@ -101,6 +107,7 @@ Common:
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/python )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/networks/mask-rcnn.pytorch )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/app/ubmrcnn )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/networks/infill )
 
     # add lib dir to ld path
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larlite/lib )
