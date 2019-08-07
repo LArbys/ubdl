@@ -107,6 +107,7 @@ Common:
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/larflow/python )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/python )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/networks/mask-rcnn.pytorch )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/networks/mask-rcnn.pytorch/lib )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/app/ubmrcnn )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/networks/infill )
 
