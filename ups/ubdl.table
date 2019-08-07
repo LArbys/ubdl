@@ -13,11 +13,12 @@ Qualifiers = "e17:prof"
     setupRequired( python   v2_7_14b )
     setupRequired( numpy    v1_14_3   -q e17:p2714b:prof )
     setupRequired( numpydev v1_14_3   -q e17:p2714b:prof )
-    setupRequired( libtorch v1_0_1_mkldnn -q e17:prof )     
+    setupRequired( libtorch v1_0_1    -q e17:prof )     
     setupRequired( figcan   v0_0_4    -q e17:p2714b:prof )  
     setupRequired( pyzmq    v18_0_2   -q e17:p2714b:prof )  
     setupRequired( pyyaml   v3_12d    -q p2714b )
     setupRequired( scipy    v1_1_0    -q e17:p2714b:prof )
+    setupRequired( eigen    v3_3_4a    )
 
 Common:
   Action = setup
