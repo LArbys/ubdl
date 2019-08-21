@@ -9,7 +9,7 @@ Qualifiers = "e17:prof"
 
   Action = GetProducts
     setupRequired( root     v6_12_06a -q e17:prof )
-    setupRequired( opencv   v3_1_0    -q e17 )
+    setupRequired( opencv   v3_1_0_nogui -q e17 )
     setupRequired( python   v2_7_14b )
     setupRequired( numpy    v1_14_3   -q e17:p2714b:prof )
     setupRequired( numpydev v1_14_3   -q e17:p2714b:prof )
@@ -110,6 +110,7 @@ Common:
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/networks/mask-rcnn.pytorch/lib )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/app/ubmrcnn )
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/networks/infill )
+    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/networks/sparse_ssnet )
 
     # add lib dir to ld path
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larlite/lib )
