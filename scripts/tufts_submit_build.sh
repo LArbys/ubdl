@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=3
 
 
-container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_ubdl_deps_070119.img
+container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_ubdl_deps_py2_082619.simg
 
 # get dir where we called script
 workdir=$PWD
