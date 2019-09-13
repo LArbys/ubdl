@@ -12,7 +12,6 @@ Qualifiers = "e17:prof"
     setupRequired( opencv   v3_1_0_nogui -q e17 )
     setupRequired( python   v2_7_14b )
     setupRequired( numpy    v1_14_3   -q e17:p2714b:prof )
-    setupRequired( numpydev v1_14_3   -q e17:p2714b:prof )
     setupRequired( libtorch v1_0_1    -q e17:prof )     
     setupRequired( figcan   v0_0_4    -q e17:p2714b:prof )  
     setupRequired( pyzmq    v18_0_2   -q e17:p2714b:prof )  
