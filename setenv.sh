@@ -1,20 +1,41 @@
 #!/bin/bash
 
-# Note locations here are some defaults that typically work for ubuntu.
-# they are also the locations used in the [ubdl container](https://github.com/larbys/larbys-containers)
+# WE NEED TO SETUP ENV VARIABLES FOR ROOT, CUDA, OPENCV
 
-# ROOT
-#source /usr/local/root6-python3/bin/thisroot.sh
-source /usr/local/root/root-6.16.00/bin/thisroot.sh
+MACHINE=`uname --nodename`
 
-# CUDA
-# typical location of cuda in ubuntu
-export CUDA_HOME=/usr/local/cuda-10.0
-[[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+if [ $MACHINE=="trex" ]; then
+    echo "SETUP TREX"
+    source /usr/local/root/6.16.00_py2/bin/thisroot.sh
 
-# OPENCV
-export OPENCV_INCDIR=/usr/local/include
-export OPENCV_LIBDIR=/usr/local/lib
+    export CUDA_HOME=/usr/local/cuda-10.0
+    [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+    export OPENCV_INCDIR=/usr/local/opencv/opencv-3.4.6/include
+    export OPENCV_LIBDIR=/usr/local/opencv/opencv-3.4.6/lib
+
+elif [ $MACHINE=="meitner" ]; then
+    echo "SETUP MEITNER"
+
+    source /usr/local/root6/bin/thisroot.sh
+
+    export CUDA_HOME=/usr/local/cuda-10.0
+    [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+    export OPENCV_INCDIR=/usr/include
+    export OPENCV_LIBDIR=/usr/local/lib    
+    
+else
+    echo "DEFAULT SETUP (COMPAT WITH SINGULARITY CONTAINER)"
+    source /usr/local/root/root-6.16.00/bin/thisroot.sh
+
+    export CUDA_HOME=/usr/local/cuda-10.0
+    [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+    export OPENCV_INCDIR=/usr/include
+    export OPENCV_LIBDIR=/usr/local/lib
+    
+fi
 
 # LIBTORCH
 # location below is typically where running `pip install torch` will put pytorch
