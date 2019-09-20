@@ -4,7 +4,8 @@
 
 MACHINE=`uname --nodename`
 
-if [ $MACHINE=="trex" ]; then
+if [ $MACHINE == "trex" ]
+then
     echo "SETUP TREX"
     source /usr/local/root/6.16.00_py2/bin/thisroot.sh
 
@@ -14,12 +15,25 @@ if [ $MACHINE=="trex" ]; then
     export OPENCV_INCDIR=/usr/local/opencv/opencv-3.4.6/include
     export OPENCV_LIBDIR=/usr/local/opencv/opencv-3.4.6/lib
 
-elif [ $MACHINE=="meitner" ]; then
+elif [ $MACHINE == "meitner" ]
+then
     echo "SETUP MEITNER"
 
     source /usr/local/root6/bin/thisroot.sh
 
     export CUDA_HOME=/usr/local/cuda-10.0
+    [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+    export OPENCV_INCDIR=/usr/include
+    export OPENCV_LIBDIR=/usr/local/lib    
+
+elif [ $MACHINE == "blade" ]
+then
+    echo "SETUP TARITREE's RAZER BLADE"
+
+    source /home/twongjirad/software/root6/6.14.02/bin/thisroot.sh
+
+    export CUDA_HOME=/usr/local/cuda
     [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
 
     export OPENCV_INCDIR=/usr/include
