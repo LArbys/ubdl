@@ -5,7 +5,7 @@
 
 # ROOT
 #source /usr/local/root6-python3/bin/thisroot.sh
-source /usr/local/root/build/bin/thisroot.sh
+source /usr/local/root/6.16.00_python3/bin/thisroot.sh
 
 # CUDA
 # typical location of cuda in ubuntu
