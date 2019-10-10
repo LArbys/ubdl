@@ -19,6 +19,7 @@ setup cmake v3_13_2
 setup numpy v1_14_3 -q e17:p2714b:openblas:prof
 setup libtorch v1_0_1 -q e17:prof
 setup eigen v3_3_4a
+setup boost v1_66_0a -q e17:prof
 
 # SETUP BY UPS, need slightly different version of variables for ubdl repos
 export OPENCV_INCDIR=${OPENCV_INC}
