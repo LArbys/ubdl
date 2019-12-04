@@ -13,7 +13,7 @@ setup root v6_12_06a -q e17:prof
 # NO CUDA
 
 # OPENCV
-setup opencv v3_1_0 -q e17
+setup opencv v3_1_0_nogui -q e17
 setup python v2_7_14b
 setup cmake v3_13_2
 setup numpy v1_14_3 -q e17:p2714b:openblas:prof
