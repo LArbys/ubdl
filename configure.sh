@@ -32,6 +32,7 @@ cd $UBDL_BASEDIR
 
 # Cilantro (3rd party)
 cd cilantro
+source dllee_setup.sh
 cd $UBDL_BASEDIR
 
 # UB LArCV app
