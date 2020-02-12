@@ -27,6 +27,17 @@ then
     export OPENCV_INCDIR=/usr/include
     export OPENCV_LIBDIR=/usr/local/lib    
 
+elif [ $MACHINE == "goeppert" ]
+then
+    echo "SETUP GOEPPERT"
+    source /usr/local/root/6.16.00_py2/bin/thisroot.sh
+
+    export CUDA_HOME=/usr/local/cuda-10.0
+    [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+    export OPENCV_INCDIR=/usr/local/include
+    export OPENCV_LIBDIR=/usr/local/lib    
+
 elif [ $MACHINE == "blade" ]
 then
     echo "SETUP TARITREE's RAZER BLADE"
