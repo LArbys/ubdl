@@ -32,16 +32,16 @@ make clean
 
 echo "<<< CLEAN LARCV >>>"
 cd $UBDL_BASEDIR
-cd larcv/build && make clean
+cd larcv/build && rm -rf * && make clean
 
 echo "<<< CLEAN UBLARCVAPP >>>"
 cd $UBDL_BASEDIR
-cd ublarcvapp/build && make clean
+cd ublarcvapp/build && rm -rf * && make clean
 
 
 echo "<<< CLEAN LARFLOW >>>"
 cd $UBDL_BASEDIR
-cd larflow/build && make clean
+cd larflow/build && rm -rf * && make clean
 
 
 echo "cleaned ubdl repositories"
