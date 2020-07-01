@@ -6,11 +6,13 @@
 #SBATCH --output=ubdl_build.log
 #SBATCH --ntasks=1
 #SBATCH --mem-per-cpu=8000
-#SBATCH --time=30:00
+#SBATCH --time=2:00:00
 #SBATCH --cpus-per-task=4
 
 
-container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_ubdl_deps_py2_091319.simg
+#container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_ubdl_deps_py2_10022019.simg
+#container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_dldependencies_pytorch1.3.sing
+container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/singularity_pytorch1.3cpu.simg
 
 # get dir where we called script
 workdir=$PWD
@@ -28,4 +30,5 @@ echo "workdir: ${workdir}"
 
 module load singularity
 srun singularity exec ${container} bash -c "cd ${workdir} && source setenv.sh && source configure.sh && source buildall_py2.sh"
+#srun singularity exec ${container} bash -c "cd ${workdir} && source setenv.sh && source configure.sh && source scripts/cleanall.sh && source buildall_py2.sh"
 
