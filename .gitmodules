@@ -25,3 +25,6 @@
 [submodule "larflow"]
 	path = larflow
 	url = https://github.com/nutufts/larflow
+[submodule "argparse"]
+	path = argparse
+	url = https://github.com/NuTufts/argparse.git
