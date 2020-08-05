@@ -45,4 +45,9 @@ cd larflow
 source configure.sh
 cd $UBDL_BASEDIR
 
+# LArdly viewing tools
+cd lardly
+source setenv.sh
+cd $UBDL_BASEDIR
+
 cd ${__ubdl_configure_workdir__}

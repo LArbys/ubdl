@@ -28,3 +28,6 @@
 [submodule "argparse"]
 	path = argparse
 	url = https://github.com/NuTufts/argparse.git
+[submodule "lardly"]
+	path = lardly
+	url = https://github.com/larbys/lardly
