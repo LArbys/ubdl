@@ -6,31 +6,53 @@ alias python-config=python3-config
 __ubdl_buildall_py3_workdir__=$PWD
 build_log=${__ubdl_buildall_py3_workdir__}/build.log
 
+echo "<<< BUILD LARLITE >>>"
 cd larlite
-make >>& ${build_log}
+make >& $build_log 2>&1
+echo "<<< BUILD LARLITE/UserDev/BasicTool >>>"
 cd UserDev/BasicTool
-make -j4 >>& ${build_log}
-cd $workdir
+make -j4 >> $build_log 2>&1
+echo "<<< BUILD LARLITE/UserDev/SelectionTool/LEEPreCuts >>>"
+cd ../SelectionTool/LEEPreCuts
+git submodule init
+git submodule update
+make -j4 >> $build_log 2>&1
+cd $__ubdl_buildall_py3_workdir__
 
+echo "<<< BUILD GEO2D >>>"
 cd Geo2D
 make -j4 >>& ${build_log}
-cd $workdir
+cd $__ubdl_buildall_py3_workdir__
 
+echo "<<< BUILD LAROPENCV >>>"
 cd LArOpenCV
 make -j4 >>& ${build_log}
-cd $workdir
+cd $__ubdl_buildall_py3_workdir__
 
-cd larcv/build
-cmake -DUSE_PYTHON3=ON -DUSE_OPENCV=ON -DUSE_FNAL=OFF -DUSE_TORCH=OFF ../
+echo "<<< BUILD LARCV >>>"
+cd larcv
+mkdir -p build
+cd build
+cmake -DUSE_PYTHON3=ON -DUSE_OPENCV=ON -DUSE_FNAL=ON -DUSE_TORCH=OFF ../
 make install >>& ${build_log}
-cd $workdir
+cd $__ubdl_buildall_py3_workdir__
 
+echo "<<< BUILD UBLARCVAPP >>>"
 mkdir -p ublarcvapp/build
 cd ublarcvapp
 source configure.sh
 cd build
-cmake ../
+cmake -DUSE_OPENCV=ON ../
 make install >>& ${build_log}
-cd $workdir
+cd $__ubdl_buildall_py3_workdir__
+
+echo "<<< BUILD LARFLOW >>>"
+mkdir -p larflow/build
+cd larflow
+source configure.sh
+cd build
+cmake ../
+make install >> $build_log 2>&1
+cd $__ubdl_buildall_py3_workdir__
 
 echo "built ubdl modules"
