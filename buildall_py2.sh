@@ -57,7 +57,7 @@ mkdir -p larflow/build
 cd larflow
 source configure.sh
 cd build
-cmake ../
+cmake -DUSE_PYTHON2=ON ../
 make install >> $build_log 2>&1
 cd $__ubdl_buildall_py2_workdir__
 
