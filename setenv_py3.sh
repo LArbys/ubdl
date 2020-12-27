@@ -2,6 +2,7 @@
 
 # WE NEED TO SETUP ENV VARIABLES FOR ROOT, CUDA, OPENCV
 
+alias python=python3
 MACHINE=`uname --nodename`
 
 if [ $MACHINE == "trex" ]
@@ -32,7 +33,7 @@ then
     echo "SETUP GOEPPERT"
     source /usr/local/root/6.16.00_py3/bin/thisroot.sh
 
-    export CUDA_HOME=/usr/local/cuda-10.0
+    export CUDA_HOME=/usr/local/cuda/
     [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
 
     export OPENCV_INCDIR=/usr/local/include
