@@ -165,7 +165,7 @@ int main(int nargs, char** argv){
     vtx_u.SetMarkerColor(2);
     vtx_u.SetMarkerSize(5);
     vtx_u.Draw("SAME");
-		can.SaveAs(Form("%soutput_%d_%d_%d_u%s.png",output_dir.c_str(),run,subrun,event,output_custom.c_str()));
+		can.SaveAs(Form("%s/output_%d_%d_%d_u%s.png",output_dir.c_str(),run,subrun,event,output_custom.c_str()));
 
     ev_disp_raw_v.SetTitle(Form("Image Raw V Plane Run: %d Subrun: %d Event: %d",run,subrun,event));
 	  ev_disp_raw_v.SetXTitle("Column (Wire)");
@@ -176,7 +176,7 @@ int main(int nargs, char** argv){
     vtx_v.SetMarkerColor(2);
     vtx_u.SetMarkerSize(5);
     vtx_v.Draw("SAME");
-		can.SaveAs(Form("%soutput_%d_%d_%d_v%s.png",output_dir.c_str(),run,subrun,event,output_custom.c_str()));
+		can.SaveAs(Form("%s/output_%d_%d_%d_v%s.png",output_dir.c_str(),run,subrun,event,output_custom.c_str()));
 
     ev_disp_raw_y.SetTitle(Form("Image Raw Y Plane Run: %d Subrun: %d Event: %d",run,subrun,event));
 	  ev_disp_raw_y.SetXTitle("Column (Wire)");
@@ -187,7 +187,7 @@ int main(int nargs, char** argv){
     vtx_y.SetMarkerColor(2);
     vtx_u.SetMarkerSize(5);
     vtx_y.Draw("SAME");
-    can.SaveAs(Form("%soutput_%d_%d_%d_y%s.png",output_dir.c_str(),run,subrun,event,output_custom.c_str()));
+    can.SaveAs(Form("%s/output_%d_%d_%d_y%s.png",output_dir.c_str(),run,subrun,event,output_custom.c_str()));
 
 	} //End of entry loop
   // close larcv I) manager
