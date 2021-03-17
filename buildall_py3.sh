@@ -43,7 +43,7 @@ mkdir -p build
 cd build
 cmake ../
 make >> $build_log 2>&1
-cd $__ubdl_buildall_py2_workdir__
+cd $__ubdl_buildall_py3_workdir__
 
 echo "<<< BUILD UBLARCVAPP >>>"
 mkdir -p ublarcvapp/build
