@@ -19,6 +19,9 @@
 #include "larcv/core/DataFormat/IOManager.h"
 #include "larcv/core/DataFormat/EventImage2D.h"
 #include "larcv/core/DataFormat/EventPGraph.h"
+#include "larcv/core/DataFormat/SparseImage.h"
+#include "larcv/core/DataFormat/EventSparseImage.h"
+
 
 // larlite
 #include "DataFormat/storage_manager.h"
@@ -59,7 +62,6 @@ int main(int nargs, char** argv){
 
   // create root output file
   std::string output_file = output_dir + "outputimage2d.root";
-
   //create larcv IO IOManager
   // create 2 io managers- one to read one to write
 	larcv::IOManager* in_larcv  = new larcv::IOManager(larcv::IOManager::kREAD,"IOManager_In", larcv::IOManager::kTickBackward);
@@ -69,7 +71,6 @@ int main(int nargs, char** argv){
   in_larcv->reverse_all_products();
 	in_larcv->add_in_file(input_file);
 	in_larcv->initialize();
-
   out_larcv->set_out_file(output_file);
   out_larcv->initialize();
 
@@ -89,6 +90,13 @@ int main(int nargs, char** argv){
 		start_entry = specific_entry;
 		nentries_mc_cv = start_entry+1;
 	}
+	
+	
+    // these are used to determine how many digits I should leave for the id
+	// int max_protons = 0;
+	// int max_neutrons = 0;
+	// int max_pion_charged = 0;
+	// int max_pion_neutral = 0;
 
   // loop through all the entries in the file
 	for (int entry=start_entry; entry < nentries_mc_cv; entry++){
@@ -173,9 +181,22 @@ int main(int nargs, char** argv){
 	   std::cout<<"Number of neutral pions: "<<num_pion_neutral<<std::endl;
 	   
 	    std::cout << "\n";
-
-
-
+		
+		// used to find the largest number of protons, neutrons, charged/neutral
+		// pions. Will use this information to determine how many digits to
+		// allocate in the id
+		// if (num_protons > max_protons){
+		// 	max_protons = num_protons;
+		// }
+		// if (num_neutrons > max_neutrons){
+		// 	max_neutrons = num_neutrons;
+		// }
+		// if (num_pion_charged > max_pion_charged){
+		// 	max_pion_charged = num_pion_charged;
+		// }
+		// if (num_pion_neutral > max_pion_neutral){
+		// 	max_pion_neutral = num_pion_neutral;
+		// }
 
 
     // now create the output image2d
@@ -204,10 +225,59 @@ int main(int nargs, char** argv){
       out_v.emplace_back( std::move(single_out) );
     }//end of loop over planes
 
+	// makes event also store number of protons, neutrons, charged/uncharged pions
+	// (in that order)
+	// example: event = 6610110301
+	// event: 6610
+	// protons: 11
+	// neutrons: 03
+	// charged pions: 0
+	// uncharged pions: 1
+	long int event = event_wire;
+	event = event*1000000;
+	event = event + num_protons*10000;
+	event = event + num_neutrons*100;
+	event = event + num_pion_charged*10;
+	event = event + num_pion_neutral;
+	std::cout << "event: " << event << "\n\n";
+	
+	std::vector<larcv::Image2D> out_v_s = out_v;
+	
     ev_out_adc_dlreco->Emplace( std::move(out_v) );
-    out_larcv->set_id( run_wire, subrun_wire, event_wire );//TODO: also save the other truth information
+    
+	
+	// Saving sparse:
+	std::vector<float> thresholds;
+	thresholds.push_back(10);
+	thresholds.push_back(10);
+	thresholds.push_back(10);
+	// std::vector<larcv::Image2D*> out_v_p;
+	// for (int plane = 0; plane<3;plane++){
+	// 	out_v_p[plane] = &out_v[plane];
+	// } 
+	// larcv::EventImage2D* ev_out_adc_dlreco = (larcv::EventImage2D*)out_larcv->get_data(larcv::kProductImage2D,"mask_wire");
+
+	std::vector<int> empty;
+	larcv::EventSparseImage* ev_out_adc_dlreco_sparse = (larcv::EventSparseImage*) out_larcv->get_data(larcv::kProductSparseImage,"nbkrnd_wire");
+	// ev_out_adc_dlreco_sparse->clear();
+	larcv::SparseImage out_sparse(out_v_s, thresholds);
+	
+	ev_out_adc_dlreco_sparse->Emplace( std::move(out_sparse) );
+	
+	out_larcv->set_id( run_wire, subrun_wire, event);
     out_larcv->save_entry();
+	
+	
+	
 	} //End of entry loop
+	
+	// std::cout<<"Max number of protons: "<<max_protons<<std::endl;
+	// std::cout<<"Max number of neutrons: "<<max_neutrons<<std::endl;
+	// std::cout<<"Max number of charged pions: "<<max_pion_charged<<std::endl;
+	// std::cout<<"Max number of neutral pions: "<<max_pion_neutral<<std::endl;
+	// 
+	//  std::cout << "\n";
+	
   // close larcv I) manager
 	in_larcv->finalize();
 	delete in_larcv;
