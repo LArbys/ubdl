@@ -98,10 +98,12 @@ int main(int nargs, char** argv){
 	// int max_pion_charged = 0;
 	// int max_pion_neutral = 0;
 
+
   // loop through all the entries in the file
 	for (int entry=start_entry; entry < nentries_mc_cv; entry++){
 
-    std::cout << "Entry : " << entry << "\n\n";
+
+    std::cout << std::endl << "Entry : " << entry << "\n";
 		in_larcv->read_entry(entry);
 		std::cout << "\n";
 
@@ -203,6 +205,7 @@ int main(int nargs, char** argv){
     larcv::EventImage2D* ev_out_adc_dlreco = (larcv::EventImage2D*)out_larcv->get_data(larcv::kProductImage2D,"mask_wire");
     ev_out_adc_dlreco->clear();
     std::vector<larcv::Image2D> out_v;
+	unsigned int npixels = 0;// used to check total pixel count of image2d and sparse
 
     // loop through all the pixels of the input to get the pixel information (number is standard uboone image size)
     for (int plane = 0; plane<3;plane++){
@@ -218,6 +221,10 @@ int main(int nargs, char** argv){
 		  if (img_2d_in_v_thrumu[plane].pixel(row,col) != 0){
 			  val = 0;
 		  }
+		  if (val >= 10){
+			  npixels++;
+		  }
+		  
           // now save to new image2d
           single_out.set_pixel(row,col,val);
         }//end of loop over rows
@@ -261,6 +268,62 @@ int main(int nargs, char** argv){
 	larcv::EventSparseImage* ev_out_adc_dlreco_sparse = (larcv::EventSparseImage*) out_larcv->get_data(larcv::kProductSparseImage,"nbkrnd_wire");
 	// ev_out_adc_dlreco_sparse->clear();
 	larcv::SparseImage out_sparse(out_v_s, thresholds);
+	
+	// check to make sure image2D and SparseImage have the same number of pixels,
+	// both with a threshold of 1
+	int sPixels_count = 0;
+	std::vector<float> sPixel_v = out_sparse.pixellist();
+	for (int i = 0; i < sPixel_v.size(); i++){
+		// std::cout << "sPixel_v: " << sPixel_v[i] << "\n";
+		if (sPixel_v[i] >= 10){
+			sPixels_count++;
+		}
+	}
+	int sPixels_size = sPixel_v.size();
+	
+	
+	// Now lets make an image2D from the sparse and count it's pixels:
+	std::vector<larcv::Image2D> pixel2d = out_sparse.as_Image2D();
+	unsigned int pcount = 0;
+	for (int plane = 0; plane<3;plane++){
+		for (int col = 0; col<3456;col++){
+			for (int row = 0; row<1008;row++){
+				double pval = pixel2d[plane].pixel(row,col);
+				if (pval >= 10){
+					pcount++;
+				}
+			}
+		}
+	}
+	
+	std::cout << "Pixel Count Check:\n";
+	std::cout << "image2d pixel count: " << npixels << "\n";
+	std::cout << "sparse pixel size: " << sPixels_size << "\n";
+	std::cout << "sparse pixel count: " << sPixels_count << "\n";
+	std::cout << "image2d from sparse pcount: " << pcount << "\n";
+	if (pcount != npixels){
+		std::cout << "PROBLEM: image2d pixel counts don't match\n";
+	} else {
+		std::cout << "success: image2d pixel counts match!\n";
+	}
+	if (sPixels_size != npixels || sPixels_count != npixels){
+		std::cout << "PROBLEM: pixel counts are not the same\n";
+		if (sPixels_size == 5*npixels){
+			std::cout << ".size() gets 5*image2d\n";
+		} else {
+			std::cout << ".size() does not get 5*image2d\n";;
+		}
+		if (sPixels_count == 3*npixels){
+			std::cout << "looping gets 3*image2d\n";
+		} else {
+			std::cout << "looping does not get 3*image2d\n";
+		}
+	}
+	
+	std::cout << "\n";
+
+	
+	
 	
 	ev_out_adc_dlreco_sparse->Emplace( std::move(out_sparse) );
 	
