@@ -21,8 +21,6 @@
 #include "larcv/core/DataFormat/EventPGraph.h"
 #include "larcv/core/DataFormat/SparseImage.h"
 #include "larcv/core/DataFormat/EventSparseImage.h"
-
-
 // larlite
 #include "DataFormat/storage_manager.h"
 #include "DataFormat/mctruth.h"
@@ -93,10 +91,13 @@ int main(int nargs, char** argv){
 	
 	
     // these are used to determine how many digits I should leave for the id
-	// int max_protons = 0;
-	// int max_neutrons = 0;
-	// int max_pion_charged = 0;
-	// int max_pion_neutral = 0;
+	int max_protons = 0;
+	int max_neutrons = 0;
+	int max_pion_charged = 0;
+	int max_pion_neutral = 0;
+	// book keeping counters
+	int tot_protons = 0;
+	int tot_neutrons = 0;
 
 
   // loop through all the entries in the file
@@ -169,8 +170,22 @@ int main(int nargs, char** argv){
 	     // pick only final state particles
 	     if (ev_mctruth->at(0).GetParticles().at(part).StatusCode() == 1){
 	       int pdg = ev_mctruth->at(0).GetParticles().at(part).PdgCode();
-	       if (pdg == 2212) num_protons++;
-	       else if (pdg == 2112) num_neutrons++;
+	       if (pdg == 2212){
+				float momentum = ev_mctruth->at(0).GetParticles().at(part).Momentum()[0];
+				std::cerr << "proton momentum: " << momentum << "\n";
+				if (momentum >= 0.05){
+					num_protons++;
+					tot_protons++;
+				}
+		   }
+	       else if (pdg == 2112){
+			   float momentum = ev_mctruth->at(0).GetParticles().at(part).Momentum()[0];
+			   std::cerr << "neutron momentum: " << momentum << "\n";
+			   if (momentum >= 0.05){
+				   num_neutrons++;
+				   tot_neutrons++;
+			   }
+		   }
 	       else if (pdg == 111 ) num_pion_neutral++;
 	       else if (pdg == 211 || pdg == -211) num_pion_charged++;
 	   
@@ -187,18 +202,18 @@ int main(int nargs, char** argv){
 		// used to find the largest number of protons, neutrons, charged/neutral
 		// pions. Will use this information to determine how many digits to
 		// allocate in the id
-		// if (num_protons > max_protons){
-		// 	max_protons = num_protons;
-		// }
-		// if (num_neutrons > max_neutrons){
-		// 	max_neutrons = num_neutrons;
-		// }
-		// if (num_pion_charged > max_pion_charged){
-		// 	max_pion_charged = num_pion_charged;
-		// }
-		// if (num_pion_neutral > max_pion_neutral){
-		// 	max_pion_neutral = num_pion_neutral;
-		// }
+		if (num_protons > max_protons){
+			max_protons = num_protons;
+		}
+		if (num_neutrons > max_neutrons){
+			max_neutrons = num_neutrons;
+		}
+		if (num_pion_charged > max_pion_charged){
+			max_pion_charged = num_pion_charged;
+		}
+		if (num_pion_neutral > max_pion_neutral){
+			max_pion_neutral = num_pion_neutral;
+		}
 
 
     // now create the output image2d
@@ -234,15 +249,15 @@ int main(int nargs, char** argv){
 
 	// makes event also store number of protons, neutrons, charged/uncharged pions
 	// (in that order)
-	// example: event = 6610110301
+	// example: event = 66104301
 	// event: 6610
-	// protons: 11
-	// neutrons: 03
+	// protons: 4
+	// neutrons: 3
 	// charged pions: 0
 	// uncharged pions: 1
-	long int event = event_wire;
-	event = event*1000000;
-	event = event + num_protons*10000;
+	int event = event_wire;
+	event = event*10000;
+	event = event + num_protons*1000;
 	event = event + num_neutrons*100;
 	event = event + num_pion_charged*10;
 	event = event + num_pion_neutral;
@@ -258,19 +273,13 @@ int main(int nargs, char** argv){
 	thresholds.push_back(10);
 	thresholds.push_back(10);
 	thresholds.push_back(10);
-	// std::vector<larcv::Image2D*> out_v_p;
-	// for (int plane = 0; plane<3;plane++){
-	// 	out_v_p[plane] = &out_v[plane];
-	// } 
-	// larcv::EventImage2D* ev_out_adc_dlreco = (larcv::EventImage2D*)out_larcv->get_data(larcv::kProductImage2D,"mask_wire");
 
-	std::vector<int> empty;
-	larcv::EventSparseImage* ev_out_adc_dlreco_sparse = (larcv::EventSparseImage*) out_larcv->get_data(larcv::kProductSparseImage,"nbkrnd_wire");
+	larcv::EventSparseImage* ev_out_adc_dlreco_sparse = (larcv::EventSparseImage*) out_larcv->get_data(larcv::kProductSparseImage,"nbkrnd_sparse");
 	// ev_out_adc_dlreco_sparse->clear();
 	larcv::SparseImage out_sparse(out_v_s, thresholds);
 	
 	// check to make sure image2D and SparseImage have the same number of pixels,
-	// both with a threshold of 1
+	// both with a threshold of 10
 	int sPixels_count = 0;
 	std::vector<float> sPixel_v = out_sparse.pixellist();
 	for (int i = 0; i < sPixel_v.size(); i++){
@@ -280,7 +289,6 @@ int main(int nargs, char** argv){
 		}
 	}
 	int sPixels_size = sPixel_v.size();
-	
 	
 	// Now lets make an image2D from the sparse and count it's pixels:
 	std::vector<larcv::Image2D> pixel2d = out_sparse.as_Image2D();
@@ -334,12 +342,15 @@ int main(int nargs, char** argv){
 	
 	} //End of entry loop
 	
-	// std::cout<<"Max number of protons: "<<max_protons<<std::endl;
-	// std::cout<<"Max number of neutrons: "<<max_neutrons<<std::endl;
-	// std::cout<<"Max number of charged pions: "<<max_pion_charged<<std::endl;
-	// std::cout<<"Max number of neutral pions: "<<max_pion_neutral<<std::endl;
-	// 
-	//  std::cout << "\n";
+	std::cout<<"Max number of protons: "<<max_protons<<std::endl;
+	std::cout<<"Max number of neutrons: "<<max_neutrons<<std::endl;
+	std::cout<<"Max number of charged pions: "<<max_pion_charged<<std::endl;
+	std::cout<<"Max number of neutral pions: "<<max_pion_neutral<<std::endl;
+	std::cout << "\n";
+	
+	std::cout << "Total number of protons: " << tot_protons << "\n";
+	std::cout << "Total number of neutrons: " << tot_neutrons << "\n";
+	std::cout << "\n";
 	
   // close larcv I) manager
 	in_larcv->finalize();
