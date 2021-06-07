@@ -3,7 +3,9 @@
 ## IMPORT
 
 # python,numpy
-import os,sys,commands
+import platform
+print(platform.python_version())
+import os,sys
 import shutil
 import time
 import traceback
@@ -27,11 +29,6 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 import torch.nn.functional as F
 
-# tensorboardX
-from tensorboardX import SummaryWriter
-
-# dataset interface
-sys.path.append("/mnt/disk1/nutufts/kmason/sparsenet/ubdl/larflow/larcvdataset")
 
 from networkmodel import SparseInfill
 
@@ -61,7 +58,7 @@ def main():
 
     # uncomment to dump model
     if True:
-        print "Loaded model: ",model
+        print ("Loaded model: ",model)
         return
 
 
@@ -69,11 +66,9 @@ def main():
 
     with torch.autograd.profiler.profile(enabled=RUNPROFILER) as prof:
 
-
-
-    print "PROFILER"
-    if RUNPROFILER:
-        print prof
+        print("PROFILER")
+        if RUNPROFILER:
+            print (prof)
 
 
 if __name__ == '__main__':

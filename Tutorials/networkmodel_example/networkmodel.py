@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-sys.path.append("/home/kmason03/SparseConvNet")
+sys.path.append("/home/kmason/SparseConvNet")
 import sparseconvnet as scn
 
 import time
@@ -52,25 +52,25 @@ class SparseInfill(nn.Module):
 
     def forward(self,coord_t,input_t,batchsize):
         if self._show_sizes:
-            print "coord_t ",coord_t.shape
-            print "input_t ",input_t.shape
+            print( "coord_t ",coord_t.shape)
+            print( "input_t ",input_t.shape)
         x=(coord_t,input_t,batchsize)
         x=self.input(x)
         if self._show_sizes:
-            print "inputlayer: ",x.features.shape
+            print ("inputlayer: ",x.features.shape)
         x=self.conv1(x)
         if self._show_sizes:
-            print "conv1: ",x.features.shape
+            print ("conv1: ",x.features.shape)
         x=self.unet(x)
         if self._show_sizes:
-            print "unet: ",x.features.shape
+            print ("unet: ",x.features.shape)
         x=self.batchnorm(x)
         if self._show_sizes:
-            print "batchnorm: ",x.features.shape
+            print ("batchnorm: ",x.features.shape)
         x=self.conv2(x)
         if self._show_sizes:
-            print "conv2: ",x.features.shape
+            print ("conv2: ",x.features.shape)
         x=self.output(x)
         if self._show_sizes:
-            print "output: ",x.shape
+            print ("output: ",x.shape)
         return x
