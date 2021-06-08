@@ -34,7 +34,7 @@ class SparseClassifier(nn.Module):
         self._nin_features = nin_features
         self._nout_features = nout_features
         self._nplanes = [nin_features, 2*nin_features, 3*nin_features, 4*nin_features, 5*nin_features]
-        self._layers = [['b',16,reps,1]]
+        self._layers = [['s',16,reps,1]]
         self._show_sizes = show_sizes
 
         # self.sparseModel = scn.Sequential().add(
@@ -47,8 +47,10 @@ class SparseClassifier(nn.Module):
         
 
         self.input = scn.InputLayer(self._dimension, self._inputshape, mode=self._mode)
-        self.conv1 = scn.SubmanifoldConvolution(self._dimension, 1, self._nin_features, 3, False)
+        self.conv1 = scn.SubmanifoldConvolution(self._dimension, 1, self._nin_features, 7, False) # change to 65 convolution kernels? how?
+        self.maxPool = scn.MaxPooling(self._dimension,2,2) # Unsure if this is the right pool_size and pool_stride
         self.sparseSEResNetB2 = self.SparseSEResNetB2(self._dimension, self._nin_features, self._layers)
+        # self.testSE = self.SELayer(self._nin_features)
         # self.sparseResNet = scn.SparseResNet(self._dimension, self._nin_features, self._layers)
         self.batchnorm = scn.BatchNormReLU(self._nin_features)
         self.output = scn.OutputLayer(self._dimension)
@@ -88,16 +90,9 @@ class SparseClassifier(nn.Module):
         nPlanes = nInputPlanes
         m = scn.Sequential()
 
-        def residual(nIn, nOut, stride):
-            if stride > 1:
-                return scn.Convolution(dimension, nIn, nOut, 3, stride, False)
-            elif nIn != nOut:
-                return scn.NetworkInNetwork(nIn, nOut, False)
-            else:
-                return scn.Identity()
         for blockType, n, reps, stride in layers:
             for rep in range(reps):
-                if blockType[0] == 'b':  # basic block
+                if blockType[0] == 's':  # SE block
                     m.add(scn.BatchNormReLU(nPlanes))
                     m.add(
                         scn.ConcatTable().add(
@@ -113,19 +108,30 @@ class SparseClassifier(nn.Module):
                                     n,
                                     3,
                                     stride,
-                                    False)) .add(
+                                    False)).add(
                                 scn.BatchNormReLU(n)) .add(
                                 scn.SubmanifoldConvolution(
                                     dimension,
                                     n,
                                     n,
                                     3,
-                                    False))) .add(
-                            residual(
-                                nPlanes,
-                                n,
-                                stride)))
+                                    False)) .add(
+                                self.SELayer(nPlanes))) .add(
+                                scn.Identity()))
                 nPlanes = n
                 m.add(scn.AddTable())
         m.add(scn.BatchNormReLU(nPlanes))
+        return m
+
+        # TODO: scale the input conv layer with the SE output
+    def SELayer(self, channel, reduction=16):
+        m = scn.Sequential()
+        m.add(scn.SparseToDense(self._dimension, self._nin_features))
+        m.add(nn.AdaptiveAvgPool2d(1))
+        m.add(scn.Sequential(
+            nn.Linear(channel, channel // reduction, bias=False), # add back // reduction on output
+            nn.ReLU(),
+            nn.Linear(channel // reduction, channel, bias=False), # add back // reduction on input
+            nn.Sigmoid()))
+        m.add(scn.DenseToSparse(self._dimension))
         return m

@@ -50,7 +50,7 @@ def main():
     ninput_features  = 16
     noutput_features = 16
     nplanes = 5
-    reps = 2    
+    reps = 1    
         
     # self, inputshape, reps, nin_features, nout_features, nplanes,show_sizes
     model = SparseClassifier( (IMAGE_HEIGHT,IMAGE_WIDTH), reps,
