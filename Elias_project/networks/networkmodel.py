@@ -49,7 +49,7 @@ class SparseClassifier(nn.Module):
         self.input = scn.InputLayer(self._dimension, self._inputshape, mode=self._mode)
         self.conv1 = scn.SubmanifoldConvolution(self._dimension, 1, self._nin_features, 3, False)
         self.sparseSEResNetB2 = self.SparseSEResNetB2(self._dimension, self._nin_features, self._layers)
-        self.sparseResNet = scn.SparseResNet(self._dimension, self._nin_features, self._layers)
+        # self.sparseResNet = scn.SparseResNet(self._dimension, self._nin_features, self._layers)
         self.batchnorm = scn.BatchNormReLU(self._nin_features)
         self.output = scn.OutputLayer(self._dimension)
         self.conv2 = scn.SubmanifoldConvolution(self._dimension, self._nin_features, 1, 3, False)
@@ -80,7 +80,7 @@ class SparseClassifier(nn.Module):
         return x
 
         
-    def SparseSEResNetB2(dimension, nInputPlanes, layers):
+    def SparseSEResNetB2(self,dimension, nInputPlanes, layers):
         """
         pre-activated ResNet
         e.g. layers = {{'basic',16,2,1},{'basic',32,2}}
@@ -98,53 +98,33 @@ class SparseClassifier(nn.Module):
         for blockType, n, reps, stride in layers:
             for rep in range(reps):
                 if blockType[0] == 'b':  # basic block
-                    if rep == 0:
-                        m.add(scn.BatchNormReLU(nPlanes))
-                        m.add(
-                            scn.ConcatTable().add(
-                                scn.Sequential().add(
-                                    scn.SubmanifoldConvolution(
-                                        dimension,
-                                        nPlanes,
-                                        n,
-                                        3,
-                                        False) if stride == 1 else scn.Convolution(
-                                        dimension,
-                                        nPlanes,
-                                        n,
-                                        3,
-                                        stride,
-                                        False)) .add(
-                                    scn.BatchNormReLU(n)) .add(
-                                    scn.SubmanifoldConvolution(
-                                        dimension,
-                                        n,
-                                        n,
-                                        3,
-                                        False))) .add(
-                                residual(
+                    m.add(scn.BatchNormReLU(nPlanes))
+                    m.add(
+                        scn.ConcatTable().add(
+                            scn.Sequential().add(
+                                scn.SubmanifoldConvolution(
+                                    dimension,
                                     nPlanes,
                                     n,
-                                    stride)))
-                    else:
-                        m.add(
-                            scn.ConcatTable().add(
-                                scn.Sequential().add(
-                                    scn.BatchNormReLU(nPlanes)) .add(
-                                    scn.SubmanifoldConvolution(
-                                        dimension,
-                                        nPlanes,
-                                        n,
-                                        3,
-                                        False)) .add(
-                                    scn.BatchNormReLU(n)) .add(
-                                    scn.SubmanifoldConvolution(
-                                        dimension,
-                                        n,
-                                        n,
-                                        3,
-                                        False))) .add(
-                                scn.Identity()))
+                                    3,
+                                    False) if stride == 1 else scn.Convolution(
+                                    dimension,
+                                    nPlanes,
+                                    n,
+                                    3,
+                                    stride,
+                                    False)) .add(
+                                scn.BatchNormReLU(n)) .add(
+                                scn.SubmanifoldConvolution(
+                                    dimension,
+                                    n,
+                                    n,
+                                    3,
+                                    False))) .add(
+                            residual(
+                                nPlanes,
+                                n,
+                                stride)))
                 nPlanes = n
                 m.add(scn.AddTable())
         m.add(scn.BatchNormReLU(nPlanes))
