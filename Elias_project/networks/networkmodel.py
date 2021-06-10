@@ -1,11 +1,15 @@
 # Imports
 import os,sys,time
+import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-sys.path.append("/home/ebengh01/SparseConvNet")
+# sys.path.append("/home/ebengh01/SparseConvNet")
 import sparseconvnet as scn
+import se_module as se # can get rid of this eventually
+import SEResNetB2 as b2
+import SEResNetBN as bn
 
 import time
 import math
@@ -31,107 +35,118 @@ class SparseClassifier(nn.Module):
             raise ValueError("expected inputshape to contain size of 2 dimensions only."
                              +"given %d values"%(len(self._inputshape)))
         self._reps = reps
+        self._inReps = 3
         self._nin_features = nin_features
         self._nout_features = nout_features
         self._nplanes = [nin_features, 2*nin_features, 3*nin_features, 4*nin_features, 5*nin_features]
-        self._layers = [['s',16,reps,1]]
-        self._show_sizes = show_sizes
-
-        # self.sparseModel = scn.Sequential().add(
-        #    scn.InputLayer(self._dimension, self._inputshape, mode=self._mode)).add(
-        #    scn.SubmanifoldConvolution(self._dimension, 1, self._nin_features, 3, False)).add(
-        #    scn.UNet(self._dimension, self._reps, self._nplanes, residual_blocks=True, downsample=[2,2])).add(
-        #    scn.BatchNormReLU(self._nin_features)).add(
-        #    scn.OutputLayer(self._dimension))
-        
-        
+        self._show_sizes = show_sizes        
 
         self.input = scn.InputLayer(self._dimension, self._inputshape, mode=self._mode)
-        self.conv1 = scn.SubmanifoldConvolution(self._dimension, 1, self._nin_features, 7, False) # change to 65 convolution kernels? how?
-        self.maxPool = scn.MaxPooling(self._dimension,2,2) # Unsure if this is the right pool_size and pool_stride
-        self.sparseSEResNetB2 = self.SparseSEResNetB2(self._dimension, self._nin_features, self._layers)
-        # self.testSE = self.SELayer(self._nin_features)
-        # self.sparseResNet = scn.SparseResNet(self._dimension, self._nin_features, self._layers)
-        self.batchnorm = scn.BatchNormReLU(self._nin_features)
-        self.output = scn.OutputLayer(self._dimension)
-        self.conv2 = scn.SubmanifoldConvolution(self._dimension, self._nin_features, 1, 3, False)
-
+        self.conv1 = scn.SubmanifoldConvolution(self._dimension, 1, self._nin_features, 7, False)
+        self.maxPool = scn.MaxPooling(self._dimension,2,2)
+        self.makeDense = scn.SparseToDense(self._dimension, self._nin_features)
+        self.SEResNetB2 = b2.SEResNetB2(self._nin_features, self._nout_features, self._inReps)
+        # concatenate in forward pass
+        self.SEResNetBN = bn.SEResNetBN(self._nin_features, self._nout_features, self._reps)
+        self._nin_features = self._nin_features*8
+        self._nout_features = self._nout_features*8
+        self.output = nn.Sequential(
+                          nn.AdaptiveAvgPool2d(1),
+                          nn.Flatten(),
+                          nn.Linear(512, 1000)
+                      )
+        self.flavors = nn.Sequential(
+                      nn.Linear(1000, 4),
+                      nn.Softmax(1)
+                  )
+        self.interactionType = nn.Sequential(
+                      nn.Linear(1000, 4),
+                      nn.Softmax(1)
+                  )
+        self.nProton = nn.Sequential(
+                      nn.Linear(1000, 4),
+                      nn.Softmax(1)
+                  )
+        self.nCPion = nn.Sequential(
+                      nn.Linear(1000, 4),
+                      nn.Softmax(1)
+                  )
+        self.nNPion = nn.Sequential(
+                      nn.Linear(1000, 4),
+                      nn.Softmax(1)
+                  )
+        self.nNeutron = nn.Sequential(
+                      nn.Linear(1000, 4),
+                      nn.Softmax(1)
+                  )
+        
     def forward(self,coord_t,input_t,batchsize):
+        for i in range(3):
+            print("Input: ", i)
+            if self._show_sizes:
+                print( "coord_t ",coord_t[i].shape)
+                print( "input_t ",input_t[i].shape)
+        y = (coord_t[0],input_t[0],batchsize)
+        z = (coord_t[1],input_t[1],batchsize)
+        w = (coord_t[2],input_t[2],batchsize)
+        n = [y,z,w]
+        for i in range(3):
+            print("Input: ", i)
+            n[i] = (coord_t[i],input_t[i],batchsize)
+            n[i]=self.input(n[i])
+            if self._show_sizes:
+                print ("inputlayer: ",n[i].features.shape)
+            n[i]=self.conv1(n[i])
+            if self._show_sizes:
+                print ("conv1: ",n[i].features.shape)
+            n[i]=self.maxPool(n[i])
+            if self._show_sizes:
+                print ("maxPool: ",n[i].features.shape)
+            n[i]=self.makeDense(n[i])
+            if self._show_sizes:
+                print ("makeDense: ",n[i].shape)
+            for r in range(self._inReps):
+                n[i]=self.SEResNetB2(n[i])
+                if self._show_sizes:
+                    print ("SEResNetB2: ",n[i].shape)
+        x = self.concatenateInputs(n)
         if self._show_sizes:
-            print( "coord_t ",coord_t.shape)
-            print( "input_t ",input_t.shape)
-        x=(coord_t,input_t,batchsize)
-        x=self.input(x)
+            print ("Concatenate: ",x.shape)
+        x = self.SEResNetBN(x)
         if self._show_sizes:
-            print ("inputlayer: ",x.features.shape)
-        x=self.conv1(x)
-        if self._show_sizes:
-            print ("conv1: ",x.features.shape)
-        x=self.sparseResNet(x)
-        if self._show_sizes:
-            print ("unet: ",x.features.shape)
-        x=self.batchnorm(x)
-        if self._show_sizes:
-            print ("batchnorm: ",x.features.shape)
-        x=self.conv2(x)
-        if self._show_sizes:
-            print ("conv2: ",x.features.shape)
+            print ("SEResNetBN: ",x.shape)
         x=self.output(x)
         if self._show_sizes:
             print ("output: ",x.shape)
-        return x
-
+        a = self.flavors(x)
+        if self._show_sizes:
+            print ("flavors: ",a.shape)
+        b = self.interactionType(x)
+        if self._show_sizes:
+            print ("Interaction type: ",b.shape)
+        c = self.nProton(x)
+        if self._show_sizes:
+            print ("num protons: ",c.shape)
+        d = self.nCPion(x)
+        if self._show_sizes:
+            print ("num charged pions: ",d.shape)
+        e = self.nNPion(x)
+        if self._show_sizes:
+            print ("num neutral pions: ",e.shape)
+        f = self.nNeutron(x)
+        if self._show_sizes:
+            print ("num Neutrons: ",f.shape)
+        out = [a,b,c,d,e,f]
+        print("Final output: ",out)
+        return out
         
-    def SparseSEResNetB2(self,dimension, nInputPlanes, layers):
-        """
-        pre-activated ResNet
-        e.g. layers = {{'basic',16,2,1},{'basic',32,2}}
-        """
-        nPlanes = nInputPlanes
-        m = scn.Sequential()
-
-        for blockType, n, reps, stride in layers:
-            for rep in range(reps):
-                if blockType[0] == 's':  # SE block
-                    m.add(scn.BatchNormReLU(nPlanes))
-                    m.add(
-                        scn.ConcatTable().add(
-                            scn.Sequential().add(
-                                scn.SubmanifoldConvolution(
-                                    dimension,
-                                    nPlanes,
-                                    n,
-                                    3,
-                                    False) if stride == 1 else scn.Convolution(
-                                    dimension,
-                                    nPlanes,
-                                    n,
-                                    3,
-                                    stride,
-                                    False)).add(
-                                scn.BatchNormReLU(n)) .add(
-                                scn.SubmanifoldConvolution(
-                                    dimension,
-                                    n,
-                                    n,
-                                    3,
-                                    False)) .add(
-                                self.SELayer(nPlanes))) .add(
-                                scn.Identity()))
-                nPlanes = n
-                m.add(scn.AddTable())
-        m.add(scn.BatchNormReLU(nPlanes))
-        return m
-
-        # TODO: scale the input conv layer with the SE output
-    def SELayer(self, channel, reduction=16):
-        m = scn.Sequential()
-        m.add(scn.SparseToDense(self._dimension, self._nin_features))
-        m.add(nn.AdaptiveAvgPool2d(1))
-        m.add(scn.Sequential(
-            nn.Linear(channel, channel // reduction, bias=False), # add back // reduction on output
-            nn.ReLU(),
-            nn.Linear(channel // reduction, channel, bias=False), # add back // reduction on input
-            nn.Sigmoid()))
-        m.add(scn.DenseToSparse(self._dimension))
-        return m
+    def concatenateInputs(self, inputs):
+        out = torch.Tensor.add(inputs[0],inputs[1])
+        out = torch.Tensor.add(out,inputs[2])
+        # inputs[0].detach().numpy()
+        # inputs[1].detach().numpy()
+        # inputs[2].detach().numpy()
+        # out = np.add(inputs[0].detach().numpy(),inputs[1].detach().numpy(),inputs[2].detach().numpy())
+        # out = torch.from_numpy(out)
+        return out    
+        
