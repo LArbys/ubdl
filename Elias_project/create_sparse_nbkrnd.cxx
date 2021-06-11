@@ -30,7 +30,7 @@
 // initalize helper functions
 void print_signal();
 void print_rse(int run, int subrun, int event);
-std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wire, int subrun_wire){
+std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wire, int subrun_wire);
 
 
 
@@ -240,15 +240,18 @@ std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry,
    _enu_true = ev_mctruth->at(0).GetNeutrino().Nu().Momentum().E()*1000.0;
    std::cout<<"Neutrino Energy: "<<_enu_true<<std::endl;
    
-   int flavors = -1;
+   int flavors;
+   int nc_cc;
    // cc or nc event?
    bool ccevent = false;
    int ccnc = ev_mctruth->at(0).GetNeutrino().CCNC();
    if (ccnc ==0 ) ccevent=true;
-   if (ccevent) std::cout<<"Is a CC Event"<<std::endl;
-   else {
+   if (ccevent){
+	   std::cout<<"Is a CC Event"<<std::endl;
+	   nc_cc = 1;
+   } else {
 	   std::cout<<"Is a NC Event"<<std::endl;
-	   flavors = 0;
+	   nc_cc = 0;
    }
    
    
@@ -256,17 +259,17 @@ std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry,
    int nu_pdg = ev_mctruth->at(0).GetNeutrino().Nu().PdgCode();
    if (nu_pdg== 12){
 	   std::cout<<"Muon Neutrino event "<<std::endl;
-	   flavors = 1;
+	   flavors = 0;
    } else if (nu_pdg== -12){
 	   std::cout<<"Muon Anti Neutrino event "<<std::endl;
-	   flavors = 2;
+	   flavors = 1;
    } else if (nu_pdg== 14){
 	   std::cout<<"Electron Neutrino event "<<std::endl;
-	   flavors = 3;
+	   flavors = 2;
    } 
    else if (nu_pdg== -14){
 	   std::cout<<"Electon Anti Neutrino event "<<std::endl;
-	   flavors = 4;
+	   flavors = 3;
    }
    
    int interactionType;
@@ -329,29 +332,33 @@ std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry,
    event = event + num_pion_charged*10;
    event = event + num_pion_neutral;
    
-   // makes subrun also store the flavor of the ineraction and the interaction type
+   // makes subrun also store NC/CC, the flavor of the ineraction and the interaction type
+   // NC/CC:
+   // NC = 0
+   // CC = 1
    // Flavors:
-   // NC event = 0
-   // CC muon = 1
-   // CC antimuon = 2
-   // CC electron = 3
-   // CC antielectron = 4
+   // muon neutrino= 0
+   // muon antineutrino = 1
+   // electron neutrino = 2
+   // electron antineutrino = 3
    // 
    // interaction type:
    // QE = 0
    // RES = 1
    // DIS = 2
    // other = 3
-   // example: subrun = 12930
+   // example: subrun = 129030
    // subrun: 129
-   // flavor: CC electron neutrino
+   // NC/CC: NC
+   // flavor: electron neutrino
    // interaction type: QE
    int subrun = subrun_wire;
-   subrun = subrun*100;
+   subrun = subrun*1000;
+   subrun = subrun + nc_cc*100;
    subrun = subrun + flavors*10;
    subrun = subrun + interactionType;
    
    std::vector<int> truth = {event, subrun};
    
-   return event;
+   return truth;
 }
