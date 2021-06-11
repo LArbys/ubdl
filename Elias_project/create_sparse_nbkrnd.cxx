@@ -30,7 +30,7 @@
 // initalize helper functions
 void print_signal();
 void print_rse(int run, int subrun, int event);
-int get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wire);
+std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wire, int subrun_wire){
 
 
 
@@ -127,9 +127,11 @@ int main(int nargs, char** argv){
             print_rse(run_thrumu, subrun_thrumu, event_thrumu);
         }
 
-		int event = get_truth_info(io_larlite, entry, event_wire);
+		std::vector<int> truth = get_truth_info(io_larlite, entry, event_wire, subrun_wire);
+		int event = truth[0];
+		int subrun = truth[1];
 		std::cout << "New ";
-		print_rse(run_wire, subrun_wire, event);
+		print_rse(run_wire, subrun, event);
        
        
     // now create the Image2D, will be used to initialize the SparseImage
@@ -225,7 +227,7 @@ void print_rse(int run, int subrun, int event){
 * charged pions: 0
 * uncharged pions: 1
 */
-int get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wire){
+std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wire, int subrun_wire){
 	//Now lets get all the truth information and print to std::cout
 	io_larlite->go_to(entry);
 	
@@ -238,26 +240,52 @@ int get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wi
    _enu_true = ev_mctruth->at(0).GetNeutrino().Nu().Momentum().E()*1000.0;
    std::cout<<"Neutrino Energy: "<<_enu_true<<std::endl;
    
+   int flavors = -1;
    // cc or nc event?
    bool ccevent = false;
    int ccnc = ev_mctruth->at(0).GetNeutrino().CCNC();
    if (ccnc ==0 ) ccevent=true;
    if (ccevent) std::cout<<"Is a CC Event"<<std::endl;
-   else std::cout<<"Is a NC Event"<<std::endl;
+   else {
+	   std::cout<<"Is a NC Event"<<std::endl;
+	   flavors = 0;
+   }
+   
    
    // type of Neutrino
    int nu_pdg = ev_mctruth->at(0).GetNeutrino().Nu().PdgCode();
-   if (nu_pdg== 12) std::cout<<"Muon Neutrino event "<<std::endl;
-   else if (nu_pdg== -12) std::cout<<"Muon Anti Neutrino event "<<std::endl;
-   else if (nu_pdg== 14) std::cout<<"Electron Neutrino event "<<std::endl;
-   else if (nu_pdg== -14) std::cout<<"Electon Anti Neutrino event "<<std::endl;
+   if (nu_pdg== 12){
+	   std::cout<<"Muon Neutrino event "<<std::endl;
+	   flavors = 1;
+   } else if (nu_pdg== -12){
+	   std::cout<<"Muon Anti Neutrino event "<<std::endl;
+	   flavors = 2;
+   } else if (nu_pdg== 14){
+	   std::cout<<"Electron Neutrino event "<<std::endl;
+	   flavors = 3;
+   } 
+   else if (nu_pdg== -14){
+	   std::cout<<"Electon Anti Neutrino event "<<std::endl;
+	   flavors = 4;
+   }
    
+   int interactionType;
    // type of interction - see comments at end of script
    int int_type= ev_mctruth->at(0).GetNeutrino().InteractionType();
-   if (int_type == 1001 || int_type == 1002) std::cout<<"QE Interaction "<<std::endl;
-   else if (int_type >= 1003 && int_type <= 1090) std::cout<<"RES Interaction "<<std::endl;
-   else if (int_type == 1092 || int_type == 1091) std::cout<<"DIS Interaction "<<std::endl;
-   else std::cout<<"Other Interaction: "<<int_type<<std::endl;
+   if (int_type == 1001 || int_type == 1002){
+	   std::cout<<"QE Interaction "<<std::endl;
+	   interactionType = 0;
+   } else if (int_type >= 1003 && int_type <= 1090){
+	   std::cout<<"RES Interaction "<<std::endl;
+	   interactionType = 1;
+   } else if (int_type == 1092 || int_type == 1091){
+	   std::cout<<"DIS Interaction "<<std::endl;
+	   interactionType = 2;
+   } else{
+	   std::cout<<"Other Interaction: "<<int_type<<std::endl;
+	   interactionType = 3;
+   }
+
    
    int num_protons = 0;
    int num_neutrons = 0;
@@ -300,5 +328,30 @@ int get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wi
    event = event + num_neutrons*100;
    event = event + num_pion_charged*10;
    event = event + num_pion_neutral;
+   
+   // makes subrun also store the flavor of the ineraction and the interaction type
+   // Flavors:
+   // NC event = 0
+   // CC muon = 1
+   // CC antimuon = 2
+   // CC electron = 3
+   // CC antielectron = 4
+   // 
+   // interaction type:
+   // QE = 0
+   // RES = 1
+   // DIS = 2
+   // other = 3
+   // example: subrun = 12930
+   // subrun: 129
+   // flavor: CC electron neutrino
+   // interaction type: QE
+   int subrun = subrun_wire;
+   subrun = subrun*100;
+   subrun = subrun + flavors*10;
+   subrun = subrun + interactionType;
+   
+   std::vector<int> truth = {event, subrun};
+   
    return event;
 }
