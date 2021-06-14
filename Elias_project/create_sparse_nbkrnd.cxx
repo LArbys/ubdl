@@ -165,7 +165,7 @@ int main(int nargs, char** argv){
 	
 	ev_out_adc_dlreco_sparse->Emplace( std::move(out_sparse) );
 	
-	out_larcv->set_id( run_wire, subrun_wire, event);
+	out_larcv->set_id( run_wire, subrun, event);
     out_larcv->save_entry();
 	} //End of entry loop	
   // close larcv I) manager
