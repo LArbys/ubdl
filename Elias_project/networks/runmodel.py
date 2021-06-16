@@ -30,8 +30,9 @@ import torchvision.models as models
 import torch.nn.functional as F
 
 
-from networkmodel import SparseClassifier
+from dense_networkmodel import SparseClassifier
 
+import dataLoader as dl
 
 # ===================================================
 # TOP-LEVEL PARAMETERS
@@ -50,10 +51,10 @@ def main():
     ninput_features  = 64
     noutput_features = 64
     nplanes = 5
-    reps = 1    
+   
         
-    # self, inputshape, reps, nin_features, nout_features, nplanes,show_sizes
-    model = SparseClassifier( (IMAGE_HEIGHT,IMAGE_WIDTH), reps,
+    # self, inputshape, nin_features, nout_features, nplanes,show_sizes
+    model = SparseClassifier( (IMAGE_HEIGHT,IMAGE_WIDTH),
                            ninput_features, noutput_features,
                            nplanes, show_sizes=True).to(DEVICE)
 
@@ -64,16 +65,43 @@ def main():
 
     #put the network in train mode
     model.train()
-    ncoords = [3789000, 2890472, 8931000]
+    
+    # TODO: make sure this all works for multiple inputs
+    
+    all_data = dl.load_rootfile_training("data/output_10001.root", 0, 1)
+    img_list = dl.split_into_planes(all_data[0], 0, 1)
+    coords_np = img_list[0]
+    inputs_np = img_list[1]
+    
+    ncoords = [coords_np[0].shape[0], coords_np[1].shape[0], coords_np[2].shape[0]]
+    
+    
+    
+    # ncoords = [3789000, 2890472, 8931000]
     batchsize = 1
+    # torch.set_default_dtype(torch.float32)
     coord_t = [torch.Tensor(), torch.Tensor(), torch.Tensor()]
     input_t = [torch.Tensor(), torch.Tensor(), torch.Tensor()]
+    print("coord_t type:",coord_t[0].dtype)
+    print("input_t type:",input_t[0].dtype)
     for i in range(3):
-        print(ncoords[i])
-        coord_t[i] = torch.zeros( (ncoords[i],3), dtype=torch.int )
-        input_t[i] = torch.zeros( (ncoords[i],1), dtype=torch.float)    
+        print("ncoords[i]:",ncoords[i])
+        coord_t[i] = torch.from_numpy(coords_np[i])
+        input_t[i] = torch.from_numpy(inputs_np[i])
+        
+        # input_t[i] = torch.zeros( (ncoords[i],1), dtype=torch.float)
+        # input_t[i].set_default_dtype(torch.float64)
+        print("coord_t type:",coord_t[i].dtype)
+        print("input_t type:",input_t[i].dtype)
+    
     # send the prediction through the model
-    predict_t = model(coord_t, input_t,batchsize)
+    planes = dl.get_truth_planes(all_data[4], 0, 1)
+    if planes == 0:
+        predict_t = model(coord_t, input_t,batchsize)
+    else:
+        print("Empty planes")
+        predict_t = -1
+    
 
     
 
