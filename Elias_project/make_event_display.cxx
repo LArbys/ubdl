@@ -94,7 +94,7 @@ int main(int nargs, char** argv){
 		std::cout << "\n";
 
     // load in the event display image (contains the 3 planes)
-    larcv::EventImage2D* ev_in_adc_dlreco  = (larcv::EventImage2D*)(io_larcv->get_data(larcv::kProductImage2D,"mask_wire"));
+    larcv::EventImage2D* ev_in_adc_dlreco  = (larcv::EventImage2D*)(io_larcv->get_data(larcv::kProductImage2D,"wire"));
 
     // get identifying info of entry
     int run = ev_in_adc_dlreco->run();

@@ -30,7 +30,7 @@
 // initalize helper functions
 void print_signal();
 void print_rse(int run, int subrun, int event);
-std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wire, int subrun_wire);
+std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wire, int subrun_wire, std::vector<int> pxl_count);
 
 
 
@@ -92,7 +92,7 @@ int main(int nargs, char** argv){
 		nentries_mc_cv = start_entry+1;
 	}
 	
-	
+	int zero_count = 0;
     
   // loop through all the entries in the file
 	for (int entry=start_entry; entry < nentries_mc_cv; entry++){
@@ -127,15 +127,13 @@ int main(int nargs, char** argv){
             print_rse(run_thrumu, subrun_thrumu, event_thrumu);
         }
 
-		std::vector<int> truth = get_truth_info(io_larlite, entry, event_wire, subrun_wire);
-		int event = truth[0];
-		int subrun = truth[1];
-		std::cout << "New ";
-		print_rse(run_wire, subrun, event);
+	
        
        
     // now create the Image2D, will be used to initialize the SparseImage
     std::vector<larcv::Image2D> out_v;
+	std::vector<int> pxl_count;
+	pxl_count.resize(3);
 
     // loop through all the pixels of the input to get the pixel information (number is standard uboone image size)
     for (int plane = 0; plane<3;plane++){
@@ -148,12 +146,22 @@ int main(int nargs, char** argv){
           // get the pixel value for each plane
           double val = img_2d_in_v_wire[plane].pixel(row,col);
 		  if (img_2d_in_v_thrumu[plane].pixel(row,col) != 0) val = 0;
+		  if (val != 0) pxl_count[plane]++;
           // now save to new image2d
           single_out.set_pixel(row,col,val);
         }//end of loop over rows
       }//end of loop over cols
       out_v.emplace_back( std::move(single_out) );
     }//end of loop over planes
+	
+	// Getting truth information
+	std::vector<int> truth = get_truth_info(io_larlite, entry, event_wire, subrun_wire, pxl_count);
+	int event = truth[0];
+	int subrun = truth[1];
+	std::cout << "New ";
+	print_rse(run_wire, subrun, event);
+	
+	
 	
 	// Saving sparse:
 	std::vector<float> thresholds;
@@ -162,12 +170,17 @@ int main(int nargs, char** argv){
 	larcv::EventSparseImage* ev_out_adc_dlreco_sparse = (larcv::EventSparseImage*) out_larcv->get_data(larcv::kProductSparseImage,"nbkrnd_sparse");
 	// ev_out_adc_dlreco_sparse->clear();
 	larcv::SparseImage out_sparse(out_v, thresholds);
-	
+	std::cout << "out_sparse length: " << out_sparse.len() << "\n";
+	if (out_sparse.len() == 0) zero_count++;
+	// ^note that this^ will not necessarily catch any zero planes
 	ev_out_adc_dlreco_sparse->Emplace( std::move(out_sparse) );
-	
+	print_rse(run_wire, subrun, event);
 	out_larcv->set_id( run_wire, subrun, event);
     out_larcv->save_entry();
-	} //End of entry loop	
+	} //End of entry loop
+	
+	std::cout << "total zero count: " << zero_count << "\n";
+		
   // close larcv I) manager
 	in_larcv->finalize();
 	delete in_larcv;
@@ -217,17 +230,12 @@ void print_rse(int run, int subrun, int event){
 
 /* get_truth_info
 * Purpose: gets the truth information from larlite
-* Parameters: larlite storage manager, entry index, event id
-* Returns: a modified event that contains the number of protons, neutrons,
-* charged and uncharged pions.
-* example: event = 66104301
-* event: 6610
-* protons: 4
-* neutrons: 3
-* charged pions: 0
-* uncharged pions: 1
+* Parameters: larlite storage manager, entry index, event id, plane pixel count vector
+* Returns: a modified event/subrun that contains the number of protons, neutrons,
+* charged and uncharged pions, CC/NC, flavor, interaction type, number of empty planes.
+* See bottom of function for examples
 */
-std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wire, int subrun_wire){
+std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry, int event_wire, int subrun_wire, std::vector<int> pxl_count){
 	//Now lets get all the truth information and print to std::cout
 	io_larlite->go_to(entry);
 	
@@ -332,10 +340,11 @@ std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry,
    event = event + num_pion_charged*10;
    event = event + num_pion_neutral;
    
-   // makes subrun also store NC/CC, the flavor of the ineraction and the interaction type
+   // makes subrun also store NC/CC, the flavor of the ineraction, the interaction type, and how many planes are empty
    // NC/CC:
    // NC = 0
    // CC = 1
+   //
    // Flavors:
    // muon neutrino= 0
    // muon antineutrino = 1
@@ -347,16 +356,31 @@ std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry,
    // RES = 1
    // DIS = 2
    // other = 3
-   // example: subrun = 129030
+   //
+   // planes:
+   // no planes empty = 0
+   // 1 plane empty = 1
+   // 2 plane empty = 2
+   // 3 plane empty = 3
+   //
+   // example: subrun = 1290300
    // subrun: 129
    // NC/CC: NC
    // flavor: electron neutrino
    // interaction type: QE
+   // planes: none empty
    int subrun = subrun_wire;
-   subrun = subrun*1000;
-   subrun = subrun + nc_cc*100;
-   subrun = subrun + flavors*10;
-   subrun = subrun + interactionType;
+   subrun = subrun*10000;
+   subrun = subrun + nc_cc*1000;
+   subrun = subrun + flavors*100;
+   subrun = subrun + interactionType*10;
+   int num_empty_planes = 0;
+   for (int i = 0; i < 3; i++){
+	   std::cout << "pxl_count for plane " << i << ": " << pxl_count[i] << "\n";
+	   if (pxl_count[i] == 0) num_empty_planes++;
+   }
+   std::cout << "num_empty_planes: " << num_empty_planes << "\n";
+   subrun = subrun + num_empty_planes;
    
    std::vector<int> truth = {event, subrun};
    
