@@ -17,7 +17,7 @@ import math
 import numpy as np
 
 class SparseClassifier(nn.Module):
-    def __init__(self, inputshape, nin_features, nout_features, nplanes,show_sizes):
+    def __init__(self, inputshape, nin_features, nout_features, show_sizes):
         nn.Module.__init__(self)
         """
         inputs
@@ -25,7 +25,6 @@ class SparseClassifier(nn.Module):
         inputshape [list of int]: dimensions of the matrix or image
         nin_features [int]: number of features in the first convolutional layer
         nout_features [int]: number of features that feed into the regression layer
-        nPlanes [int]: the depth of the U-Net
         show_sizes [bool]: if True, print sizes while running forward
         """
         self._mode = 0
@@ -37,7 +36,6 @@ class SparseClassifier(nn.Module):
         self._inReps = 3
         self._nin_features = nin_features
         self._nout_features = nout_features
-        self._nplanes = [nin_features, 2*nin_features, 3*nin_features, 4*nin_features, 5*nin_features]
         self._show_sizes = show_sizes        
 
         self.input = scn.InputLayer(self._dimension, self._inputshape, mode=self._mode)
@@ -65,27 +63,27 @@ class SparseClassifier(nn.Module):
                       )
         self.flavors = nn.Sequential(
                       nn.Linear(1000, 4),
-                      nn.Softmax(1)
+                      nn.Softmax(0)
                   )
         self.interactionType = nn.Sequential(
                       nn.Linear(1000, 4),
-                      nn.Softmax(1)
+                      nn.Softmax(0)
                   )
         self.nProton = nn.Sequential(
                       nn.Linear(1000, 4),
-                      nn.Softmax(1)
+                      nn.Softmax(0)
                   )
         self.nCPion = nn.Sequential(
                       nn.Linear(1000, 4),
-                      nn.Softmax(1)
+                      nn.Softmax(0)
                   )
         self.nNPion = nn.Sequential(
                       nn.Linear(1000, 4),
-                      nn.Softmax(1)
+                      nn.Softmax(0)
                   )
         self.nNeutron = nn.Sequential(
                       nn.Linear(1000, 4),
-                      nn.Softmax(1)
+                      nn.Softmax(0)
                   )
         
     def forward(self,coord_t,input_t,batchsize):
@@ -120,7 +118,7 @@ class SparseClassifier(nn.Module):
             n[i]=self.maxPool(n[i])
             if self._show_sizes:
                 print ("maxPool:",n[i].features.shape)
-                print("maxPool spatial sizes:",n[i].spatial_size)
+                # print("maxPool spatial sizes:",n[i].spatial_size)
                 # print("maxPool:",n[i])
                 # print("done with maxPool")
             for r in range(self._inReps):
@@ -140,16 +138,15 @@ class SparseClassifier(nn.Module):
         print("size of sparse after concat:",x.features.shape)
         
         
-        print("first value:",x.features[0,0])
+        # print("first value:",x.features[0,0])
         inputshape2[0] = inputshape2[0]*3
-        print("x before SEResNetBN:",x)
+        # print("x before SEResNetBN:",x)
         tic = time.perf_counter()
         x = self.SEResNetBN(x, inputshape2)
         toc = time.perf_counter()
         print(f"SEResNetBN in {toc - tic:0.4f} seconds")
         if self._show_sizes:
             print ("SEResNetBN:",x.features.shape)
-        print("Taking a look after SEResNetBN",x)
         inputshape2[0] = inputshape2[0]//2 + 2
         inputshape2[1] = inputshape2[1]//2 + 1
         inputshape2[0] = inputshape2[0]//2 + 2
