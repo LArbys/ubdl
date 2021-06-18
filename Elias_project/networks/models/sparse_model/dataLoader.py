@@ -74,30 +74,60 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
         
         subrun = ev_sparse.subrun()
         print("raw subrun:",subrun)
+        
         nc_cc = (subrun%10000)//1000
         print("nc_cc:",nc_cc)
         flavors = (subrun%1000)//100
         print("flavors:",flavors)
+        if nc_cc == 1:
+            if flavors == 0 or flavors == 1:
+                c_flavors = 0
+            elif flavors == 2 or flavors == 3:
+                c_flavors = 1
+        else: # nc_cc = 0
+            if flavors == 0 or flavors == 1:
+                c_flavors = 2
+            elif flavors == 2 or flavors == 3:
+                c_flavors = 3
+        print("c_flavors:",c_flavors)
+
         interactionType = (subrun%100)//10
         print("interactionType:",interactionType)
+        
         planes = subrun%10
         print("planes:",planes)
+        
         subrun = subrun//10000
         print("subrun:",subrun)
         
+        
         event = ev_sparse.event()
         print("raw event:", event)
+        
         num_protons = (event%10000)//1000
+        if num_protons > 2:
+            num_protons = 3
         print("num_protons:",num_protons)
+        
         num_neutrons = (event%1000)//100
+        if num_neutrons > 2:
+            num_neutrons = 3
         print("num_neutrons:", num_neutrons)
+        
         num_pion_charged = (event%100)//10
+        if num_pion_charged > 2:
+            num_pion_charged = 3
         print("num_pion_charged:", num_pion_charged)
+        
         num_pion_neutral = event%10
+        if num_pion_neutral > 2:
+            num_pion_neutral = 3
         print("num_pion_neutral:",num_pion_neutral)
+
         event = event//10000
         print("event:",event)
-        truth_list = [nc_cc, flavors,interactionType, num_protons, num_pion_charged, num_pion_neutral, num_neutrons, planes]
+        
+        truth_list = [c_flavors, interactionType, num_protons, num_pion_charged, num_pion_neutral, num_neutrons, planes]
         
         runs.append(ev_sparse.run())
         subruns.append(subrun)
@@ -174,9 +204,12 @@ def get_coords_inputs_tensor(img_list, start_entry = 0, end_entry = -1):
 
     
 def get_truth_planes(truth, entry):
-    truth_list = truth[entry]
-    planes = truth_list[7]
+    #truth_list = truth[entry]
+    # planes = truth_list[7]
+    planes = truth.pop()
+
     return planes
+    
     
     
     

@@ -173,22 +173,22 @@ class SparseClassifier(nn.Module):
         
         if self._show_sizes:
             print ("output:",x.shape)
-        a = self.flavors(x)
+        a = self.flavors(x).view(1,4)
         if self._show_sizes:
             print ("flavors:",a.shape)
-        b = self.interactionType(x)
+        b = self.interactionType(x).view(1,4)
         if self._show_sizes:
             print ("Interaction type:",b.shape)
-        c = self.nProton(x)
+        c = self.nProton(x).view(1,4)
         if self._show_sizes:
             print ("num protons:",c.shape)
-        d = self.nCPion(x)
+        d = self.nCPion(x).view(1,4)
         if self._show_sizes:
             print ("num charged pions:",d.shape)
-        e = self.nNPion(x)
+        e = self.nNPion(x).view(1,4)
         if self._show_sizes:
             print ("num neutral pions:",e.shape)
-        f = self.nNeutron(x)
+        f = self.nNeutron(x).view(1,4)
         if self._show_sizes:
             print ("num Neutrons:",f.shape)
         out = [a,b,c,d,e,f]
