@@ -157,10 +157,7 @@ int main(int nargs, char** argv){
 	// Getting truth information
 	std::vector<int> truth = get_truth_info(io_larlite, entry, event_wire, subrun_wire, pxl_count);
 	int event = truth[0];
-	int subrun = truth[1];
-	std::cout << "New ";
-	print_rse(run_wire, subrun, event);
-	
+	int subrun = truth[1];	
 	
 	
 	// Saving sparse:

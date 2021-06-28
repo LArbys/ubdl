@@ -156,7 +156,7 @@ int main(int nargs, char** argv){
     TCanvas can("can", "histograms ", 3456, 1008);
 	  can.cd();
     // first draw charge image
-	  ev_disp_raw_u.SetTitle(Form("Image Raw U Plane Run: %d Subrun: %d Event: %d",run,subrun,event));
+	  ev_disp_raw_u.SetTitle(Form("Wire Image U Plane Run: %d Subrun: %d Event: %d",run,subrun,event));
 	  ev_disp_raw_u.SetXTitle("Column (Wire)");
 	  ev_disp_raw_u.SetYTitle("Row (6 Ticks)");
 	  ev_disp_raw_u.SetOption("COLZ");
@@ -168,7 +168,7 @@ int main(int nargs, char** argv){
     vtx_u.Draw("SAME");
 		can.SaveAs(Form("%s/output_%d_%d_%d_u%s.png",output_dir.c_str(),run,subrun,event,output_custom.c_str()));
 
-    ev_disp_raw_v.SetTitle(Form("Image Raw V Plane Run: %d Subrun: %d Event: %d",run,subrun,event));
+    ev_disp_raw_v.SetTitle(Form("Wire Image V Plane Run: %d Subrun: %d Event: %d",run,subrun,event));
 	  ev_disp_raw_v.SetXTitle("Column (Wire)");
 	  ev_disp_raw_v.SetYTitle("Row (6 Ticks)");
 	  ev_disp_raw_v.SetOption("COLZ");
@@ -179,7 +179,7 @@ int main(int nargs, char** argv){
     vtx_v.Draw("SAME");
 		can.SaveAs(Form("%s/output_%d_%d_%d_v%s.png",output_dir.c_str(),run,subrun,event,output_custom.c_str()));
 
-    ev_disp_raw_y.SetTitle(Form("Image Raw Y Plane Run: %d Subrun: %d Event: %d",run,subrun,event));
+    ev_disp_raw_y.SetTitle(Form("Wire Image Y Plane Run: %d Subrun: %d Event: %d",run,subrun,event));
 	  ev_disp_raw_y.SetXTitle("Column (Wire)");
 	  ev_disp_raw_y.SetYTitle("Row (6 Ticks)");
 	  ev_disp_raw_y.SetOption("COLZ");
