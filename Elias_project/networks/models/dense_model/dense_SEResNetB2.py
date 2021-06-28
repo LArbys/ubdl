@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 # sys.path.append("/home/ebengh01/SparseConvNet")
 import sparseconvnet as scn
-import se_module as se
+import dense_se_module as se
 
 import time
 import math
@@ -33,7 +33,7 @@ class SEResNetB2(nn.Module):
                            nn.BatchNorm2d(self.nIn, eps=0.0001, momentum=0.99),
                            nn.ReLU()
                        )
-                  
+    
     def forward(self, x):
         x = self.preRes(x)
         residual = x
@@ -41,4 +41,3 @@ class SEResNetB2(nn.Module):
         x += residual
         x = self.postRes(x)
         return x
-

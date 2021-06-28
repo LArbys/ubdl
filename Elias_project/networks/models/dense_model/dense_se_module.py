@@ -1,4 +1,5 @@
 from torch import nn
+import sparseconvnet as scn
 
 
 class SELayer(nn.Module):

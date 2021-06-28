@@ -31,15 +31,15 @@ import torch.nn.functional as F
 
 
 from networkmodel import SparseClassifier
-
+import dataLoader as dl
 
 # ===================================================
 # TOP-LEVEL PARAMETERS
 RUNPROFILER=False
 IMAGE_WIDTH=3456
-IMAGE_HEIGHT=1002
+IMAGE_HEIGHT=1024
 # ===================================================
-
+# NOTE: image height is really 1008
 
 def main():
 
@@ -49,13 +49,12 @@ def main():
     imgdims = 2
     ninput_features  = 64
     noutput_features = 64
-    nplanes = 5
-    reps = 1    
+   
         
-    # self, inputshape, reps, nin_features, nout_features, nplanes,show_sizes
-    model = SparseClassifier( (IMAGE_HEIGHT,IMAGE_WIDTH), reps,
+    # self, inputshape, nin_features, nout_features, show_sizes
+    model = SparseClassifier( (IMAGE_HEIGHT,IMAGE_WIDTH),
                            ninput_features, noutput_features,
-                           nplanes, show_sizes=True).to(DEVICE)
+                           show_sizes=True).to(DEVICE)
 
     # uncomment to dump model
     # if True:
@@ -64,18 +63,33 @@ def main():
 
     #put the network in train mode
     model.train()
-    ncoords = [3789000, 2890472, 8931000]
-    batchsize = 1
-    coord_t = [torch.Tensor(), torch.Tensor(), torch.Tensor()]
-    input_t = [torch.Tensor(), torch.Tensor(), torch.Tensor()]
-    for i in range(3):
-        print(ncoords[i])
-        coord_t[i] = torch.zeros( (ncoords[i],3), dtype=torch.int )
-        input_t[i] = torch.zeros( (ncoords[i],1), dtype=torch.float)    
-    # send the prediction through the model
-    predict_t = model(coord_t, input_t,batchsize)
-
+    all_data = dl.load_rootfile_training("/home/ebengh01/ubdl/Elias_project/networks/data/output_10001.root")
+    img_list = dl.split_into_planes(all_data[0])
+    print("len of img_list",len(img_list))
+    batchsize = 2
+    coords_inputs_t = dl.get_coords_inputs_tensor(img_list)
+    print("coords_inputs_t:",len(coords_inputs_t))
     
+    fulltic = time.perf_counter()
+    start_entry = 0
+    end_entry = 4
+    if end_entry > len(coords_inputs_t) or end_entry == -1:
+        end_entry = len(coords_inputs_t)
+    if start_entry > end_entry or start_entry < 0:
+        start_entry = 0
+    # send the prediction through the model
+    for i in range(start_entry, end_entry):
+        print("Entry:",i)
+        planes = dl.get_truth_planes(all_data[4], i)
+        if planes == 0:
+            coord_t = coords_inputs_t[i][0]
+            input_t = coords_inputs_t[i][1]
+            predict_t = model(coord_t, input_t,batchsize)
+        else:
+            print("Empty planes")
+            predict_t = -1
+    fulltoc = time.perf_counter()
+    print(f"multiple entries in {fulltoc - fulltic:0.4f} seconds")
 
     with torch.autograd.profiler.profile(enabled=RUNPROFILER) as prof:
 
