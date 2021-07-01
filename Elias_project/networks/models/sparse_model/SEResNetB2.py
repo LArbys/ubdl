@@ -33,7 +33,7 @@ class SEResNetB2(nn.Module):
         self.postRes = scn.BatchNormReLU(self.nIn)
     
     def forward(self, x, inputshape):
-        print("inputshape in SEResNetB2:",inputshape)
+        # print("inputshape in SEResNetB2:",inputshape)
         # print("pre-preRes shape: ",x.features.shape)
         x = self.preRes(x)
         # print("post-preRes shape: ",x.features.shape)

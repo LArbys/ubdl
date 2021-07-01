@@ -43,38 +43,38 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
         print("Loading Entry:", i, "of range", start_entry, end_entry)
         print()
         iocv.read_entry(i)
-        
+
         # ev_wire
         ev_sparse    = iocv.get_data(larcv.kProductSparseImage,"nbkrnd_sparse")
         ev_sparse_v = ev_sparse.SparseImageArray()
         # Get Sparse Image to a Numpy Array
-        
+
         # rows = y_wire_image2d.meta().rows()
         # cols = y_wire_image2d.meta().cols()
         # for c in range(cols):
         #     for r in range(rows):
         #         y_wire_np[c][r] = y_wire_image2d.pixel(r,c)
-        
+
         # if PARAMS['USE_CONV_IM']:
         #     y_wire_np = get_larmatch_features(PARAMS, y_wire_image2d)
         # else:
-        
-        
+
+
         ev_sparse_np = larcv.as_sparseimg_ndarray(ev_sparse_v[0])
         # for i in range(0,3):
         #     ev_sparse_np[i] = larcv.as_sparseimg_ndarray(ev_sparse_v[i]) # I am Speed.
-            
+
         print("shape test")
         print(ev_sparse_np.shape)
         # print("printing the data: ")
         # print(ev_sparse_np)
         full_image_list.append(ev_sparse_np)
-        
-        
-        
+
+
+
         subrun = ev_sparse.subrun()
         print("raw subrun:",subrun)
-        
+
         nc_cc = (subrun%10000)//1000
         print("nc_cc:",nc_cc)
         flavors = (subrun%1000)//100
@@ -93,32 +93,32 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
 
         interactionType = (subrun%100)//10
         print("interactionType:",interactionType)
-        
+
         planes = subrun%10
         print("planes:",planes)
-        
+
         subrun = subrun//10000
         print("subrun:",subrun)
-        
-        
+
+
         event = ev_sparse.event()
         print("raw event:", event)
-        
+
         num_protons = (event%10000)//1000
         if num_protons > 2:
             num_protons = 3
         print("num_protons:",num_protons)
-        
+
         num_neutrons = (event%1000)//100
         if num_neutrons > 2:
             num_neutrons = 3
         print("num_neutrons:", num_neutrons)
-        
+
         num_pion_charged = (event%100)//10
         if num_pion_charged > 2:
             num_pion_charged = 3
         print("num_pion_charged:", num_pion_charged)
-        
+
         num_pion_neutral = event%10
         if num_pion_neutral > 2:
             num_pion_neutral = 3
@@ -126,23 +126,24 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
 
         event = event//10000
         print("event:",event)
-        
+
         truth_list = [c_flavors, interactionType, num_protons, num_pion_charged, num_pion_neutral, num_neutrons, planes]
-        
+
         runs.append(ev_sparse.run())
         subruns.append(subrun)
         events.append(event)
         truth.append(truth_list)
         filepaths.append(infile)
         entries.append(i)
-        
+
         # print("SHAPE TEST")
         # print(y_wire_np.shape)
     return full_image_list, runs, subruns, events, truth, filepaths, entries
 
 
-def split_into_planes(full_image_list, start_entry = 0, end_entry = -1):
+def split_into_planes(all_data, start_entry = 0, end_entry = -1):
     img_list = []
+    truth_list = []
     coords_u = np.empty((0,2))
     coords_v = np.empty((0,2))
     coords_y = np.empty((0,2))
@@ -151,36 +152,71 @@ def split_into_planes(full_image_list, start_entry = 0, end_entry = -1):
     inputs_y = np.empty((0,1))
     coords = [coords_u, coords_v, coords_y]
     inputs = [inputs_u, inputs_v, inputs_y]
-    
-    
-    if end_entry > len(full_image_list) or end_entry == -1:
-        end_entry = len(full_image_list)
+
+    # print("all_data type:",all_data.type)
+    # print("len(all_data)",len(all_data))
+    # print("all_data:",all_data)
+    full_img_list = all_data[0]
+    full_truth_list = all_data[1]
+    # print("len(full_img_list):",len(full_img_list))
+    # print("full_img_list:",full_img_list)
+    # print("len(full_truth_list):",len(full_truth_list))
+    # print("full_truth_list:",full_truth_list)
+
+    if end_entry > len(full_img_list) or end_entry == -1:
+        end_entry = len(full_img_list)
     if start_entry > end_entry or start_entry < 0:
         start_entry = 0
     for i in range(start_entry, end_entry):
         coords = [coords_u.astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
         inputs = [inputs_u.astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
 
-        print("index:",i)
-        sparse_data = full_image_list[i]
+        # print("index:",i)
+        sparse_data = full_img_list[0]
+        # print("SparseData:",sparse_data)
         # print("full sparse_data:")
         # print(sparse_data)
         print("sparse_data.shape",sparse_data.shape)
         pts = sparse_data.shape[0]
+        # print("pts:",pts)
+        plane_count = full_truth_list[6]
+        # if pts >= 82 or pts == 0:
         for j in range (0,pts):
             for k in range(2,5):
                 if sparse_data[j,k] != 0:
                     coords[k-2] = np.append(coords[k-2],[[sparse_data[j,0],sparse_data[j,1]]],axis=0)
                     inputs[k-2] = np.append(inputs[k-2],[[sparse_data[j,k]]],axis=0)
-        # print("coords[0]:",coords[0])
-        # print("inputs[0]:",inputs[0])
-        # print("coords[1]:",coords[1])
-        # print("inputs[1]:",inputs[1])
-        # print("coords[2]:",coords[2])
-        # print("inputs[2]:",inputs[2])
-        planes = [coords,inputs]
-        img_list.append(planes)
-    return img_list
+        # else:
+        # if coords[0].shape[0] <= 82 or coords[1].shape[0] <= 82 or coords[2].shape[0] <= 82 or plane_count[0] != 0:
+        if pts <= 82 or plane_count[0] != 0:
+            for i in range(0,3):
+                print("coords:",coords[i].shape)
+            print("INPUT TOO SMALL")
+            # print("1coords[0].shape[0]:",coords[0].shape[0])
+            # print("1inputs[0].shape[0]:",inputs[0].shape[0])
+            # # for j in range(0,3):
+            # coords_s = [np.empty((0,2)).astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
+            # inputs_s = [np.empty((0,1)).astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
+            # print("2coords[0].shape[0]:",coords_s[0].shape[0])
+            # print("2inputs[0].shape[0]:",inputs_s[0].shape[0])
+            # # coords_s[0] = np.append(coords[0],[[sparse_data[0,0],sparse_data[0,1]]],axis=0)
+            # inputs_s[0] = np.append(inputs_s[0],[[0]],axis=0)
+            # print("coords[0].shape[0]:",coords_s[0].shape[0])
+            # print("inputs[0].shape[0]:",inputs_s[0].shape[0])
+            # print("coords[1].shape[0]:",coords_s[1].shape[0])
+            # print("inputs[1].shape[0]:",inputs_s[1].shape[0])
+            # print("coords[2].shape[0]:",coords_s[2].shape[0])
+            # print("inputs[2].shape[0]:",inputs_s[2].shape[0])
+            # planes = [coords_s,inputs_s]
+        else:
+            truth = full_truth_list
+            planes = [coords,inputs]
+            # print("final planes:",planes)
+            # print("final truth:",truth)
+            img_list.append(planes)
+            truth_list.append(truth)
+            
+    return img_list, truth_list
 
 def get_coords_inputs_tensor(img_list, start_entry = 0, end_entry = -1):
     if end_entry > len(img_list) or end_entry == -1:
@@ -196,13 +232,13 @@ def get_coords_inputs_tensor(img_list, start_entry = 0, end_entry = -1):
             coord_t[j] = torch.from_numpy(img_list[i][0][j])
             input_t[j] = torch.from_numpy(img_list[i][1][j])
         coords_inputs_t.append([coord_t,input_t])
-    
+
     return coords_inputs_t
 
 
 
 
-    
+
 def get_truth_planes(truth, entry):
     #truth_list = truth[entry]
     # planes = truth_list[7]
@@ -211,5 +247,60 @@ def get_truth_planes(truth, entry):
     return planes
     
     
-    
-    
+
+# def split_into_planes(full_image_list, start_entry = 0, end_entry = -1):
+#     img_list = []
+#     coords_u = np.empty((0,2))
+#     coords_v = np.empty((0,2))
+#     coords_y = np.empty((0,2))
+#     inputs_u = np.empty((0,1))
+#     inputs_v = np.empty((0,1))
+#     inputs_y = np.empty((0,1))
+#     coords = [coords_u, coords_v, coords_y]
+#     inputs = [inputs_u, inputs_v, inputs_y]
+# 
+# 
+#     if end_entry > len(full_image_list) or end_entry == -1:
+#         end_entry = len(full_image_list)
+#     if start_entry > end_entry or start_entry < 0:
+#         start_entry = 0
+#     for i in range(start_entry, end_entry):
+#         coords = [coords_u.astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
+#         inputs = [inputs_u.astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
+# 
+#         print("index:",i)
+#         sparse_data = full_image_list[i]
+#         # print("full sparse_data:")
+#         # print(sparse_data)
+#         print("sparse_data.shape",sparse_data.shape)
+#         pts = sparse_data.shape[0]
+#         print("pts:",pts)
+#         # if pts >= 82 or pts == 0:
+#         for j in range (0,pts):
+#             for k in range(2,5):
+#                 if sparse_data[j,k] != 0:
+#                     coords[k-2] = np.append(coords[k-2],[[sparse_data[j,0],sparse_data[j,1]]],axis=0)
+#                     inputs[k-2] = np.append(inputs[k-2],[[sparse_data[j,k]]],axis=0)
+#         # else:
+#         if coords[0].shape[0] <= 82 or coords[1].shape[0] <= 82 or coords[2].shape[0] <= 82 and pts != 0:
+#             print("Input too small")
+#             print("1coords[0].shape[0]:",coords[0].shape[0])
+#             print("1inputs[0].shape[0]:",inputs[0].shape[0])
+#             # for j in range(0,3):
+#             coords_s = [np.empty((0,2)).astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
+#             inputs_s = [np.empty((0,1)).astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
+#             print("2coords[0].shape[0]:",coords_s[0].shape[0])
+#             print("2inputs[0].shape[0]:",inputs_s[0].shape[0])
+#             # coords_s[0] = np.append(coords[0],[[sparse_data[0,0],sparse_data[0,1]]],axis=0)
+#             inputs_s[0] = np.append(inputs_s[0],[[0]],axis=0)
+#             print("coords[0].shape[0]:",coords_s[0].shape[0])
+#             print("inputs[0].shape[0]:",inputs_s[0].shape[0])
+#             print("coords[1].shape[0]:",coords_s[1].shape[0])
+#             print("inputs[1].shape[0]:",inputs_s[1].shape[0])
+#             print("coords[2].shape[0]:",coords_s[2].shape[0])
+#             print("inputs[2].shape[0]:",inputs_s[2].shape[0])
+#             planes = [coords_s,inputs_s]
+#         else:
+#             planes = [coords,inputs]
+#         img_list.append(planes)
+#     return img_list

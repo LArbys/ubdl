@@ -87,6 +87,7 @@ class SparseClassifier(nn.Module):
                   )
         
     def forward(self,coord_t,input_t,batchsize):
+        print("FORWARD PASS")
         gtic = time.perf_counter()
         inputshape = [0,0]
         inputshape[0] = self._inputshape[0]
@@ -95,7 +96,7 @@ class SparseClassifier(nn.Module):
         inputshape2[0] = inputshape[0]//2
         inputshape2[1] = inputshape[1]//2
         for i in range(3):
-            print("Input: ", i)
+            # print("Input: ", i)
             if self._show_sizes:
                 print( "coord_t",coord_t[i].shape)
                 print( "input_t",input_t[i].shape)
@@ -104,7 +105,7 @@ class SparseClassifier(nn.Module):
         w = (coord_t[2],input_t[2],batchsize)
         n = [y,z,w]
         for i in range(3):
-            print("Input:", i)
+            # print("Input:", i)
             # print("input:",n[i])
             n[i] = (coord_t[i],input_t[i],batchsize)
             n[i]=self.input(n[i])
@@ -118,11 +119,15 @@ class SparseClassifier(nn.Module):
             n[i]=self.maxPool(n[i])
             if self._show_sizes:
                 print ("maxPool:",n[i].features.shape)
+                # print("n[i] after maxPool:",n[i])
                 # print("maxPool spatial sizes:",n[i].spatial_size)
                 # print("maxPool:",n[i])
                 # print("done with maxPool")
             for r in range(self._inReps):
+                tic = time.perf_counter()
                 n[i]=self.SEResNetB2(n[i], inputshape2)
+                toc = time.perf_counter()
+                print(f"SEResNetB2 in {toc - tic:0.4f} seconds")
                 if self._show_sizes:
                     print ("SEResNetB2:",n[i].features.shape)
                     # print("n[i]:",n[i])
@@ -135,7 +140,9 @@ class SparseClassifier(nn.Module):
         if self._show_sizes:
             print ("Concatenate:",x.shape)
         x = self.makeSparse(x)
-        print("size of sparse after concat:",x.features.shape)
+        if self._show_sizes:
+            print("size of sparse after concat:",x.features.shape)
+        # print("after concat:",x)
         
         
         # print("first value:",x.features[0,0])
@@ -147,6 +154,7 @@ class SparseClassifier(nn.Module):
         print(f"SEResNetBN in {toc - tic:0.4f} seconds")
         if self._show_sizes:
             print ("SEResNetBN:",x.features.shape)
+            print("After SEResNetBN x:",x)
         inputshape2[0] = inputshape2[0]//2 + 2
         inputshape2[1] = inputshape2[1]//2 + 1
         inputshape2[0] = inputshape2[0]//2 + 2
@@ -168,7 +176,8 @@ class SparseClassifier(nn.Module):
         # y = scn.SparseConvNetTensor(features=x.features,metadata=x.metadata,spatial_size=x.spatial_size)
         # print("y:",y)
         # x = self.makeDense2(x)
-        print("before flatten:",x.features.shape)
+        if self._show_sizes:
+            print("before flatten:",x.features.shape)
         x=self.output(x.features)
         
         if self._show_sizes:
@@ -192,8 +201,8 @@ class SparseClassifier(nn.Module):
         if self._show_sizes:
             print ("num Neutrons:",f.shape)
         out = [a,b,c,d,e,f]
-        print("Final output:",out)
-        
+        if self._show_sizes:
+            print("Final output:",out)
         gtoc = time.perf_counter()
         print(f"Full network in {gtoc - gtic:0.4f} seconds")
         return out

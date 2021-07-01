@@ -42,10 +42,14 @@ class SparseClassifierLoss(nn.modules.loss._WeightedLoss):
         predict: (b,1,h,w) tensor with output from logsoftmax
         adc:  (b,h,w) tensor with true adc values
         """
+        
         for i in range(0,len(true)):
             _assert_no_grad(true[i])
             true[i] = true[i].long()
         if predict == -1:
+            return
+        if predict == -2:
+            print("predict == -2")
             return
         # print "size of predict: ",predict.size()
         # print "size of adc: ",adc.size()[0]

@@ -37,8 +37,8 @@ import dense_dataLoader as dl
 # ===================================================
 # TOP-LEVEL PARAMETERS
 RUNPROFILER=False
-IMAGE_WIDTH=3456
-IMAGE_HEIGHT=1002
+IMAGE_WIDTH=3458
+IMAGE_HEIGHT=1030
 # ===================================================
 
 
@@ -100,7 +100,7 @@ def main():
     
     fulltic = time.perf_counter()
     start_entry = 0
-    end_entry = -1
+    end_entry = 1
     if end_entry > len(coords_inputs_t) or end_entry == -1:
         end_entry = len(coords_inputs_t)
     if start_entry > end_entry or start_entry < 0:

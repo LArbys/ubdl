@@ -32,13 +32,24 @@ class SEResNetBN(nn.Module):
                            )
         self.PurpleSE = se.SELayer(self.nIn)
         self.nOut = self.nIn*2
-        self.greenResPad = scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 1, False)
+        self.greenResPad = scn.Sequential(
+                                        scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 1, False),
+                                        scn.MaxPooling(self.dim, 1, 2)
+                                    )
         self.greenTransitionBlockP1 = scn.Sequential(
                                         scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                        scn.MaxPooling(self.dim, 1, 2),
                                         scn.BatchNormReLU(self.nOut),
                                         scn.SubmanifoldConvolution(self.dim, self.nOut, self.nOut, 3, False),
                                         scn.BatchNormalization(self.nOut)
                                     )
+        # self.greenResPad = scn.Convolution(self.dim, self.nIn, self.nOut, 1, 2, False)
+        # self.greenTransitionBlockP1 = scn.Sequential(
+        #                                 scn.Convolution(self.dim, self.nIn, self.nOut, 1, 2, False),
+        #                                 scn.BatchNormReLU(self.nOut),
+        #                                 scn.SubmanifoldConvolution(self.dim, self.nOut, self.nOut, 3, False),
+        #                                 scn.BatchNormalization(self.nOut)
+        #                             )
         self.greenTSE = se.SELayer(self.nOut)
         self.nIn = self.nOut
         self.greenBlockP1 = scn.Sequential(
@@ -49,9 +60,13 @@ class SEResNetBN(nn.Module):
                             )
         self.greenSE = se.SELayer(self.nIn)
         self.nOut = self.nIn*2
-        self.orangeResPad = scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 1, False)
+        self.orangeResPad = scn.Sequential(
+                                        scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 1, False),
+                                        scn.MaxPooling(self.dim, 1, 2)
+                                    )
         self.orangeTransitionBlockP1 = scn.Sequential(
                                         scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                        scn.MaxPooling(self.dim, 1, 2),
                                         scn.BatchNormReLU(self.nOut),
                                         scn.SubmanifoldConvolution(self.dim, self.nOut, self.nOut, 3, False),
                                         scn.BatchNormalization(self.nOut)
@@ -66,9 +81,13 @@ class SEResNetBN(nn.Module):
                             )
         self.orangeSE = se.SELayer(self.nIn)
         self.nOut = self.nIn*2
-        self.blueResPad = scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 1, False)
+        self.blueResPad = scn.Sequential(
+                                        scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 1, False),
+                                        scn.MaxPooling(self.dim, 1, 2)
+                                    )
         self.blueTransitionBlockP1 = scn.Sequential(
                                         scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                        scn.MaxPooling(self.dim, 1, 2),
                                         scn.BatchNormReLU(self.nOut),
                                         scn.SubmanifoldConvolution(self.dim, self.nOut, self.nOut, 3, False),
                                         scn.BatchNormalization(self.nOut)
@@ -85,6 +104,8 @@ class SEResNetBN(nn.Module):
     
     
     def forward(self, x, inputshape):
+        # print("INPUTSHPAE:",inputshape)
+        # print("x before purpleBlock:",x)
         for i in range(3):
             res = x.features
             tic = time.perf_counter()
@@ -93,22 +114,30 @@ class SEResNetBN(nn.Module):
             print(f"purpleBlock in {toc - tic:0.4f} seconds")
             x.features += res
             x = self.postRes(x)
-            print("postPurple shape:",x.features.shape)
-    
-        inputshape[0] = inputshape[0]//2 + 2
+            # print("postPurple shape:",x.features.shape)
+            # print("postPurple spatial_size:",x.spatial_size)
+        
+        # print("x after purpleBlock:",x)
+        inputshape[0] = inputshape[0]//2 + 1
         inputshape[1] = inputshape[1]//2 + 1
+        # print("INPUTSHPAE:",inputshape)
         tic = time.perf_counter()
         res = self.greenResPad(x)
         toc = time.perf_counter()
         print(f"greenResPad in {toc - tic:0.4f} seconds")
-        print("post greenResPad shape:",res.features.shape)
+        # print("post greenResPad shape:",res.features.shape)
+        # print("post greenResPad spatial_size:",res.spatial_size)
         tic = time.perf_counter()
         x = self.greenTransitionBlock(x, inputshape)
         toc = time.perf_counter()
         print(f"greenTransitionBlock in {toc - tic:0.4f} seconds")
+        # print("green shape: ",x.features.shape)
+        # print("green spatial_size:",x.spatial_size)
         x.features += res.features
         x = self.postRes(x)
-        print("green shape: ",x.features.shape)
+        # print("x after greenTransitionBlock:",x)
+        # print("green shape: ",x.features.shape)
+        # print("green spatial_size:",x.spatial_size)
         for i in range(3):
             res = x.features
             tic = time.perf_counter()
@@ -117,19 +146,25 @@ class SEResNetBN(nn.Module):
             print(f"greenBlock in {toc - tic:0.4f} seconds")
             x.features += res
             x = self.postRes(x)
-            print("green shape:",x.features.shape)
-    
-        inputshape[0] = inputshape[0]//2 + 2
-        inputshape[1] = inputshape[1]//2 + 2
+            # print("green shape:",x.features.shape)
+            # print("green spatial_size:",x.spatial_size)
+        # print("x after greenBlock:",x)
+
+        inputshape[0] = inputshape[0]//2 + 1
+        inputshape[1] = inputshape[1]//2 + 1
+        # print("INPUTSHPAE:",inputshape)
         res = self.orangeResPad(x)
-        print("post orangeResPad shape:",res.features.shape)
+        # print("post orangeResPad shape:",res.features.shape)
+        # print("post orangeResPad spatial_size:",res.spatial_size)
         tic = time.perf_counter()
         x = self.orangeTransitionBlock(x, inputshape)
         toc = time.perf_counter()
         print(f"orangeTransitionBlock in {toc - tic:0.4f} seconds")
         x.features += res.features
         x = self.postRes(x)
-        print("orange shape:",x.features.shape)
+        # print("x after orangeTransitionBlock:",x)
+        # print("orange shape:",x.features.shape)
+        # print("orange spatial_size:",x.spatial_size)
         for i in range(5):
             res = x.features
             tic = time.perf_counter()
@@ -138,18 +173,28 @@ class SEResNetBN(nn.Module):
             print(f"orangeBlock in {toc - tic:0.4f} seconds")
             x.features += res
             x = self.postRes(x)
-            print("orange shape:",x.features.shape)
-    
+            # print("orange shape:",x.features.shape)
+            # print("orange spatial_size:",x.spatial_size)
+        # print("x after orangeBlock:",x)
         inputshape[0] = inputshape[0]//2 + 1
         inputshape[1] = inputshape[1]//2 + 1
+        # print("INPUTSHPAE:",inputshape)
         res = self.blueResPad(x)
+        # print("post blueResPad shape:",res.features.shape)
+        # print("post blueResPad spatial_size:",res.spatial_size)
+        # print("res after blueResPad:",res)
         tic = time.perf_counter()
         x = self.blueTransitionBlock(x, inputshape)
+        # print("x after blueTransitionBlock:",x)
         toc = time.perf_counter()
         print(f"blueTransitionBlock in {toc - tic:0.4f} seconds")
+        # print("shape post blueTransitionBlock:",x.features.shape)
         x.features += res.features
+        # print("x after x.features += res.features:",x)
         x = self.postRes(x)
-        print("blue shape:",x.features.shape)
+        # print("x after blue postRes:",x)
+        # print("blue shape:",x.features.shape)
+        # print("blue spatial_size:",x.spatial_size)
         for i in range(2):
             res = x.features
             tic = time.perf_counter()
@@ -158,7 +203,8 @@ class SEResNetBN(nn.Module):
             print(f"blueBlock in {toc - tic:0.4f} seconds")
             x.features += res
             x = self.postRes(x)
-            print("blue shape:",x.features.shape)
+            # print("blue shape:",x.features.shape)
+            # print("blue spatial_size:",x.spatial_size)
         return x
     
     
@@ -194,8 +240,11 @@ class SEResNetBN(nn.Module):
     
     def blueTransitionBlock(self, x, inputshape):
         x = self.blueTransitionBlockP1(x)
+        # print("after blueTransitionBlockP1:",x)
         x = self.blueTSE(x, inputshape)
+        # print("after blueTSE:",x)
         x = self.postSE(x)
+        # print("after postSE:",x)
         return x
     
     def blueBlock(self, x, inputshape):
