@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-# sys.path.append("/home/ebengh01/SparseConvNet")
 import sparseconvnet as scn
 import se_module as se
 
@@ -24,27 +23,14 @@ class SEResNetB2(nn.Module):
         self.BatchNormReLU = scn.BatchNormReLU(self.nIn)
         self.convB = scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False)
         self.SE = se.SELayer(self.nIn)
-        # self.resBlock = nn.Sequential(
-        #                     scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-        #                     scn.BatchNormReLU(self.nIn),
-        #                     scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-        #                     se.SELayer(self.nIn)
-        #                 )
         self.postRes = scn.BatchNormReLU(self.nIn)
     
     def forward(self, x, inputshape):
-        # print("inputshape in SEResNetB2:",inputshape)
-        # print("pre-preRes shape: ",x.features.shape)
         x = self.preRes(x)
-        # print("post-preRes shape: ",x.features.shape)
         residual = x.features
-        # print("x type pre resBlock:",type(x))
         x = self.resBlock(x, inputshape)
-        # print("x type post resBlock:",type(x))
-        # print("post-resBlock shape: ",x.features.shape)
         x.features += residual
         x = self.postRes(x)
-        # print("post-postRes shape: ",x.features.shape)
         return x        
     
     def resBlock(self, x, inputshape):
@@ -53,5 +39,3 @@ class SEResNetB2(nn.Module):
         x = self.convB(x)
         x = self.SE(x, inputshape)
         return x
-        
-        

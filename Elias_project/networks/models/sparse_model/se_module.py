@@ -16,12 +16,7 @@ class SELayer(nn.Module):
     
     def forward(self, x, inputshape):
         b, c  = x.features.size()
-        # print("b:",b)
-        # print("c:",c)
         y = self.avg_pool(x, inputshape)
-        # print("y:",y)
-        # print("TYPE of features:",y.features.dtype)
         y.features = self.fc(y.features)
-        # print("x type before returning se layer forward pass:",type(x))
         x.features = x.features * y.features.expand_as(x.features)
         return x

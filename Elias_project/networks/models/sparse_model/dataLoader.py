@@ -10,9 +10,18 @@ import torch
 # from MiscFunctions import cropped_np, unravel_array, reravel_array
 # from LArMatchModel import get_larmatch_features
 
+
+"""
+load_rootfile_training
+Purpose: loads in the rootfile for training/validation
+Parameters: infile, optional start entry/end entry. Default will run through the
+            whole file
+Returns: a list of: sparse images, runs, subruns, events, truth, filepaths, entries
+"""
 def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
     truthtrack_SCE = ublarcvapp.mctools.TruthTrackSCE()
-    # infile = PARAMS['INFILE']
+
+    # Initialize the IO Manager:
     iocv = larcv.IOManager(larcv.IOManager.kREAD,"io",larcv.IOManager.kTickForward)
     iocv.reverse_all_products() # Do I need this?
     iocv.add_in_file(infile)
@@ -20,10 +29,7 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
 
     nentries_cv = iocv.get_n_entries()
 
-    # Get Rid of those pesky IOManager Warning Messages (orig cxx)
-	# larcv::logger larcv_logger
-	# larcv::msg::Level_t log_level = larcv::msg::kCRITICAL
-	# larcv_logger.force_level(log_level)
+    # set up empty lists for saving data
     full_image_list = []
     runs = []
     subruns   = []
@@ -32,13 +38,13 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
     filepaths = []
     entries   = []
 
-
+    # entry number checks
     if end_entry > nentries_cv or end_entry == -1:
         end_entry = nentries_cv
     if start_entry > end_entry or start_entry < 0:
         start_entry = 0
+    # beginning the loop
     for i in range(start_entry, end_entry):
-    # for i in range(8,9):
         print()
         print("Loading Entry:", i, "of range", start_entry, end_entry)
         print()
@@ -47,31 +53,16 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
         # ev_wire
         ev_sparse    = iocv.get_data(larcv.kProductSparseImage,"nbkrnd_sparse")
         ev_sparse_v = ev_sparse.SparseImageArray()
+        
         # Get Sparse Image to a Numpy Array
-
-        # rows = y_wire_image2d.meta().rows()
-        # cols = y_wire_image2d.meta().cols()
-        # for c in range(cols):
-        #     for r in range(rows):
-        #         y_wire_np[c][r] = y_wire_image2d.pixel(r,c)
-
-        # if PARAMS['USE_CONV_IM']:
-        #     y_wire_np = get_larmatch_features(PARAMS, y_wire_image2d)
-        # else:
-
-
         ev_sparse_np = larcv.as_sparseimg_ndarray(ev_sparse_v[0])
-        # for i in range(0,3):
-        #     ev_sparse_np[i] = larcv.as_sparseimg_ndarray(ev_sparse_v[i]) # I am Speed.
 
         print("shape test")
         print(ev_sparse_np.shape)
-        # print("printing the data: ")
-        # print(ev_sparse_np)
+        
         full_image_list.append(ev_sparse_np)
-
-
-
+        
+        # Extracting subrun truth informtion:
         subrun = ev_sparse.subrun()
         print("raw subrun:",subrun)
 
@@ -100,7 +91,7 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
         subrun = subrun//10000
         print("subrun:",subrun)
 
-
+        # Extracting event truth information
         event = ev_sparse.event()
         print("raw event:", event)
 
@@ -136,11 +127,18 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
         filepaths.append(infile)
         entries.append(i)
 
-        # print("SHAPE TEST")
-        # print(y_wire_np.shape)
     return full_image_list, runs, subruns, events, truth, filepaths, entries
 
-
+"""
+split_into_planes
+Purpose: Takes a sparse image and splits it into each individual plane, with a
+         set of coordinates for each point on the plane. Also discounts entries
+         with dead planes and entries that are too small to make it through the
+         network
+Parameters: all_data: the full data/truth information, optional start entry/end
+            entry. Default will run through the whole file
+Returns: a list of the sparse coordinates/values as np arrays, a list of the truth values
+"""
 def split_into_planes(all_data, start_entry = 0, end_entry = -1):
     img_list = []
     truth_list = []
@@ -153,15 +151,8 @@ def split_into_planes(all_data, start_entry = 0, end_entry = -1):
     coords = [coords_u, coords_v, coords_y]
     inputs = [inputs_u, inputs_v, inputs_y]
 
-    # print("all_data type:",all_data.type)
-    # print("len(all_data)",len(all_data))
-    # print("all_data:",all_data)
     full_img_list = all_data[0]
     full_truth_list = all_data[1]
-    # print("len(full_img_list):",len(full_img_list))
-    # print("full_img_list:",full_img_list)
-    # print("len(full_truth_list):",len(full_truth_list))
-    # print("full_truth_list:",full_truth_list)
 
     if end_entry > len(full_img_list) or end_entry == -1:
         end_entry = len(full_img_list)
@@ -171,53 +162,34 @@ def split_into_planes(all_data, start_entry = 0, end_entry = -1):
         coords = [coords_u.astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
         inputs = [inputs_u.astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
 
-        # print("index:",i)
         sparse_data = full_img_list[0]
-        # print("SparseData:",sparse_data)
-        # print("full sparse_data:")
-        # print(sparse_data)
         print("sparse_data.shape",sparse_data.shape)
         pts = sparse_data.shape[0]
-        # print("pts:",pts)
         plane_count = full_truth_list[6]
-        # if pts >= 82 or pts == 0:
         for j in range (0,pts):
             for k in range(2,5):
                 if sparse_data[j,k] != 0:
                     coords[k-2] = np.append(coords[k-2],[[sparse_data[j,0],sparse_data[j,1]]],axis=0)
                     inputs[k-2] = np.append(inputs[k-2],[[sparse_data[j,k]]],axis=0)
-        # else:
-        # if coords[0].shape[0] <= 82 or coords[1].shape[0] <= 82 or coords[2].shape[0] <= 82 or plane_count[0] != 0:
         if pts <= 82 or plane_count[0] != 0:
             for i in range(0,3):
                 print("coords:",coords[i].shape)
             print("INPUT TOO SMALL")
-            # print("1coords[0].shape[0]:",coords[0].shape[0])
-            # print("1inputs[0].shape[0]:",inputs[0].shape[0])
-            # # for j in range(0,3):
-            # coords_s = [np.empty((0,2)).astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
-            # inputs_s = [np.empty((0,1)).astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
-            # print("2coords[0].shape[0]:",coords_s[0].shape[0])
-            # print("2inputs[0].shape[0]:",inputs_s[0].shape[0])
-            # # coords_s[0] = np.append(coords[0],[[sparse_data[0,0],sparse_data[0,1]]],axis=0)
-            # inputs_s[0] = np.append(inputs_s[0],[[0]],axis=0)
-            # print("coords[0].shape[0]:",coords_s[0].shape[0])
-            # print("inputs[0].shape[0]:",inputs_s[0].shape[0])
-            # print("coords[1].shape[0]:",coords_s[1].shape[0])
-            # print("inputs[1].shape[0]:",inputs_s[1].shape[0])
-            # print("coords[2].shape[0]:",coords_s[2].shape[0])
-            # print("inputs[2].shape[0]:",inputs_s[2].shape[0])
-            # planes = [coords_s,inputs_s]
         else:
             truth = full_truth_list
             planes = [coords,inputs]
-            # print("final planes:",planes)
-            # print("final truth:",truth)
             img_list.append(planes)
             truth_list.append(truth)
             
     return img_list, truth_list
 
+"""
+get_coords_inputs_tensor
+Purpose: Takes the image list and converts from np arrays to torch tensors
+Parameters: img_list: list of coordinates/values, optional start entry/end
+            entry. Default will run through the whole file
+Returns: a list of coordinates/values as torch tensors
+"""
 def get_coords_inputs_tensor(img_list, start_entry = 0, end_entry = -1):
     if end_entry > len(img_list) or end_entry == -1:
         end_entry = len(img_list)
@@ -228,7 +200,6 @@ def get_coords_inputs_tensor(img_list, start_entry = 0, end_entry = -1):
         coord_t = [torch.Tensor(), torch.Tensor(), torch.Tensor()]
         input_t = [torch.Tensor(), torch.Tensor(), torch.Tensor()]
         for j in range(3):
-            # print("ncoords[i]:",ncoords[i])
             coord_t[j] = torch.from_numpy(img_list[i][0][j])
             input_t[j] = torch.from_numpy(img_list[i][1][j])
         coords_inputs_t.append([coord_t,input_t])
@@ -238,69 +209,12 @@ def get_coords_inputs_tensor(img_list, start_entry = 0, end_entry = -1):
 
 
 
-
+"""
+get_truth_planes NOTE: not used, won't work for batchsize > 1
+Purpose: pops the dead planes truth info off the truth list for a given entry
+Parameters: truth list, entry number
+Returns: the truth value for dead planes
+"""
 def get_truth_planes(truth, entry):
-    #truth_list = truth[entry]
-    # planes = truth_list[7]
     planes = truth.pop()
-
     return planes
-    
-    
-
-# def split_into_planes(full_image_list, start_entry = 0, end_entry = -1):
-#     img_list = []
-#     coords_u = np.empty((0,2))
-#     coords_v = np.empty((0,2))
-#     coords_y = np.empty((0,2))
-#     inputs_u = np.empty((0,1))
-#     inputs_v = np.empty((0,1))
-#     inputs_y = np.empty((0,1))
-#     coords = [coords_u, coords_v, coords_y]
-#     inputs = [inputs_u, inputs_v, inputs_y]
-# 
-# 
-#     if end_entry > len(full_image_list) or end_entry == -1:
-#         end_entry = len(full_image_list)
-#     if start_entry > end_entry or start_entry < 0:
-#         start_entry = 0
-#     for i in range(start_entry, end_entry):
-#         coords = [coords_u.astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
-#         inputs = [inputs_u.astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
-# 
-#         print("index:",i)
-#         sparse_data = full_image_list[i]
-#         # print("full sparse_data:")
-#         # print(sparse_data)
-#         print("sparse_data.shape",sparse_data.shape)
-#         pts = sparse_data.shape[0]
-#         print("pts:",pts)
-#         # if pts >= 82 or pts == 0:
-#         for j in range (0,pts):
-#             for k in range(2,5):
-#                 if sparse_data[j,k] != 0:
-#                     coords[k-2] = np.append(coords[k-2],[[sparse_data[j,0],sparse_data[j,1]]],axis=0)
-#                     inputs[k-2] = np.append(inputs[k-2],[[sparse_data[j,k]]],axis=0)
-#         # else:
-#         if coords[0].shape[0] <= 82 or coords[1].shape[0] <= 82 or coords[2].shape[0] <= 82 and pts != 0:
-#             print("Input too small")
-#             print("1coords[0].shape[0]:",coords[0].shape[0])
-#             print("1inputs[0].shape[0]:",inputs[0].shape[0])
-#             # for j in range(0,3):
-#             coords_s = [np.empty((0,2)).astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
-#             inputs_s = [np.empty((0,1)).astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
-#             print("2coords[0].shape[0]:",coords_s[0].shape[0])
-#             print("2inputs[0].shape[0]:",inputs_s[0].shape[0])
-#             # coords_s[0] = np.append(coords[0],[[sparse_data[0,0],sparse_data[0,1]]],axis=0)
-#             inputs_s[0] = np.append(inputs_s[0],[[0]],axis=0)
-#             print("coords[0].shape[0]:",coords_s[0].shape[0])
-#             print("inputs[0].shape[0]:",inputs_s[0].shape[0])
-#             print("coords[1].shape[0]:",coords_s[1].shape[0])
-#             print("inputs[1].shape[0]:",inputs_s[1].shape[0])
-#             print("coords[2].shape[0]:",coords_s[2].shape[0])
-#             print("inputs[2].shape[0]:",inputs_s[2].shape[0])
-#             planes = [coords_s,inputs_s]
-#         else:
-#             planes = [coords,inputs]
-#         img_list.append(planes)
-#     return img_list

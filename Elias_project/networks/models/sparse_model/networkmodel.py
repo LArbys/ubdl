@@ -22,9 +22,10 @@ class SparseClassifier(nn.Module):
         """
         inputs
         ------
-        inputshape [list of int]: dimensions of the matrix or image
+        inputshape [list of int]: dimensions of the image
         nin_features [int]: number of features in the first convolutional layer
-        nout_features [int]: number of features that feed into the regression layer
+        nout_features [int]: number of features that come out of the first
+                             convolutional layer
         show_sizes [bool]: if True, print sizes while running forward
         """
         self._mode = 0
@@ -45,7 +46,6 @@ class SparseClassifier(nn.Module):
         self.inputshape2 = [self._inputshape[0]/2,self._inputshape[1]/2]
         self.SEResNetB2 = b2.SEResNetB2(self._dimension, self._nin_features, self._nout_features)
         self.makeDense = scn.SparseToDense(self._dimension, self._nin_features)
-        self.concat = scn.JoinTable()
         # concatenate in forward pass
         self.makeSparse = scn.DenseToSparse(self._dimension)
         inputshape3 = self.inputshape2
@@ -89,6 +89,7 @@ class SparseClassifier(nn.Module):
     def forward(self,coord_t,input_t,batchsize):
         print("FORWARD PASS")
         gtic = time.perf_counter()
+        # initializes inputshape and shrinks it for use in the SEResNet Block 2
         inputshape = [0,0]
         inputshape[0] = self._inputshape[0]
         inputshape[1] = self._inputshape[1]
@@ -96,7 +97,6 @@ class SparseClassifier(nn.Module):
         inputshape2[0] = inputshape[0]//2
         inputshape2[1] = inputshape[1]//2
         for i in range(3):
-            # print("Input: ", i)
             if self._show_sizes:
                 print( "coord_t",coord_t[i].shape)
                 print( "input_t",input_t[i].shape)
@@ -104,25 +104,18 @@ class SparseClassifier(nn.Module):
         z = (coord_t[1],input_t[1],batchsize)
         w = (coord_t[2],input_t[2],batchsize)
         n = [y,z,w]
+        # runs each plane through:
         for i in range(3):
-            # print("Input:", i)
-            # print("input:",n[i])
             n[i] = (coord_t[i],input_t[i],batchsize)
             n[i]=self.input(n[i])
             if self._show_sizes:
                 print ("inputlayer:",n[i].features.shape)
-                # print(n[i])
             n[i]=self.conv1(n[i])
             if self._show_sizes:
                 print ("conv1:",n[i].features.shape)
-                # print(n[i])
             n[i]=self.maxPool(n[i])
             if self._show_sizes:
                 print ("maxPool:",n[i].features.shape)
-                # print("n[i] after maxPool:",n[i])
-                # print("maxPool spatial sizes:",n[i].spatial_size)
-                # print("maxPool:",n[i])
-                # print("done with maxPool")
             for r in range(self._inReps):
                 tic = time.perf_counter()
                 n[i]=self.SEResNetB2(n[i], inputshape2)
@@ -130,10 +123,8 @@ class SparseClassifier(nn.Module):
                 print(f"SEResNetB2 in {toc - tic:0.4f} seconds")
                 if self._show_sizes:
                     print ("SEResNetB2:",n[i].features.shape)
-                    # print("n[i]:",n[i])
             n[i]=self.makeDense(n[i])
-        # x = self.concat(n)
-        
+        # concatenate the inputs while dense, then sparsifies
         if self._show_sizes:
             print ("makeDense:",n[i].shape)
         x = self.concatenateInputs(n)
@@ -142,19 +133,18 @@ class SparseClassifier(nn.Module):
         x = self.makeSparse(x)
         if self._show_sizes:
             print("size of sparse after concat:",x.features.shape)
-        # print("after concat:",x)
         
-        
-        # print("first value:",x.features[0,0])
+        # update inputshape after concatenate
         inputshape2[0] = inputshape2[0]*3
-        # print("x before SEResNetBN:",x)
         tic = time.perf_counter()
+        # run through the SEResNet Block N (modeled off resnet-34)
         x = self.SEResNetBN(x, inputshape2)
         toc = time.perf_counter()
         print(f"SEResNetBN in {toc - tic:0.4f} seconds")
         if self._show_sizes:
             print ("SEResNetBN:",x.features.shape)
             print("After SEResNetBN x:",x)
+        # update inputshape after SEResNetBN
         inputshape2[0] = inputshape2[0]//2 + 2
         inputshape2[1] = inputshape2[1]//2 + 1
         inputshape2[0] = inputshape2[0]//2 + 2
@@ -165,21 +155,12 @@ class SparseClassifier(nn.Module):
         x = self.outputAvg(x, inputshape)
         toc = time.perf_counter()
         print(f"outputAvg in {toc - tic:0.4f} seconds")
-        
-        
-        # batch_locations = x.metadata.batch_locations
-        
-        # print("post outputAvg spatial size:",x.spatial_size)
-        # x.spatial_size = torch.tensor([190,218])
-        # print("after change of spatial size:",x.spatial_size)
-        # print("heres hoping for not crazy:",x)
-        # y = scn.SparseConvNetTensor(features=x.features,metadata=x.metadata,spatial_size=x.spatial_size)
-        # print("y:",y)
-        # x = self.makeDense2(x)
+                
         if self._show_sizes:
             print("before flatten:",x.features.shape)
         x=self.output(x.features)
         
+        # output layers
         if self._show_sizes:
             print ("output:",x.shape)
         a = self.flavors(x).view(1,4)
@@ -208,34 +189,5 @@ class SparseClassifier(nn.Module):
         return out
         
     def concatenateInputs(self, input):
-        # TODO: make this work for empty planes
-        out = torch.cat(input,2)
-        
+        out = torch.cat(input,2)        
         return out
-        
-        # output = scn.SparseConvNetTensor()
-        # output.metadata = input[0].metadata
-        # output.spatial_size = input[0].spatial_size
-        # print("SUP:",output.spatial_size)
-        # print(type(output.spatial_size))
-        # print(output.spatial_size.dtype)
-        # output.spatial_size = torch.tensor([1503,1728])
-        # print("SUP:",output.spatial_size)
-        # print(type(output.spatial_size))
-        # print(output.spatial_size.dtype)
-        # output.input_spatial_size(torch.tensor([1503,1728]))
-        # output.features = torch.cat([i.features for i in input], 0) if input[0].features.numel() else input[0].features
-        # return output
-        # features = [torch.Tensor(), torch.Tensor(), torch.Tensor()]
-        # for i in range(0,3):
-        #     # print("i:",i)
-        #     features[i] = input[i].features
-        #     # print("metadata:",inputs[i].metadata)
-        #     # print("spatial size:",inputs[i].spatial_size)
-        # out_f = torch.cat(features,0)
-        # s_size = torch.tensor([1503, 1728])
-        # out = scn.SparseConvNetTensor(metadata=input[0].metadata,spatial_size=s_size)
-        # out.features = out_f
-        # # # print("post concat:",out)
-        # 
-        # return out    
