@@ -43,6 +43,7 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
         end_entry = nentries_cv
     if start_entry > end_entry or start_entry < 0:
         start_entry = 0
+    max_len = 0
     # beginning the loop
     for i in range(start_entry, end_entry):
         print()
@@ -58,8 +59,11 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
         ev_sparse_np = larcv.as_sparseimg_ndarray(ev_sparse_v[0])
 
         print("shape test")
-        print(ev_sparse_np.shape)
-        
+        sparse_ev_shape = ev_sparse_np.shape
+        print(sparse_ev_shape)
+        if sparse_ev_shape[0] > max_len:
+            max_len = sparse_ev_shape[0]
+               
         full_image_list.append(ev_sparse_np)
         
         # Extracting subrun truth informtion:
@@ -126,8 +130,27 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
         truth.append(truth_list)
         filepaths.append(infile)
         entries.append(i)
-
-    return full_image_list, runs, subruns, events, truth, filepaths, entries
+    print()
+    print("MAX LEN:",max_len)
+    for i in range(start_entry, end_entry):
+        print("padding entry ",i)
+    
+        curr_ev = full_image_list[i]
+        curr_len = curr_ev.shape[0]
+        print("curr_len:",curr_len)
+        full_image_list[i] = np.append(full_image_list[i],np.zeros((max_len-full_image_list[i].shape[0],5),dtype=np.float32),0)
+        # for j in range(0,max_len-curr_len):
+        #     curr_ev = np.append(curr_ev,[[float(0.0),float(0.0),float(0.0),float(0.0),float(0.0)]],0)
+        # full_image_list[i] = curr_ev
+        # print("curr_ev:",curr_ev)
+        # print("full_img_list[i]:",full_image_list[i])
+    
+    
+    
+    
+    
+    
+    return full_image_list, runs, subruns, events, truth, filepaths, entries, max_len
 
 """
 split_into_planes
@@ -141,7 +164,7 @@ Returns: a list of the sparse coordinates/values as np arrays, a list of the tru
 """
 def split_into_planes(all_data, start_entry = 0, end_entry = -1):
     img_list = []
-    truth_list = []
+    # truth_list = []
     coords_u = np.empty((0,2))
     coords_v = np.empty((0,2))
     coords_y = np.empty((0,2))
@@ -153,7 +176,11 @@ def split_into_planes(all_data, start_entry = 0, end_entry = -1):
 
     full_img_list = all_data[0]
     full_truth_list = all_data[1]
-
+    print("Len of full_img_list:",len(full_img_list))
+    print("Len of full_truth_list:",len(full_truth_list))
+    
+    good_entries = []
+    
     if end_entry > len(full_img_list) or end_entry == -1:
         end_entry = len(full_img_list)
     if start_entry > end_entry or start_entry < 0:
@@ -162,26 +189,37 @@ def split_into_planes(all_data, start_entry = 0, end_entry = -1):
         coords = [coords_u.astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
         inputs = [inputs_u.astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
 
-        sparse_data = full_img_list[0]
-        print("sparse_data.shape",sparse_data.shape)
+        sparse_data = full_img_list[i]
+        # print("sparse_data.shape",sparse_data.shape)
         pts = sparse_data.shape[0]
+        for j in range(0,pts):
+            if sparse_data[j][0] == 0:
+                pts = j - 1
+                break
         plane_count = full_truth_list[6]
         for j in range (0,pts):
             for k in range(2,5):
                 if sparse_data[j,k] != 0:
                     coords[k-2] = np.append(coords[k-2],[[sparse_data[j,0],sparse_data[j,1]]],axis=0)
                     inputs[k-2] = np.append(inputs[k-2],[[sparse_data[j,k]]],axis=0)
+        print("coords.shape",len(coords[0]))
         if pts <= 82 or plane_count[0] != 0:
-            for i in range(0,3):
-                print("coords:",coords[i].shape)
+            for j in range(0,3):
+                print("coords:",coords[j].shape)
             print("INPUT TOO SMALL")
         else:
-            truth = full_truth_list
+            good_entries.append(i)
             planes = [coords,inputs]
             img_list.append(planes)
-            truth_list.append(truth)
-            
-    return img_list, truth_list
+    print("good_entries:",good_entries)
+    for j in range(0,len(full_truth_list)):
+        temp_truth_1 = torch.chunk(full_truth_list[j],end_entry)
+        temp_truth_t = torch.empty(0,dtype=torch.long)
+        for k in good_entries:
+            temp_truth_t = torch.cat((temp_truth_t,temp_truth_1[k]),0)
+        full_truth_list[j] = temp_truth_t
+        
+    return img_list, full_truth_list
 
 """
 get_coords_inputs_tensor

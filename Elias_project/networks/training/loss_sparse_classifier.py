@@ -43,16 +43,20 @@ class SparseClassifierLoss(nn.modules.loss._WeightedLoss):
         adc:  (b,h,w) tensor with true adc values
         """
         
-        for i in range(0,len(true)):
-            _assert_no_grad(true[i])
-            true[i] = true[i].long()
-        if predict == -1:
-            return
-        if predict == -2:
-            print("predict == -2")
-            return
+        # for i in range(0,len(true)):
+        #     _assert_no_grad(true[i])
+        #     true[i] = true[i].long()
+        # if predict == -1:
+        #     return
+        # if predict == -2:
+        #     print("predict == -2")
+        #     return
 
         # 6 losses, each with weight tensors
+        
+        print("predict:",predict)
+        print("true:",true)
+        print("true[0].dtype",true[0].dtype)
         
         fl_weight_t = torch.tensor([1.0,1.0,1.0,1.0])
         flavorsLoss=torch.nn.CrossEntropyLoss(weight=fl_weight_t, size_average=self.size_average)
