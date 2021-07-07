@@ -61,30 +61,13 @@ class SparseClassifier(nn.Module):
                           # nn.Flatten(),
                           nn.Linear(512, 1000)
                       )
-        self.flavors = nn.Sequential(
-                      nn.Linear(1000, 4),
-                      nn.Softmax(0)
-                  )
-        self.interactionType = nn.Sequential(
-                      nn.Linear(1000, 4),
-                      nn.Softmax(0)
-                  )
-        self.nProton = nn.Sequential(
-                      nn.Linear(1000, 4),
-                      nn.Softmax(0)
-                  )
-        self.nCPion = nn.Sequential(
-                      nn.Linear(1000, 4),
-                      nn.Softmax(0)
-                  )
-        self.nNPion = nn.Sequential(
-                      nn.Linear(1000, 4),
-                      nn.Softmax(0)
-                  )
-        self.nNeutron = nn.Sequential(
-                      nn.Linear(1000, 4),
-                      nn.Softmax(0)
-                  )
+        self.flavors = nn.Linear(1000, 4)
+        self.interactionType = nn.Linear(1000, 4)
+        self.nProton = nn.Linear(1000, 4)
+        self.nCPion = nn.Linear(1000, 4)
+        self.nNPion = nn.Linear(1000, 4)
+        self.nNeutron = nn.Linear(1000, 4)
+        self.SoftMax = nn.Softmax(0)
         
     def forward(self,coord_t,input_t,batchsize):
         print("FORWARD PASS")
@@ -188,6 +171,115 @@ class SparseClassifier(nn.Module):
         print(f"Full network in {gtoc - gtic:0.4f} seconds")
         return out
         
+    def deploy(self,coord_t,input_t,batchsize):
+        print("FORWARD PASS")
+        gtic = time.perf_counter()
+        # initializes inputshape and shrinks it for use in the SEResNet Block 2
+        inputshape = [0,0]
+        inputshape[0] = self._inputshape[0]
+        inputshape[1] = self._inputshape[1]
+        inputshape2 = inputshape
+        inputshape2[0] = inputshape[0]//2
+        inputshape2[1] = inputshape[1]//2
+        for i in range(3):
+            if self._show_sizes:
+                print( "coord_t",coord_t[i].shape)
+                print( "input_t",input_t[i].shape)
+        y = (coord_t[0],input_t[0],batchsize)
+        z = (coord_t[1],input_t[1],batchsize)
+        w = (coord_t[2],input_t[2],batchsize)
+        n = [y,z,w]
+        # runs each plane through:
+        for i in range(3):
+            n[i] = (coord_t[i],input_t[i],batchsize)
+            n[i]=self.input(n[i])
+            if self._show_sizes:
+                print ("inputlayer:",n[i].features.shape)
+            n[i]=self.conv1(n[i])
+            if self._show_sizes:
+                print ("conv1:",n[i].features.shape)
+            n[i]=self.maxPool(n[i])
+            if self._show_sizes:
+                print ("maxPool:",n[i].features.shape)
+            for r in range(self._inReps):
+                tic = time.perf_counter()
+                n[i]=self.SEResNetB2(n[i], inputshape2)
+                toc = time.perf_counter()
+                print(f"SEResNetB2 in {toc - tic:0.4f} seconds")
+                if self._show_sizes:
+                    print ("SEResNetB2:",n[i].features.shape)
+            n[i]=self.makeDense(n[i])
+        # concatenate the inputs while dense, then sparsifies
+        if self._show_sizes:
+            print ("makeDense:",n[i].shape)
+        x = self.concatenateInputs(n)
+        if self._show_sizes:
+            print ("Concatenate:",x.shape)
+        x = self.makeSparse(x)
+        if self._show_sizes:
+            print("size of sparse after concat:",x.features.shape)
+        
+        # update inputshape after concatenate
+        inputshape2[0] = inputshape2[0]*3
+        tic = time.perf_counter()
+        # run through the SEResNet Block N (modeled off resnet-34)
+        x = self.SEResNetBN(x, inputshape2)
+        toc = time.perf_counter()
+        print(f"SEResNetBN in {toc - tic:0.4f} seconds")
+        if self._show_sizes:
+            print ("SEResNetBN:",x.features.shape)
+            print("After SEResNetBN x:",x)
+        # update inputshape after SEResNetBN
+        inputshape2[0] = inputshape2[0]//2 + 2
+        inputshape2[1] = inputshape2[1]//2 + 1
+        inputshape2[0] = inputshape2[0]//2 + 2
+        inputshape2[1] = inputshape2[1]//2 + 2
+        inputshape2[0] = inputshape2[0]//2 + 1
+        inputshape2[1] = inputshape2[1]//2 + 1
+        tic = time.perf_counter()
+        x = self.outputAvg(x, inputshape)
+        toc = time.perf_counter()
+        print(f"outputAvg in {toc - tic:0.4f} seconds")
+                
+        if self._show_sizes:
+            print("before flatten:",x.features.shape)
+        x=self.output(x.features)
+        
+        # output layers
+        if self._show_sizes:
+            print ("output:",x.shape)
+        a = self.flavors(x)
+        a = self.SoftMax(a).view(1,4)
+        if self._show_sizes:
+            print ("flavors:",a.shape)
+        b = self.interactionType(x)
+        b = self.SoftMax(b).view(1,4)
+        if self._show_sizes:
+            print ("Interaction type:",b.shape)
+        c = self.nProton(x)
+        c = self.SoftMax(c).view(1,4)
+        if self._show_sizes:
+            print ("num protons:",c.shape)
+        d = self.nCPion(x)
+        d = self.SoftMax(d).view(1,4)
+        if self._show_sizes:
+            print ("num charged pions:",d.shape)
+        e = self.nNPion(x)
+        e = self.SoftMax(e).view(1,4)
+        if self._show_sizes:
+            print ("num neutral pions:",e.shape)
+        f = self.nNeutron(x)
+        f = self.SoftMax(f).view(1,4)
+        if self._show_sizes:
+            print ("num Neutrons:",f.shape)
+        out = [a,b,c,d,e,f]
+        if self._show_sizes:
+            print("Final output:",out)
+        gtoc = time.perf_counter()
+        print(f"Full network in {gtoc - gtic:0.4f} seconds")
+        return out
+    
+           
     def concatenateInputs(self, input):
         out = torch.cat(input,2)        
         return out

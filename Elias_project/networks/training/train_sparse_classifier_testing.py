@@ -30,16 +30,11 @@ import torch.nn.functional as F
 # tensorboardX
 from tensorboardX import SummaryWriter
 
-# dataset interface
-# sys.path.append("/mnt/disk1/nutufts/kmason/sparsenet/ubdl/larflow/larcvdataset") # TODO: different path
-# from larcvdataset.larcvserver import LArCVServer
-
 sys.path.append("/home/ebengh01/ubdl/Elias_project/networks/models/sparse_model")
 from networkmodel import SparseClassifier
 from SparseClassDataset import load_classifier_larcvdata
 from loss_sparse_classifier import SparseClassifierLoss
-import dataLoader as dl
-import custom_collate
+import dataLoader_testing as dl # TODO: change this to non-testing
 
 # from sparseinfill import SparseInfill
 # from sparseinfilldata import load_infill_larcvdata
@@ -48,7 +43,7 @@ import custom_collate
 # ===================================================
 # TOP-LEVEL PARAMETERS
 GPUMODE=False # TODO: keep this false until we set up gpu on trex
-RESUME_FROM_CHECKPOINT=True
+RESUME_FROM_CHECKPOINT=False
 RUNPROFILER=False
 
 CHECKPOINT_FILE="model_best.tar"
@@ -57,11 +52,11 @@ INPUTFILE_VALID="/home/ebengh01/ubdl/Elias_project/networks/data/output_9656.roo
 TICKBACKWARD=False
 PLANE = 0
 start_iter  = 0
-num_iters   = 6
+num_iters   = 3
 IMAGE_WIDTH=3458 # real image 3456
 IMAGE_HEIGHT=1030 # real image 1008
-BATCHSIZE_TRAIN=4#10
-BATCHSIZE_VALID=4 #10
+BATCHSIZE_TRAIN=4
+BATCHSIZE_VALID=4
 NWORKERS_TRAIN=1
 NWORKERS_VALID=1
 ADC_THRESH=0.0
@@ -130,7 +125,7 @@ def main():
     start_epoch = 0
     epochs      = 10
     iter_per_epoch = None # determined later
-    iter_per_valid = 2#10
+    iter_per_valid = 1#10
 
 
     nbatches_per_itertrain = 5
@@ -170,6 +165,7 @@ def main():
                                       plane = 0,
                                       tickbackward=TICKBACKWARD,
                                       readonly_products=None )
+    iotrain.set_nentries(iotrain.get_len_eff())
     iovalid = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
                                       BATCHSIZE_VALID, NWORKERS_VALID,
                                       input_producer_name="nbkrnd_sparse",
@@ -177,10 +173,10 @@ def main():
                                       plane = 0,
                                       tickbackward=TICKBACKWARD,
                                       readonly_products=None )
-
+    iovalid.set_nentries(iovalid.get_len_eff())
     print ("pause to give time to feeders")
 
-    NENTRIES = len(iotrain)
+    NENTRIES = iotrain.get_len_eff()
     #NENTRIES = 100000
     print ("Number of entries in training set: ",NENTRIES)
 
@@ -333,9 +329,8 @@ def train(iotrain, device, batchsize, model, criterion, optimizer, nbatches, iit
     model.train()
 
     nnone = 0
-    
     batched_data = torch.utils.data.DataLoader(iotrain, batch_size=batchsize, shuffle=True)
-        
+
     for i in range(0,nbatches):
         print("iiter ",iiter," batch ",i," of ",nbatches)
         batchstart = time.time()
@@ -344,74 +339,68 @@ def train(iotrain, device, batchsize, model, criterion, optimizer, nbatches, iit
         end = time.time()
         time_meters["data"].update(time.time()-end)
         
-        num_good_entries = 0
         full_predict = [torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4))]
         print("GETTING DATA:")
         batch = next(iter(batched_data))
-        img_list,truth_list = dl.split_into_planes(batch)
-        coords_inputs_t = dl.get_coords_inputs_tensor(img_list)
+        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize)
         
-        for j in range(0,len(img_list)):
-            if len(img_list) != 0:
-                coord_t = coords_inputs_t[j][0]
-                input_t = coords_inputs_t[j][1]
-               
-                # compute output
-                if RUNPROFILER:
-                    torch.cuda.synchronize()
-                end = time.time()
-                predict_t = model(coord_t, input_t,batchsize)
-                
-                for k in range(0,len(predict_t)):
-                    full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
-                num_good_entries += 1
-                
-        if num_good_entries > 0:
-            print("num_good_entries:",num_good_entries)
-            fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
-        
-            if RUNPROFILER:
-                torch.cuda.synchronize()
-            time_meters["forward"].update(time.time()-end)
-        
-            # compute gradient and do SGD step
+        for j in range(0,batchsize):
+            coord_t = coords_inputs_t[j][0]
+            input_t = coords_inputs_t[j][1]
+           
+            # compute output
             if RUNPROFILER:
                 torch.cuda.synchronize()
             end = time.time()
-            optimizer.zero_grad()
-            totloss.backward()
-            optimizer.step()
-            if RUNPROFILER:
-                torch.cuda.synchronize()
-            time_meters["backward"].update(time.time()-end)
-        
-            # measure accuracy and record loss
-            end = time.time()
-        
-            # update loss meters
-            loss_meters["total"].update( totloss.item() )
-            loss_meters["fl_loss"].update( fl_loss.item() )
-            loss_meters["iT_loss"].update( iT_loss.item() )
-            loss_meters["nP_loss"].update( nP_loss.item() )
-            loss_meters["nCP_loss"].update( nCP_loss.item() )
-            loss_meters["nNP_loss"].update( nNP_loss.item() )
-            loss_meters["nN_loss"].update( nN_loss.item() )
-        
-            # measure accuracy and update meters
-            acc_values = accuracy(full_predict,
-                             truth_list,
-                             acc_meters)
-        
-            # update time meter
-            time_meters["accuracy"].update(time.time()-end)
+            predict_t = model(coord_t, input_t, batchsize)
             
-            # write to tensorboard
-            loss_scalars = { x:y.avg for x,y in loss_meters.items() }
-            writer.add_scalars('data/train_loss', loss_scalars, iiter )
-            
-            acc_scalars = { x:y.avg for x,y in acc_meters.items() }
-            writer.add_scalars('data/train_accuracy', acc_scalars, iiter )
-
+            for k in range(0,len(predict_t)):
+                full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
+        
+        # loss calc:
+        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
+    
+        if RUNPROFILER:
+            torch.cuda.synchronize()
+        time_meters["forward"].update(time.time()-end)
+    
+        # compute gradient and do SGD step
+        if RUNPROFILER:
+            torch.cuda.synchronize()
+        end = time.time()
+        optimizer.zero_grad()
+        totloss.backward()
+        optimizer.step()
+        if RUNPROFILER:
+            torch.cuda.synchronize()
+        time_meters["backward"].update(time.time()-end)
+    
+        # measure accuracy and record loss
+        end = time.time()
+    
+        # update loss meters
+        loss_meters["total"].update( totloss.item() )
+        loss_meters["fl_loss"].update( fl_loss.item() )
+        loss_meters["iT_loss"].update( iT_loss.item() )
+        loss_meters["nP_loss"].update( nP_loss.item() )
+        loss_meters["nCP_loss"].update( nCP_loss.item() )
+        loss_meters["nNP_loss"].update( nNP_loss.item() )
+        loss_meters["nN_loss"].update( nN_loss.item() )
+    
+        # measure accuracy and update meters
+        # acc_values = accuracy(full_predict,
+        #                  truth_list,
+        #                  acc_meters)
+    
+        # update time meter
+        time_meters["accuracy"].update(time.time()-end)
+        
+        # write to tensorboard
+        loss_scalars = { x:y.avg for x,y in loss_meters.items() }
+        writer.add_scalars('data/train_loss', loss_scalars, iiter )
+        
+        # acc_scalars = { x:y.avg for x,y in acc_meters.items() }
+        # writer.add_scalars('data/train_accuracy', acc_scalars, iiter )
 
         # measure elapsed time for batch
         time_meters["batch"].update(time.time()-batchstart)
@@ -483,8 +472,6 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
     
     batched_data = torch.utils.data.DataLoader(all_data, batch_size=batchsize, shuffle=True)
     
-    num_empty_planes = 0
-    num_small_entries = 0
     
     for i in range(0,nbatches):
         print("iiter ",iiter," batch ",i," of ",nbatches)
@@ -496,56 +483,52 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
         full_predict = [torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4))]
         print("GETTING DATA:")
         batch = next(iter(batched_data))
-        img_list,truth_list = dl.split_into_planes(batch)
-        coords_inputs_t = dl.get_coords_inputs_tensor(img_list)
+        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize)
         
         time_meters["data"].update( time.time()-tdata_start )
 
         # compute output
         tforward = time.time()
         
-        for j in range(0,len(img_list)):
-            if len(img_list) != 0:
-                coord_t = coords_inputs_t[j][0]
-                input_t = coords_inputs_t[j][1]
-                
-                predict_t = model(coord_t, input_t,batchsize)
-                for k in range(0,len(predict_t)):
-                    full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
-                num_good_entries += 1
-                
-        if num_good_entries > 0:
-            print("num_good_entries:",num_good_entries)
-            fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
-        
-            time_meters["forward"].update(time.time()-tforward)
-
-            # measure accuracy and update meters
-            # update loss meters
-            loss_meters["total"].update( totloss.item() )
-            loss_meters["fl_loss"].update( fl_loss.item() )
-            loss_meters["iT_loss"].update( iT_loss.item() )
-            loss_meters["nP_loss"].update( nP_loss.item() )
-            loss_meters["nCP_loss"].update( nCP_loss.item() )
-            loss_meters["nNP_loss"].update( nNP_loss.item() )
-            loss_meters["nN_loss"].update( nN_loss.item() )
-
-
-            # measure accuracy and update meters
-            acc_values = accuracy(full_predict,
-                             truth_list,
-                             acc_meters)
-
-            # update time meter
-            end = time.time()
-            time_meters["accuracy"].update(time.time()-end)
+        for j in range(0,batchsize):
+            coord_t = coords_inputs_t[j][0]
+            input_t = coords_inputs_t[j][1]
             
-            # write to tensorboard
-            loss_scalars = { x:y.avg for x,y in loss_meters.items() }
-            writer.add_scalars('data/valid_loss', loss_scalars, iiter )
+            predict_t = model.deploy(coord_t, input_t, batchsize)
+            for k in range(0,len(predict_t)):
+                full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
 
-            acc_scalars = { x:y.avg for x,y in acc_meters.items() }
-            writer.add_scalars('data/valid_accuracy', acc_scalars, iiter )
+        # loss calc:
+        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
+    
+        time_meters["forward"].update(time.time()-tforward)
+
+        # measure accuracy and update meters
+        # update loss meters
+        loss_meters["total"].update( totloss.item() )
+        loss_meters["fl_loss"].update( fl_loss.item() )
+        loss_meters["iT_loss"].update( iT_loss.item() )
+        loss_meters["nP_loss"].update( nP_loss.item() )
+        loss_meters["nCP_loss"].update( nCP_loss.item() )
+        loss_meters["nNP_loss"].update( nNP_loss.item() )
+        loss_meters["nN_loss"].update( nN_loss.item() )
+
+
+        # measure accuracy and update meters
+        acc_values = accuracy(full_predict,
+                         truth_list,
+                         acc_meters)
+
+        # update time meter
+        end = time.time()
+        time_meters["accuracy"].update(time.time()-end)
+        
+        # write to tensorboard
+        loss_scalars = { x:y.avg for x,y in loss_meters.items() }
+        writer.add_scalars('data/valid_loss', loss_scalars, iiter )
+
+        acc_scalars = { x:y.avg for x,y in acc_meters.items() }
+        writer.add_scalars('data/valid_accuracy', acc_scalars, iiter )
 
         # measure elapsed time for batch
         time_meters["batch"].update(time.time()-batchstart)

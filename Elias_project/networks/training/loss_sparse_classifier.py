@@ -53,11 +53,6 @@ class SparseClassifierLoss(nn.modules.loss._WeightedLoss):
         #     return
 
         # 6 losses, each with weight tensors
-        
-        print("predict:",predict)
-        print("true:",true)
-        print("true[0].dtype",true[0].dtype)
-        
         fl_weight_t = torch.tensor([1.0,1.0,1.0,1.0])
         flavorsLoss=torch.nn.CrossEntropyLoss(weight=fl_weight_t, size_average=self.size_average)
         

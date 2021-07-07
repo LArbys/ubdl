@@ -7,7 +7,7 @@ from larcv import larcv
 # from larcvdataset.larcvserver import LArCVServer
 import torch
 from torch.utils import data as torchdata
-import dataLoader as dl
+import dataLoader as dl # TODO: Change this back
 
 def load_classifier_larcvdata( name, inputfile, batchsize, nworkers,
                             input_producer_name,true_producer_name, plane,
@@ -81,3 +81,10 @@ class SparseClassifierPyTorchDataset(torchdata.Dataset):
         def __getitem__(self,index):
             data = [self.feeder[0][index],self.feeder[4][index]]
             return data
+        
+        def set_nentries(self,nentries):
+            self.nentries = nentries
+        
+        def get_len_eff(self):
+            len_eff = self.feeder[8]
+            return len_eff
