@@ -9,13 +9,12 @@ import torch
 from torch.utils import data as torchdata
 import dataLoader as dl # TODO: Change this back
 
-def load_classifier_larcvdata( name, inputfile, batchsize, nworkers,
-                            input_producer_name,true_producer_name, plane,
+def load_classifier_larcvdata( name, inputfile, batchsize, nworkers, nbatches, verbosity,
+                            input_producer_name,true_producer_name,
                             tickbackward=False, readonly_products=None):
-    feeder = SparseClassifierPyTorchDataset(inputfile, batchsize,
+    feeder = SparseClassifierPyTorchDataset(inputfile, batchsize, nbatches, verbosity,
                                          input_producer_name=input_producer_name,
                                          true_producer_name=true_producer_name,
-                                         plane=plane,
                                          tickbackward=tickbackward, nworkers=nworkers,
                                          readonly_products=readonly_products,
                                          feedername=name)
@@ -24,8 +23,8 @@ def load_classifier_larcvdata( name, inputfile, batchsize, nworkers,
 
 class SparseClassifierPyTorchDataset(torchdata.Dataset):
         idCounter = 0
-        def __init__(self,inputfile,batchsize,input_producer_name, true_producer_name,
-                     plane, tickbackward=False,nworkers=4,
+        def __init__(self,inputfile,batchsize,nbatches,verbosity,input_producer_name, true_producer_name,
+                     tickbackward=False,nworkers=4,
                      readonly_products=None,
                      feedername=None):
             super(SparseClassifierPyTorchDataset,self).__init__()
@@ -54,7 +53,9 @@ class SparseClassifierPyTorchDataset(torchdata.Dataset):
             else:
                 self.feedername = feedername
             self.batchsize = batchsize
+            self.nbatches = nbatches
             self.nworkers  = nworkers
+            self.verbosity = verbosity
             readonly_products = None
             # params = {"inputproducer":input_producer_name, "trueproducer":true_producer_name,"plane":plane}
 
@@ -70,7 +71,7 @@ class SparseClassifierPyTorchDataset(torchdata.Dataset):
             #                           io_tickbackward=tickbackward,
             #                           func_params=params)
             print("SETTING FEEDER")
-            self.feeder = dl.load_rootfile_training(inputfile)
+            self.feeder = dl.load_rootfile_training(inputfile, self.batchsize, self.nbatches, self.verbosity)
             
             SparseClassifierPyTorchDataset.idCounter += 1
 

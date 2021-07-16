@@ -23,14 +23,32 @@ class SEResNetBN(nn.Module):
         self.dim = dimension
         self.postRes = scn.ReLU()
         self.postSE = scn.ReLU()
-        self.purpleBlockP1 = scn.Sequential(
+        self.purpleBlockP1_1 = scn.Sequential(
                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                scn.BatchNormReLU(self.nIn),
                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                scn.BatchNormalization(self.nIn)
                            )
-        self.PurpleSE = se.SELayer(self.nIn)
-        self.nOut = self.nIn*2
+        self.PurpleSE_1 = se.SELayer(self.nIn)
+        self.purpleBlockP1_2 = scn.Sequential(
+                               scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                               scn.BatchNormReLU(self.nIn),
+                               scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                               scn.BatchNormalization(self.nIn)
+                           )
+        self.PurpleSE_2 = se.SELayer(self.nIn)
+        self.purpleBlockP1_3 = scn.Sequential(
+                               scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                               scn.BatchNormReLU(self.nIn),
+                               scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                               scn.BatchNormalization(self.nIn)
+                           )
+        self.PurpleSE_3 = se.SELayer(self.nIn)
+
+
+
+
+        self.nOut = self.nIn//3
         self.greenResPad = scn.Sequential(
                                         scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 1, False),
                                         scn.MaxPooling(self.dim, 1, 2)
@@ -44,14 +62,28 @@ class SEResNetBN(nn.Module):
                                     )
         self.greenTSE = se.SELayer(self.nOut)
         self.nIn = self.nOut
-        self.greenBlockP1 = scn.Sequential(
+        self.greenBlockP1_1 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
-        self.greenSE = se.SELayer(self.nIn)
-        self.nOut = self.nIn*2
+        self.greenSE_1 = se.SELayer(self.nIn)
+        self.greenBlockP1_2 = scn.Sequential(
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormReLU(self.nIn),
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormalization(self.nIn)
+                            )
+        self.greenSE_2 = se.SELayer(self.nIn)
+        self.greenBlockP1_3 = scn.Sequential(
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormReLU(self.nIn),
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormalization(self.nIn)
+                            )
+        self.greenSE_3 = se.SELayer(self.nIn)
+        self.nOut = self.nIn//2
         self.orangeResPad = scn.Sequential(
                                         scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 1, False),
                                         scn.MaxPooling(self.dim, 1, 2)
@@ -65,14 +97,43 @@ class SEResNetBN(nn.Module):
                                     )
         self.orangeTSE = se.SELayer(self.nOut)
         self.nIn = self.nOut
-        self.orangeBlockP1 = scn.Sequential(
+        self.orangeBlockP1_1 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
-        self.orangeSE = se.SELayer(self.nIn)
-        self.nOut = self.nIn*2
+        self.orangeSE_1 = se.SELayer(self.nIn)
+        self.orangeBlockP1_2 = scn.Sequential(
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormReLU(self.nIn),
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormalization(self.nIn)
+                            )
+        self.orangeSE_2 = se.SELayer(self.nIn)
+        self.orangeBlockP1_3 = scn.Sequential(
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormReLU(self.nIn),
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormalization(self.nIn)
+                            )
+        self.orangeSE_3 = se.SELayer(self.nIn)
+        self.orangeBlockP1_4 = scn.Sequential(
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormReLU(self.nIn),
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormalization(self.nIn)
+                            )
+        self.orangeSE_4 = se.SELayer(self.nIn)
+        self.orangeBlockP1_5 = scn.Sequential(
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormReLU(self.nIn),
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormalization(self.nIn)
+                            )
+        self.orangeSE_5 = se.SELayer(self.nIn)
+
+        self.nOut = self.nIn//2
         self.blueResPad = scn.Sequential(
                                         scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 1, False),
                                         scn.MaxPooling(self.dim, 1, 2)
@@ -83,27 +144,48 @@ class SEResNetBN(nn.Module):
                                         scn.BatchNormReLU(self.nOut),
                                         scn.SubmanifoldConvolution(self.dim, self.nOut, self.nOut, 3, False),
                                         scn.BatchNormalization(self.nOut)
-                                    )
+                                    )        
         self.blueTSE = se.SELayer(self.nOut)
         self.nIn = self.nOut
-        self.blueBlockP1 = scn.Sequential(
+        self.blueBlockP1_1 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
-        self.blueSE = se.SELayer(self.nIn)
+        self.blueSE_1 = se.SELayer(self.nIn)
+        self.blueBlockP1_2 = scn.Sequential(
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormReLU(self.nIn),
+                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
+                                scn.BatchNormalization(self.nIn)
+                            )
+        self.blueSE_2 = se.SELayer(self.nIn)
+        
     
-    
-    def forward(self, x, inputshape):
-        for i in range(3):
-            res = x.features
-            tic = time.perf_counter()
-            x = self.purpleBlock(x, inputshape)
-            toc = time.perf_counter()
-            print(f"purpleBlock in {toc - tic:0.4f} seconds")
-            x.features += res
-            x = self.postRes(x)
+    def forward(self, x, inputshape, device):
+        # Purple Blocks:
+        tic = time.perf_counter()
+        res = x.features
+        x = self.purpleBlockP1_1(x)
+        x = self.PurpleSE_1(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        res = x.features
+        x = self.purpleBlockP1_2(x)
+        x = self.PurpleSE_2(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        res = x.features
+        x = self.purpleBlockP1_3(x)
+        x = self.PurpleSE_3(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        toc = time.perf_counter()
+        print(f"purpleBlock in {toc - tic:0.4f} seconds")
         
         inputshape[0] = inputshape[0]//2 + 1
         inputshape[1] = inputshape[1]//2 + 1
@@ -112,96 +194,142 @@ class SEResNetBN(nn.Module):
         toc = time.perf_counter()
         print(f"greenResPad in {toc - tic:0.4f} seconds")
         tic = time.perf_counter()
-        x = self.greenTransitionBlock(x, inputshape)
+        x = self.greenTransitionBlock(x, inputshape, device)
         toc = time.perf_counter()
         print(f"greenTransitionBlock in {toc - tic:0.4f} seconds")
         x.features += res.features
         x = self.postRes(x)
-        for i in range(3):
-            res = x.features
-            tic = time.perf_counter()
-            x = self.greenBlock(x, inputshape)
-            toc = time.perf_counter()
-            print(f"greenBlock in {toc - tic:0.4f} seconds")
-            x.features += res
-            x = self.postRes(x)
+        tic = time.perf_counter()
+        res = x.features
+        x = self.greenBlockP1_1(x)
+        x = self.greenSE_1(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        res = x.features
+        x = self.greenBlockP1_2(x)
+        x = self.greenSE_2(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        res = x.features
+        x = self.greenBlockP1_3(x)
+        x = self.greenSE_3(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        toc = time.perf_counter()
+        print(f"greenBlock in {toc - tic:0.4f} seconds")
 
         inputshape[0] = inputshape[0]//2 + 1
         inputshape[1] = inputshape[1]//2 + 1
         res = self.orangeResPad(x)
         tic = time.perf_counter()
-        x = self.orangeTransitionBlock(x, inputshape)
+        x = self.orangeTransitionBlock(x, inputshape, device)
         toc = time.perf_counter()
         print(f"orangeTransitionBlock in {toc - tic:0.4f} seconds")
         x.features += res.features
         x = self.postRes(x)
-        for i in range(5):
-            res = x.features
-            tic = time.perf_counter()
-            x = self.orangeBlock(x, inputshape)
-            toc = time.perf_counter()
-            print(f"orangeBlock in {toc - tic:0.4f} seconds")
-            x.features += res
-            x = self.postRes(x)
+        tic = time.perf_counter()
+        res = x.features
+        x = self.orangeBlockP1_1(x)
+        x = self.orangeSE_1(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        res = x.features
+        x = self.orangeBlockP1_2(x)
+        x = self.orangeSE_2(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        res = x.features
+        x = self.orangeBlockP1_3(x)
+        x = self.orangeSE_3(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        res = x.features
+        x = self.orangeBlockP1_4(x)
+        x = self.orangeSE_4(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        res = x.features
+        x = self.orangeBlockP1_5(x)
+        x = self.orangeSE_5(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        toc = time.perf_counter()
+        print(f"orangeBlock in {toc - tic:0.4f} seconds")
 
         inputshape[0] = inputshape[0]//2 + 1
         inputshape[1] = inputshape[1]//2 + 1
         res = self.blueResPad(x)
         tic = time.perf_counter()
-        x = self.blueTransitionBlock(x, inputshape)
+        x = self.blueTransitionBlock(x, inputshape, device)
         toc = time.perf_counter()
         print(f"blueTransitionBlock in {toc - tic:0.4f} seconds")
         x.features += res.features
         x = self.postRes(x)
-        for i in range(2):
-            res = x.features
-            tic = time.perf_counter()
-            x = self.blueBlock(x, inputshape)
-            toc = time.perf_counter()
-            print(f"blueBlock in {toc - tic:0.4f} seconds")
-            x.features += res
-            x = self.postRes(x)
-        return x
-    
-    
-    def purpleBlock(self, x, inputshape):
-        x = self.purpleBlockP1(x)
-        x = self.PurpleSE(x, inputshape)
+        tic = time.perf_counter()
+        res = x.features
+        x = self.blueBlockP1_1(x)
+        x = self.blueSE_1(x, inputshape, device)
         x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        res = x.features
+        x = self.blueBlockP1_2(x)
+        x = self.blueSE_2(x, inputshape, device)
+        x = self.postSE(x)
+        x.features += res
+        x = self.postRes(x)
+        toc = time.perf_counter()
+        print(f"blueBlock in {toc - tic:0.4f} seconds")
+
         return x
     
-    def greenTransitionBlock(self, x, inputshape):
+    
+    # def purpleBlock(self, x, inputshape, device):
+    #     x = self.purpleBlockP1(x)
+    #     x = self.PurpleSE(x, inputshape, device)
+    #     x = self.postSE(x)
+    #     return x
+    
+    def greenTransitionBlock(self, x, inputshape, device):
         x = self.greenTransitionBlockP1(x)
-        x = self.greenTSE(x, inputshape)
+        x = self.greenTSE(x, inputshape, device)
         x = self.postSE(x)
         return x
     
-    def greenBlock(self, x, inputshape):
-        x = self.greenBlockP1(x)
-        x = self.greenSE(x, inputshape)
-        x = self.postSE(x)
-        return x
+    # def greenBlock(self, x, inputshape, device):
+    #     x = self.greenBlockP1(x)
+    #     x = self.greenSE(x, inputshape, device)
+    #     x = self.postSE(x)
+    #     return x
     
-    def orangeTransitionBlock(self, x, inputshape):
+    def orangeTransitionBlock(self, x, inputshape, device):
         x = self.orangeTransitionBlockP1(x)
-        x = self.orangeTSE(x, inputshape)
+        x = self.orangeTSE(x, inputshape, device)
         x = self.postSE(x)
         return x
     
-    def orangeBlock(self, x, inputshape):
-        x = self.orangeBlockP1(x)
-        x = self.orangeSE(x, inputshape)
-        x = self.postSE(x)
-        return x
+    # def orangeBlock(self, x, inputshape, device):
+    #     x = self.orangeBlockP1(x)
+    #     x = self.orangeSE(x, inputshape, device)
+    #     x = self.postSE(x)
+    #     return x
     
-    def blueTransitionBlock(self, x, inputshape):
+    def blueTransitionBlock(self, x, inputshape, device):
         x = self.blueTransitionBlockP1(x)
-        x = self.blueTSE(x, inputshape)
+        x = self.blueTSE(x, inputshape, device)
         x = self.postSE(x)
         return x
     
-    def blueBlock(self, x, inputshape):
-        x = self.blueBlockP1(x)
-        x = self.blueSE(x, inputshape)
-        x = self.postSE(x)
-        return x
+    # def blueBlock(self, x, inputshape, device):
+    #     x = self.blueBlockP1(x)
+    #     x = self.blueSE(x, inputshape, device)
+    #     x = self.postSE(x)
+    #     return x

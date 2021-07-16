@@ -14,9 +14,9 @@ class SELayer(nn.Module):
             nn.Sigmoid()
         )
     
-    def forward(self, x, inputshape):
+    def forward(self, x, inputshape, device):
         b, c  = x.features.size()
-        y = self.avg_pool(x, inputshape)
+        y = self.avg_pool(x, inputshape, device)
         y.features = self.fc(y.features)
         x.features = x.features * y.features.expand_as(x.features)
         return x

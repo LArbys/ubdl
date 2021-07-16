@@ -37,7 +37,7 @@ class SparseClassifierLoss(nn.modules.loss._WeightedLoss):
         self.size_average = size_average
         #self.mean = torch.mean.cuda()
 
-    def forward(self,predict,true):
+    def forward(self,predict,true,device):
         """
         predict: (b,1,h,w) tensor with output from logsoftmax
         adc:  (b,h,w) tensor with true adc values
@@ -53,22 +53,22 @@ class SparseClassifierLoss(nn.modules.loss._WeightedLoss):
         #     return
 
         # 6 losses, each with weight tensors
-        fl_weight_t = torch.tensor([1.0,1.0,1.0,1.0])
+        fl_weight_t = torch.tensor([1.0,1.0,1.0,1.0],device=device)
         flavorsLoss=torch.nn.CrossEntropyLoss(weight=fl_weight_t, size_average=self.size_average)
         
-        iT_weight_t = torch.tensor([1.0,1.0,1.0,1.0])
+        iT_weight_t = torch.tensor([1.0,1.0,1.0,1.0],device=device)
         interTypeLoss=torch.nn.CrossEntropyLoss(weight=iT_weight_t, size_average=self.size_average)
         
-        nP_weight_t = torch.tensor([1.0,1.0,1.0,1.0])
+        nP_weight_t = torch.tensor([1.0,1.0,1.0,1.0],device=device)
         nProtonLoss=torch.nn.CrossEntropyLoss(weight=nP_weight_t, size_average=self.size_average)
         
-        nCP_weight_t = torch.tensor([1.0,1.0,1.0,1.0])
+        nCP_weight_t = torch.tensor([1.0,1.0,1.0,1.0],device=device)
         nCPionLoss=torch.nn.CrossEntropyLoss(weight=nCP_weight_t, size_average=self.size_average)
         
-        nNP_weight_t = torch.tensor([1.0,1.0,1.0,1.0])
+        nNP_weight_t = torch.tensor([1.0,1.0,1.0,1.0],device=device)
         nNPionLoss=torch.nn.CrossEntropyLoss(weight=nNP_weight_t, size_average=self.size_average)
         
-        nN_weight_t = torch.tensor([1.0,1.0,1.0,1.0])
+        nN_weight_t = torch.tensor([1.0,1.0,1.0,1.0],device=device)
         nNeutronLoss=torch.nn.CrossEntropyLoss(weight=nN_weight_t, size_average=self.size_average)
         
         print("beginning loss calc:")

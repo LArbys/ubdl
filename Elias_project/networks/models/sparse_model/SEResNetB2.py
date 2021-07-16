@@ -25,17 +25,17 @@ class SEResNetB2(nn.Module):
         self.SE = se.SELayer(self.nIn)
         self.postRes = scn.BatchNormReLU(self.nIn)
     
-    def forward(self, x, inputshape):
+    def forward(self, x, inputshape, device):
         x = self.preRes(x)
         residual = x.features
-        x = self.resBlock(x, inputshape)
+        x = self.resBlock(x, inputshape, device)
         x.features += residual
         x = self.postRes(x)
         return x        
     
-    def resBlock(self, x, inputshape):
+    def resBlock(self, x, inputshape, device):
         x = self.convA(x)
         x = self.BatchNormReLU(x)
         x = self.convB(x)
-        x = self.SE(x, inputshape)
+        x = self.SE(x, inputshape, device)
         return x

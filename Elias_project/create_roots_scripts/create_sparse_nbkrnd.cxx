@@ -160,7 +160,7 @@ int main(int nargs, char** argv){
 	int subrun = truth[1];
 	int good_entry = truth[2]; // 1 is good, 0 is bad
 	
-	if (good_entry == 1){
+	if (good_entry == 1 and subrun%10 == 0){
 		// Saving sparse:
 		std::vector<float> thresholds;
 		thresholds.push_back(10);
@@ -266,17 +266,17 @@ std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry,
    // type of Neutrino
    int nu_pdg = ev_mctruth->at(0).GetNeutrino().Nu().PdgCode();
    if (nu_pdg== 12){
-	   std::cout<<"Muon Neutrino event "<<std::endl;
+	   std::cout<<"Electron Neutrino event "<<std::endl;
 	   flavors = 0;
    } else if (nu_pdg== -12){
-	   std::cout<<"Muon Anti Neutrino event "<<std::endl;
+	   std::cout<<"Electon Anti Neutrino event "<<std::endl;
 	   flavors = 1;
    } else if (nu_pdg== 14){
-	   std::cout<<"Electron Neutrino event "<<std::endl;
+	   std::cout<<"Muon Neutrino event "<<std::endl;
 	   flavors = 2;
    } 
    else if (nu_pdg== -14){
-	   std::cout<<"Electon Anti Neutrino event "<<std::endl;
+	   std::cout<<"Muon Anti Neutrino event "<<std::endl;
 	   flavors = 3;
    }
    
@@ -346,10 +346,10 @@ std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry,
    // CC = 1
    //
    // Flavors:
-   // muon neutrino= 0
-   // muon antineutrino = 1
-   // electron neutrino = 2
-   // electron antineutrino = 3
+   // electron neutrino = 0
+   // electron antineutrino = 1
+   // muon neutrino = 2
+   // muon antineutrino = 3
    // 
    // interaction type:
    // QE = 0
@@ -363,10 +363,10 @@ std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry,
    // 2 plane empty = 2
    // 3 plane empty = 3
    //
-   // example: subrun = 1290300
+   // example: subrun = 1290200
    // subrun: 129
    // NC/CC: NC
-   // flavor: electron neutrino
+   // flavor: muon neutrino
    // interaction type: QE
    // planes: none empty
    int subrun = subrun_wire;
@@ -378,7 +378,7 @@ std::vector<int> get_truth_info(larlite::storage_manager* io_larlite, int entry,
    int good_entry = 1;
    for (int i = 0; i < 3; i++){
 	   std::cout << "pxl_count for plane " << i << ": " << pxl_count[i] << "\n";
-	   if (pxl_count[i] <= 60) good_entry = 0;
+	   if (pxl_count[i] <= 20) good_entry = 0;
 	   if (pxl_count[i] == 0) num_empty_planes++;
    }
    std::cout << "num_empty_planes: " << num_empty_planes << "\n";

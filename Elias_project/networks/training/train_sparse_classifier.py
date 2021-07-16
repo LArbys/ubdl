@@ -35,33 +35,31 @@ from networkmodel import SparseClassifier
 from SparseClassDataset import load_classifier_larcvdata
 from loss_sparse_classifier import SparseClassifierLoss
 import dataLoader as dl
+# import custom_shuffle
 
-# from sparseinfill import SparseInfill
-# from sparseinfilldata import load_infill_larcvdata
-# from loss_sparse_infill import SparseInfillLoss
 
 # ===================================================
 # TOP-LEVEL PARAMETERS
-GPUMODE=False # TODO: keep this false until we set up gpu on trex
+GPUMODE=True
 RESUME_FROM_CHECKPOINT=False
 RUNPROFILER=False
 
 CHECKPOINT_FILE="model_best.tar"
-INPUTFILE_TRAIN="/home/ebengh01/ubdl/Elias_project/networks/data/output_10001.root"
-INPUTFILE_VALID="/home/ebengh01/ubdl/Elias_project/networks/data/output_9656.root"
+INPUTFILE_TRAIN="/media/data/larbys/ebengh01/SparseClassifierTrainingSet.root" # output_10001.root SparseClassifierTrainingSet.root
+INPUTFILE_VALID="/media/data/larbys/ebengh01/SparseClassifierValidationSet.root" # output_9656.root SparseClassifierValidationSet.root
 TICKBACKWARD=False
 PLANE = 0
 start_iter  = 0
-num_iters   = 3
+num_iters   = 10000
 IMAGE_WIDTH=3458 # real image 3456
-IMAGE_HEIGHT=1030 # real image 1008
-BATCHSIZE_TRAIN=4
-BATCHSIZE_VALID=4
+IMAGE_HEIGHT=1026 # real image 1008, 1030 for not depth concat
+BATCHSIZE_TRAIN=8
+BATCHSIZE_VALID=8
 NWORKERS_TRAIN=1
 NWORKERS_VALID=1
 ADC_THRESH=0.0
-DEVICE_IDS=[0]
-GPUID=DEVICE_IDS[0]
+DEVICE_IDS=[0,1] # TODO: get this working for multiple gpu
+GPUID=DEVICE_IDS[1]
 # map multi-training weights
 CHECKPOINT_MAP_LOCATIONS={"cuda:0":"cuda:0",
                           "cuda:1":"cuda:1"}
@@ -81,10 +79,11 @@ def main():
     global num_iters
 
     if GPUMODE:
-        DEVICE = torch.device("cuda:%d"%(DEVICE_IDS[0]))
+        DEVICE = torch.device("cuda:%d"%(GPUID))
+        torch.cuda.set_device(GPUID)
     else:
         DEVICE = torch.device("cpu")
-
+    print("device:",DEVICE)
     # create model, mark it to run on the GPU
     imgdims = 2
     ninput_features  = 64
@@ -93,18 +92,17 @@ def main():
     model = SparseClassifier( (IMAGE_HEIGHT,IMAGE_WIDTH), 
                            ninput_features, noutput_features,
                            show_sizes=False).to(DEVICE)
-
     # Resume training option
     if RESUME_FROM_CHECKPOINT:
         print ("RESUMING FROM CHECKPOINT FILE ",CHECKPOINT_FILE)
         checkpoint = torch.load( CHECKPOINT_FILE, map_location=CHECKPOINT_MAP_LOCATIONS ) # load weights to gpuid
         best_prec1 = checkpoint["best_prec1"]
-        if CHECKPOINT_FROM_DATA_PARALLEL:
-            model = nn.DataParallel( model, device_ids=DEVICE_IDS ) # distribute across device_ids
+        # if CHECKPOINT_FROM_DATA_PARALLEL:
+        #     model = nn.DataParallel( model, device_ids=DEVICE_IDS ) # distribute across device_ids
         model.load_state_dict(checkpoint["state_dict"])
 
-    if not CHECKPOINT_FROM_DATA_PARALLEL and len(DEVICE_IDS)>1:
-        model = nn.DataParallel( model, device_ids=DEVICE_IDS ).to(device=DEVICE) # distribute across device_ids
+    # if not CHECKPOINT_FROM_DATA_PARALLEL and len(DEVICE_IDS)>1:
+    #     model = nn.DataParallel( model, device_ids=DEVICE_IDS ).to(device=DEVICE) # distribute across device_ids
 
     # uncomment to dump model
     if False:
@@ -125,7 +123,7 @@ def main():
     start_epoch = 0
     epochs      = 10
     iter_per_epoch = None # determined later
-    iter_per_valid = 1#10
+    iter_per_valid = 10
 
 
     nbatches_per_itertrain = 5
@@ -157,27 +155,26 @@ def main():
     cudnn.benchmark = True
 
     # LOAD THE DATASET
-    # iotrain = dl.load_rootfile_training(INPUTFILE_TRAIN)
-    iotrain = load_classifier_larcvdata( "training", INPUTFILE_TRAIN,
-                                      BATCHSIZE_TRAIN, NWORKERS_TRAIN,
-                                      input_producer_name="nbkrnd_sparse",
-                                      true_producer_name="nbkrnd_sparse",
-                                      plane = 0,
-                                      tickbackward=TICKBACKWARD,
-                                      readonly_products=None )
-    iotrain.set_nentries(iotrain.get_len_eff())
-    iovalid = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
-                                      BATCHSIZE_VALID, NWORKERS_VALID,
-                                      input_producer_name="nbkrnd_sparse",
-                                      true_producer_name="nbkrnd_sparse",
-                                      plane = 0,
-                                      tickbackward=TICKBACKWARD,
-                                      readonly_products=None )
-    iovalid.set_nentries(iovalid.get_len_eff())
-    print ("pause to give time to feeders")
-
-    NENTRIES = iotrain.get_len_eff()
-    #NENTRIES = 100000
+    
+    # iotrain = load_classifier_larcvdata( "training", INPUTFILE_TRAIN,
+    #                                   BATCHSIZE_TRAIN, NWORKERS_TRAIN,
+    #                                   input_producer_name="nbkrnd_sparse",
+    #                                   true_producer_name="nbkrnd_sparse",
+    #                                   tickbackward=TICKBACKWARD,
+    #                                   readonly_products=None )
+    # iotrain.set_nentries(iotrain.get_len_eff())
+    # iovalid = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
+    #                                   BATCHSIZE_VALID, NWORKERS_VALID,
+    #                                   input_producer_name="nbkrnd_sparse",
+    #                                   true_producer_name="nbkrnd_sparse",
+    #                                   tickbackward=TICKBACKWARD,
+    #                                   readonly_products=None )
+    # iovalid.set_nentries(iovalid.get_len_eff())
+    # print ("pause to give time to feeders")
+    
+    # TODO: fix NENTRIES, will be hard coded in
+    # NENTRIES = iotrain.get_len_eff()
+    NENTRIES = 257000 # rough estimate
     print ("Number of entries in training set: ",NENTRIES)
 
     if NENTRIES>0:
@@ -204,9 +201,10 @@ def main():
            optimizer.load_state_dict(checkpoint['optimizer'])
         # if GPUMODE:
         #    optimizer.cuda(GPUID)
-
+        verbosity = False
+        
         for ii in range(start_iter, num_iters):
-
+            # TODO: load in data
             adjust_learning_rate(optimizer, ii, lr)
             print ("MainLoop Iter:%d Epoch:%d.%d "%(ii,ii/iter_per_epoch,ii%iter_per_epoch),)
             for param_group in optimizer.param_groups:
@@ -215,9 +213,9 @@ def main():
 
             # train for one iteration
             try:
-                _ = train(iotrain, DEVICE, BATCHSIZE_TRAIN, model,
+                _ = train(INPUTFILE_TRAIN, DEVICE, BATCHSIZE_TRAIN, model,
                           criterion, optimizer,
-                          nbatches_per_itertrain, ii, trainbatches_per_print)
+                          nbatches_per_itertrain, ii, trainbatches_per_print, NWORKERS_TRAIN, TICKBACKWARD, verbosity)
           
             except ValueError:
                 print ("Error in training routine!")
@@ -229,9 +227,9 @@ def main():
             # evaluate on validation set
             if ii%iter_per_valid==0 and ii>0:
                 try:
-                    totloss = validate(iovalid, DEVICE, BATCHSIZE_VALID, model,
+                    totloss = validate(INPUTFILE_VALID, DEVICE, BATCHSIZE_VALID, model,
                               criterion, optimizer,
-                              nbatches_per_itervalid, ii, validbatches_per_print)
+                              nbatches_per_itervalid, ii, validbatches_per_print, NWORKERS_VALID, TICKBACKWARD, verbosity)
                 except ValueError:
                     print ("Error in validation routine!")
                     # print (ValueError.message)
@@ -286,7 +284,7 @@ def main():
     writer.close()
 
 
-def train(iotrain, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq):
+def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq, NWORKERS_TRAIN, TICKBACKWARD, verbosity):
     print("IN TRAIN")
     global writer
     # timers for profiling
@@ -327,9 +325,19 @@ def train(iotrain, device, batchsize, model, criterion, optimizer, nbatches, iit
 
     # switch to train mode
     model.train()
+    
+    iotrain = load_classifier_larcvdata( "training", INPUTFILE_TRAIN,
+                                      batchsize, NWORKERS_TRAIN,
+                                      nbatches, verbosity,
+                                      input_producer_name="nbkrnd_sparse",
+                                      true_producer_name="nbkrnd_sparse",
+                                      tickbackward=TICKBACKWARD,
+                                      readonly_products=None )
+    iotrain.set_nentries(iotrain.get_len_eff())
+    
 
     nnone = 0
-    batched_data = torch.utils.data.DataLoader(iotrain, batch_size=batchsize, shuffle=True)
+    batched_data = torch.utils.data.DataLoader(iotrain, batch_size=batchsize, shuffle=True)#, shuffle=True
 
     for i in range(0,nbatches):
         print("iiter ",iiter," batch ",i," of ",nbatches)
@@ -339,26 +347,39 @@ def train(iotrain, device, batchsize, model, criterion, optimizer, nbatches, iit
         end = time.time()
         time_meters["data"].update(time.time()-end)
         
-        full_predict = [torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4))]
+        full_predict = [torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device)]
         print("GETTING DATA:")
         batch = next(iter(batched_data))
-        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize)
-        
+        # print("batch:",batch)
+        # print("batch[0]:",batch[0])
+        # print("batch[0][0]:",batch[0][0])
+        # note: [coords/inputs or truth][coords or inputs][plane (0-2)][batch][pts][first coord]
+        # batch[0][0][j][i][k][1]
+        # print("device:",device)
+        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize, device)
+        # print("truth_list[0].device:",truth_list[0].device)
         for j in range(0,batchsize):
             coord_t = coords_inputs_t[j][0]
             input_t = coords_inputs_t[j][1]
-           
+            # print("coord_t device:",coord_t[0].device)
+            # print("input_t device:",input_t[0].device)
+            # print("coord_t device:",coord_t[1].device)
+            # print("input_t device:",input_t[1].device)
+            # print("coord_t device:",coord_t[2].device)
+            # print("input_t device:",input_t[2].device)
             # compute output
             if RUNPROFILER:
                 torch.cuda.synchronize()
             end = time.time()
-            predict_t = model(coord_t, input_t, batchsize)
+            print("Entry",j,"in batch")
+            predict_t = model(coord_t, input_t, batchsize, device)
             
             for k in range(0,len(predict_t)):
                 full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
+                # full_predict[k] = torch.tensor(torch.cat((full_predict[k],predict_t[k]),0), device=device)
         
         # loss calc:
-        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
+        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list, device)
     
         if RUNPROFILER:
             torch.cuda.synchronize()
@@ -415,7 +436,7 @@ def train(iotrain, device, batchsize, model, criterion, optimizer, nbatches, iit
     return loss_meters['total'].avg
 
 
-def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq):
+def validate(INPUTFILE_VALID, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq, NWORKERS_VALID, TICKBACKWARD, verbosity):
     print("IN VALIDATE")
     """
     inputs
@@ -470,7 +491,16 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
     iterstart = time.time()
     nnone = 0
     
-    batched_data = torch.utils.data.DataLoader(all_data, batch_size=batchsize, shuffle=True)
+    iovalid = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
+                                      BATCHSIZE_VALID, NWORKERS_VALID,
+                                      nbatches, verbosity,
+                                      input_producer_name="nbkrnd_sparse",
+                                      true_producer_name="nbkrnd_sparse",
+                                      tickbackward=TICKBACKWARD,
+                                      readonly_products=None )
+    iovalid.set_nentries(iovalid.get_len_eff())
+    
+    batched_data = torch.utils.data.DataLoader(iovalid, batch_size=batchsize, shuffle=True)
     
     
     for i in range(0,nbatches):
@@ -480,10 +510,10 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
         tdata_start = time.time()
         
         num_good_entries = 0
-        full_predict = [torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4))]
+        full_predict = [torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device)]
         print("GETTING DATA:")
         batch = next(iter(batched_data))
-        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize)
+        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize, device)
         
         time_meters["data"].update( time.time()-tdata_start )
 
@@ -493,13 +523,13 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
         for j in range(0,batchsize):
             coord_t = coords_inputs_t[j][0]
             input_t = coords_inputs_t[j][1]
-            
-            predict_t = model.deploy(coord_t, input_t, batchsize)
+            print("Entry",j,"in batch")
+            predict_t = model.deploy(coord_t, input_t, batchsize, device)
             for k in range(0,len(predict_t)):
                 full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
 
         # loss calc:
-        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
+        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list, device)
     
         time_meters["forward"].update(time.time()-tforward)
 
@@ -543,9 +573,9 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
 
     return loss_meters['total'].avg#,acc_meters['nP_loss'].avg
 
-def save_checkpoint(state, is_best, p, filename='/media/ebengh01/checkpoint.pth.tar'):
+def save_checkpoint(state, is_best, p, filename='/media/data/larbys/ebengh01/checkpoint.pth.tar'):
     if p>0:
-        filename = "/media/ebengh01/checkpoint.%dth.tar"%(p)
+        filename = "/media/data/larbys/ebengh01/checkpoint.%dth.tar"%(p)
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, 'model_best.tar')
