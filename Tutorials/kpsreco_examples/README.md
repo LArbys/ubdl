@@ -10,7 +10,7 @@ This is a minor extension of the example script. Make a histogram of the number 
 
 Here, you'll have to extend the script to loop over the individual tracks in each vertex.
 
-The tracks are in the `track_v` vector. The tracks are instances of the `larlite::track' class.
+The tracks are in the `track_v` vector. The tracks are instances of the `larlite::track` class.
 You can reference the class header for the `larlite::track` class [here](https://github.com/NuTufts/larlite/blob/nutufts/larlite/DataFormat/track.h).
 
 ## Plot the distance of the track endpoint to the detector boundary
