@@ -146,7 +146,7 @@ int main(int nargs, char** argv){
           // get the pixel value for each plane
           double val = img_2d_in_v_wire[plane].pixel(row,col);
 		  if (img_2d_in_v_thrumu[plane].pixel(row,col) != 0) val = 0;
-		  if (val != 0) pxl_count[plane]++;
+		  if (val >=10) pxl_count[plane]++;
           // now save to new image2d
           single_out.set_pixel(row,col,val);
         }//end of loop over rows
