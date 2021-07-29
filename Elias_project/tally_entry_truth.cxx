@@ -114,7 +114,7 @@ int main(int nargs, char** argv){
     std::cout << "nc_cc: " << nc_cc << "\n";
     int flavors = (_subrun%1000)/100;
     std::cout << "flavors: " << flavors << "\n";
-    if (nc_cc = 1){
+    if (nc_cc == 1){
         if (flavors == 0 or flavors == 1){
 			std::cout << "CC NuE\n";
             tot_flav_CCNuE++;
