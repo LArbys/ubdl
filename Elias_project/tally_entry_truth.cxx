@@ -116,19 +116,19 @@ int main(int nargs, char** argv){
     std::cout << "flavors: " << flavors << "\n";
     if (nc_cc = 1){
         if (flavors == 0 or flavors == 1){
-            std::cout << "CC NuMu\n";
-            tot_flav_CCNuMu++;
-        } else if (flavors == 2 or flavors == 3){
-            std::cout << "CC NuE\n";
+			std::cout << "CC NuE\n";
             tot_flav_CCNuE++;
+        } else if (flavors == 2 or flavors == 3){
+			std::cout << "CC NuMu\n";
+            tot_flav_CCNuMu++;
         }
     } else{// nc_cc == 0
         if (flavors == 0 or flavors == 1){
-            std::cout << "NC NuMu\n";
-            tot_flav_NCNuMu++;
-        } else if (flavors == 2 or flavors == 3){
-            std::cout << "NC NuE\n";
+			std::cout << "NC NuE\n";
             tot_flav_NCNuE++;
+        } else if (flavors == 2 or flavors == 3){
+			std::cout << "NC NuMu\n";
+            tot_flav_NCNuMu++;
         }
     }
     
