@@ -22,39 +22,62 @@
 #include "larcv/core/DataFormat/SparseImage.h"
 #include "larcv/core/DataFormat/EventSparseImage.h"
 
-
 // larlite
 #include "DataFormat/storage_manager.h"
 #include "DataFormat/mctruth.h"
 
 // initalize helper functions
 void print_signal();
-std::vector<int> getProjectedPixel(const std::vector<double>& pos3d,
-				   const larcv::ImageMeta& meta,
-				   const int nplanes,
-				   const float fracpixborder=1.5 );
+// std::vector<int> getProjectedPixel(const std::vector<double>& pos3d,
+// 				   const larcv::ImageMeta& meta,
+// 				   const int nplanes,
+// 				   const float fracpixborder=1.5 );
 
 
 // main fuction to load in a dlana root file, make event display image, get some truth.
 int main(int nargs, char** argv){
-	std::cout << "Hello world " << "\n";
+    std::cout << "Hello world " << "\n";
 	std::cout << "Args Required, Order Matters:\n";
-	std::cout << "Inputfile with Truth tree\n";
+	std::cout << "Inputfile with SparseImage\n";
+	std::cout << "Output Directory\n";
+	std::cout << "\n";
+	std::cout << "Args Optional:\n";
+	std::cout << "Specific Entry to Do (Default is all entries)\n";
 
-
-  if (nargs < 2){
+  if (nargs < 3){
 		std::cout << "Not Enough Args\n";
 		return 1;
 	}
   std::string input_file = argv[1];
+	std::string output_dir = std::string(argv[2]) + "/";
 
-  //create larcv storage Manager
-	larcv::IOManager* io_larcv  = new larcv::IOManager(larcv::IOManager::kREAD,"IOManager_Tagger", larcv::IOManager::kTickForward);
+  int specific_entry = -1;
+	if (nargs > 3){
+		specific_entry = atoi(argv[3]);
+	}
+
+	std::cout << "Running with Args:\n";
+	for (int i = 0; i<nargs;i++){
+		std::cout << "Arg " << i << " : " << argv[i] << "\n";
+	}
+
+  // create root output file
+  std::string output_file = output_dir + "SparseClassifierTrainingSet_3.root";
+  int num_per_catagory = 30000;
+
+
+    //create larcv storage Manager
+	larcv::IOManager* io_larcv  = new larcv::IOManager(larcv::IOManager::kREAD,"IOManager_In", larcv::IOManager::kTickForward);
+    larcv::IOManager* out_larcv  = new larcv::IOManager(larcv::IOManager::kWRITE,"IOManager_Out", larcv::IOManager::kTickForward);
+
     // load in and intialize larcv products
     // reversenecessary due to how products were created
-	io_larcv->reverse_all_products();
+    io_larcv->reverse_all_products();
   	io_larcv->add_in_file(input_file);
   	io_larcv->initialize();
+    out_larcv->set_out_file(output_file);
+    out_larcv->initialize();
+
   	int start_entry = 0;
   	int nentries_mc_cv = io_larcv->get_n_entries();
     
@@ -88,6 +111,8 @@ int main(int nargs, char** argv){
     int tot_n_pion_2 = 0;
     int tot_n_pion_g2 = 0;
     
+
+	
     int tot_dead_planes = 0;
     
     
@@ -96,12 +121,42 @@ int main(int nargs, char** argv){
 
   // loop through all the entries in the file
 	for (int entry=start_entry; entry < nentries_mc_cv; entry++){
+		bool is_flav_CCNuMu = false;
+		bool is_flav_CCNuE = false;
+		bool is_flav_NCNuMu = false;
+		bool is_flav_NCNuE = false;
+		
+		bool is_type_QE = false;
+		bool is_type_RES = false;
+		bool is_type_DIS = false;
+		bool is_type_other = false;
+		
+		bool is_proton_0 = false;
+		bool is_proton_1 = false;
+		bool is_proton_2 = false;
+		bool is_proton_g2 = false;
+		
+		bool is_neutron_0 = false;
+		bool is_neutron_1 = false;
+		bool is_neutron_2 = false;
+		bool is_neutron_g2 = false;
+		
+		bool is_c_pion_0 = false;
+		bool is_c_pion_1 = false;
+		bool is_c_pion_2 = false;
+		bool is_c_pion_g2 = false;
+		
+		bool is_n_pion_0 = false;
+		bool is_n_pion_1 = false;
+		bool is_n_pion_2 = false;
+		bool is_n_pion_g2 = false;
+
 
     std::cout << "Entry : " << entry << "\n\n";
 		io_larcv->read_entry(entry);
     
     larcv::EventSparseImage* ev_in_adc_dlreco  = (larcv::EventSparseImage*)(io_larcv->get_data(larcv::kProductSparseImage,"nbkrnd_sparse"));
-
+	
     //print out r,s,e
     int _run = ev_in_adc_dlreco->run();
 	int _subrun = ev_in_adc_dlreco->subrun();
@@ -116,18 +171,18 @@ int main(int nargs, char** argv){
     if (nc_cc == 1){
         if (flavors == 0 or flavors == 1){
 			std::cout << "CC NuE\n";
-            tot_flav_CCNuE++;
+            is_flav_CCNuE = true;
         } else if (flavors == 2 or flavors == 3){
 			std::cout << "CC NuMu\n";
-            tot_flav_CCNuMu++;
+            is_flav_CCNuMu = true;
         }
     } else{// nc_cc == 0
         if (flavors == 0 or flavors == 1){
 			std::cout << "NC NuE\n";
-            tot_flav_NCNuE++;
+            is_flav_NCNuE = true;
         } else if (flavors == 2 or flavors == 3){
 			std::cout << "NC NuMu\n";
-            tot_flav_NCNuMu++;
+            is_flav_NCNuMu = true;
         }
     }
     
@@ -136,16 +191,16 @@ int main(int nargs, char** argv){
     std::cout << "interactionType: " << interactionType << "\n";
     if (interactionType == 0){
         std::cout << "QE Interaction\n";
-        tot_type_QE++;
+        is_type_QE = true;
     } else if (interactionType == 1){
         std::cout << "RES Interaction\n";
-        tot_type_RES++;
+        is_type_RES = true;
     } else if (interactionType == 2){
         std::cout << "DIS Interaction\n";
-        tot_type_DIS++;
+        is_type_DIS = true;
     } else if (interactionType == 3){
         std::cout << "Other Interaction\n";
-        tot_type_other++;
+        is_type_other = true;
     }
     
     int planes = _subrun%10;
@@ -163,16 +218,16 @@ int main(int nargs, char** argv){
     std::cout << "num_protons: " << num_protons << "\n";
     if (num_protons == 0){
         std::cout << "0 Protons\n";
-        tot_proton_0++;
+        is_proton_0 = true;
     } else if (num_protons == 1){
         std::cout << "1 Protons\n";
-        tot_proton_1++;
+        is_proton_1 = true;
     } else if (num_protons == 2){
         std::cout << "2 Protons\n";
-        tot_proton_2++;
+        is_proton_2 = true;
     } else if (num_protons == 3){
         std::cout << ">2 Protons\n";
-        tot_proton_g2++;
+        is_proton_g2 = true;
     }
     
     int num_neutrons = (_event%1000)/100;
@@ -180,16 +235,16 @@ int main(int nargs, char** argv){
     std::cout << "num_neutrons: " << num_neutrons << "\n";
     if (num_neutrons == 0){
         std::cout << "0 Neutrons\n";
-        tot_neutron_0++;
+        is_neutron_0 = true;
     } else if (num_neutrons == 1){
         std::cout << "1 Neutrons\n";
-        tot_neutron_1++;
+        is_neutron_1 = true;
     } else if (num_neutrons == 2){
         std::cout << "2 Neutrons\n";
-        tot_neutron_2++;
+        is_neutron_2 = true;
     } else if (num_neutrons == 3){
         std::cout << ">2 Neutrons\n";
-        tot_neutron_g2++;
+        is_neutron_g2 = true;
     }
     
     int num_pion_charged = (_event%100)/10;
@@ -197,16 +252,16 @@ int main(int nargs, char** argv){
     std::cout << "num_pion_charged: " << num_pion_charged << "\n";
     if (num_pion_charged == 0){
         std::cout << "0 Charged Pions\n";
-        tot_c_pion_0++;
+        is_c_pion_0 = true;
     } else if (num_pion_charged == 1){
         std::cout << "1 Charged Pions\n";
-        tot_c_pion_1++;
+        is_c_pion_1 = true;
     } else if (num_pion_charged == 2){
         std::cout << "2 Charged Pions\n";
-        tot_c_pion_2++;
+        is_c_pion_2 = true;
     } else if (num_pion_charged == 3){
         std::cout << ">2 Charged Pions\n";
-        tot_c_pion_g2++;
+        is_c_pion_g2 = true;
     }
     
     int num_pion_neutral = _event%10;
@@ -214,20 +269,96 @@ int main(int nargs, char** argv){
     std::cout << "num_pion_neutral: " << num_pion_neutral << "\n";
     if (num_pion_neutral == 0){
         std::cout << "0 Neutral Pions\n";
-        tot_n_pion_0++;
+        is_n_pion_0 = true;
     } else if (num_pion_neutral == 1){
         std::cout << "1 Neutral Pions\n";
-        tot_n_pion_1++;
+        is_n_pion_1 = true;
     } else if (num_pion_neutral == 2){
         std::cout << "2 Neutral Pions\n";
-        tot_n_pion_2++;
+        is_n_pion_2 = true;
     } else if (num_pion_neutral == 3){
         std::cout << ">2 Neutral Pions\n";
-        tot_n_pion_g2++;
+        is_n_pion_g2 = true;
     }
     
     int event = _event/10000;
     std::cout << "event: " << event << "\n";
+    
+	// decide if we need to save the entry:
+	bool keep_entry = false;
+	
+	if (is_flav_CCNuMu and tot_flav_CCNuMu <= 100) keep_entry = true;
+	else if (is_flav_CCNuE and tot_flav_CCNuE <= num_per_catagory) keep_entry = true;
+	else if (is_flav_NCNuMu and tot_flav_NCNuMu <= num_per_catagory) keep_entry = true;
+	else if (is_flav_NCNuE and tot_flav_NCNuE <= num_per_catagory) keep_entry = true;
+
+	else if (is_type_QE and tot_type_QE <= num_per_catagory) keep_entry = true;
+	else if (is_type_RES and tot_type_RES <= num_per_catagory) keep_entry = true;
+	else if (is_type_DIS and tot_type_DIS <= num_per_catagory) keep_entry = true;
+	else if (is_type_other and tot_type_other <= num_per_catagory) keep_entry = true;
+	
+	else if (is_proton_0 and tot_proton_0 <= num_per_catagory) keep_entry = true;
+	else if (is_proton_1 and tot_proton_1 <= num_per_catagory) keep_entry = true;
+	else if (is_proton_2 and tot_proton_2 <= num_per_catagory) keep_entry = true;
+	else if (is_proton_g2 and tot_proton_g2 <= num_per_catagory) keep_entry = true;
+
+	else if (is_neutron_0 and tot_neutron_0 <= num_per_catagory) keep_entry = true;
+	else if (is_neutron_1 and tot_neutron_1 <= num_per_catagory) keep_entry = true;
+	else if (is_neutron_2 and tot_neutron_2 <= num_per_catagory) keep_entry = true;
+	else if (is_neutron_g2 and tot_neutron_g2 <= num_per_catagory) keep_entry = true;
+
+	else if (is_c_pion_0 and tot_c_pion_0 <= 100) keep_entry = true;
+	else if (is_c_pion_1 and tot_c_pion_1 <= num_per_catagory) keep_entry = true;
+	else if (is_c_pion_2 and tot_c_pion_2 <= num_per_catagory) keep_entry = true;
+	else if (is_c_pion_g2 and tot_c_pion_g2 <= num_per_catagory) keep_entry = true;
+
+	else if (is_n_pion_0 and tot_n_pion_0 <= 100) keep_entry = true;
+	else if (is_n_pion_1 and tot_n_pion_1 <= num_per_catagory) keep_entry = true;
+	else if (is_n_pion_2 and tot_n_pion_2 <= num_per_catagory) keep_entry = true;
+	else if (is_n_pion_g2 and tot_n_pion_g2 <= num_per_catagory) keep_entry = true;
+
+	if (keep_entry){
+        if (is_flav_CCNuMu) tot_flav_CCNuMu++;
+        else if (is_flav_CCNuE) tot_flav_CCNuE++;
+        else if (is_flav_NCNuMu) tot_flav_NCNuMu++;
+        else if (is_flav_NCNuE) tot_flav_NCNuE++;
+
+        if (is_type_QE) tot_type_QE++;
+        else if (is_type_RES) tot_type_RES++;
+        else if (is_type_DIS) tot_type_DIS++;
+        else if (is_type_other) tot_type_other++;
+        
+        if (is_proton_0) tot_proton_0++;
+        else if (is_proton_1) tot_proton_1++;
+        else if (is_proton_2) tot_proton_2++;
+        else if (is_proton_g2) tot_proton_g2++;
+
+        if (is_neutron_0) tot_neutron_0++;
+        else if (is_neutron_1) tot_neutron_1++;
+        else if (is_neutron_2) tot_neutron_2++;
+        else if (is_neutron_g2) tot_neutron_g2++;
+
+        if (is_c_pion_0) tot_c_pion_0++;
+        else if (is_c_pion_1) tot_c_pion_1++;
+        else if (is_c_pion_2) tot_c_pion_2++;
+        else if (is_c_pion_g2) tot_c_pion_g2++;
+
+        if (is_n_pion_0) tot_n_pion_0++;
+        else if (is_n_pion_1) tot_n_pion_1++;
+        else if (is_n_pion_2) tot_n_pion_2++;
+        else if (is_n_pion_g2) tot_n_pion_g2++;
+        
+        std::cout << "KEEPER\n";
+        std::vector<larcv::SparseImage> out_sparse = ev_in_adc_dlreco->SparseImageArray();
+        larcv::EventSparseImage* ev_out_adc_dlreco_sparse = (larcv::EventSparseImage*) out_larcv->get_data(larcv::kProductSparseImage,"nbkrnd_sparse");
+        ev_out_adc_dlreco_sparse->Emplace( std::move(out_sparse) );
+		out_larcv->set_id( _run, _subrun, _event);
+        
+        
+        
+        out_larcv->save_entry();
+
+	}
 
 	} //End of entry loop
   // // close larcv manager
@@ -271,6 +402,10 @@ int main(int nargs, char** argv){
     std::cout << "\n";
     io_larcv->finalize();
 	delete io_larcv;
+    out_larcv->reverse_all_products();
+
+    out_larcv->finalize();
+    delete out_larcv;
   print_signal();
   return 0;
 	}//End of main

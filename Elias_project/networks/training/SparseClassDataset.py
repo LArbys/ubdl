@@ -11,13 +11,15 @@ import dataLoader as dl # TODO: Change this back
 
 def load_classifier_larcvdata( name, inputfile, batchsize, nworkers, nbatches, verbosity,
                             input_producer_name,true_producer_name,
-                            tickbackward=False, readonly_products=None):
+                            tickbackward=False, readonly_products=None,
+                            start_entry=0, end_entry=-1, rand=True):
     feeder = SparseClassifierPyTorchDataset(inputfile, batchsize, nbatches, verbosity,
                                          input_producer_name=input_producer_name,
                                          true_producer_name=true_producer_name,
                                          tickbackward=tickbackward, nworkers=nworkers,
                                          readonly_products=readonly_products,
-                                         feedername=name)
+                                         feedername=name,
+                                         start_entry=start_entry, end_entry=end_entry, rand=rand)
     return feeder
 
 
@@ -26,7 +28,8 @@ class SparseClassifierPyTorchDataset(torchdata.Dataset):
         def __init__(self,inputfile,batchsize,nbatches,verbosity,input_producer_name, true_producer_name,
                      tickbackward=False,nworkers=4,
                      readonly_products=None,
-                     feedername=None):
+                     feedername=None,
+                     start_entry = 0, end_entry = -1, rand=True):
             super(SparseClassifierPyTorchDataset,self).__init__()
 
             if type(inputfile) is str:
@@ -56,27 +59,16 @@ class SparseClassifierPyTorchDataset(torchdata.Dataset):
             self.nbatches = nbatches
             self.nworkers  = nworkers
             self.verbosity = verbosity
+            self.start_entry = start_entry
+            self.end_entry = end_entry
+            self.rand = rand
             readonly_products = None
-            # params = {"inputproducer":input_producer_name, "trueproducer":true_producer_name,"plane":plane}
-
-            # note, with way LArCVServer workers, must always use batch size of 1
-            #   because larcvserver expects entries in each batch to be same size,
-            #   but in sparse representations this is not true
-            # we must put batches together ourselves for sparseconv operations
-            # TODO: this gets the data, make it from dl probs
-            # self.feeder = LArCVServer(1,self.feedername,
-            #                           load_cropped_sparse_infill,
-            #                           self.inputfiles,self.nworkers,
-            #                           server_verbosity=-1,worker_verbosity=-1,
-            #                           io_tickbackward=tickbackward,
-            #                           func_params=params)
             print("SETTING FEEDER")
-            self.feeder = dl.load_rootfile_training(inputfile, self.batchsize, self.nbatches, self.verbosity)
+            self.feeder = dl.load_rootfile_training(inputfile, self.batchsize, self.nbatches, self.verbosity, start_entry=self.start_entry, end_entry=self.end_entry, rand=self.rand)
             
             SparseClassifierPyTorchDataset.idCounter += 1
 
         def __len__(self):
-            #print "return length of sample:",self.nentries
             return self.nentries
 
         def __getitem__(self,index):

@@ -29,6 +29,7 @@ import torch.nn.functional as F
 
 # tensorboardX
 from tensorboardX import SummaryWriter
+import socket
 
 # for confusion matrix
 import sklearn.metrics as skm
@@ -52,12 +53,12 @@ GPUMODE=True
 RESUME_FROM_CHECKPOINT=True
 RUNPROFILER=False
 
-CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint.pth.tar"
+CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint_OT.50th.tar"
 # INPUTFILE_TRAIN="/media/data/larbys/ebengh01/SparseClassifierTrainingSet_2.root" # output_10001.root SparseClassifierTrainingSet_2.root
 INPUTFILE_VALID="/media/data/larbys/ebengh01/SparseClassifierValidationSet_2.root" # output_9656.root SparseClassifierValidationSet_2.root
 TICKBACKWARD=False
 start_iter  = 0
-num_iters   = 10
+num_iters   = 2
 IMAGE_WIDTH=3458 # real image 3456
 IMAGE_HEIGHT=1026 # real image 1008, 1030 for not depth concat
 BATCHSIZE_VALID=1
@@ -74,7 +75,12 @@ ITER_PER_CHECKPOINT=1000
 
 # global variables
 best_prec1 = 0.0  # best accuracy, use to decide when to save network weights
-writer = SummaryWriter()
+
+# set log directory
+DateTimeHostname = time.strftime("%b%d_%X") + "_" + socket.gethostname()
+logdir = "/media/data/larbys/ebengh01/runs/" + DateTimeHostname
+print("logdir:",logdir)
+writer = SummaryWriter(logdir=logdir) #logdir="runs/Jul28_13-58-40_goeppert"
 
 def main():
 
@@ -112,12 +118,7 @@ def main():
         print ("Loaded model: ",model)
         # print("model.children:",list(model.children()))
         return
-    
-    
-    
-    
-    
-
+  
     # define loss function (criterion) and optimizer
     criterion = SparseClassifierLoss().to(device=DEVICE)
 
@@ -196,15 +197,15 @@ def main():
                         ["0", "1", "2", ">2"])
 
            acc_meters = {}
-           # acc_hist = {}
+           acc_meters_binary = {}
            acc_label_list = {}
            idx = 0
            for n in accnames:
                acc_meters[n] = AverageMeter()
-               # acc_hist[n] = [[],[],[],[]]
+               acc_meters_binary[n] = AverageMeter()
                acc_label_list[n] = acclabelnames[idx]
                idx+=1
-           # print("acc_label_list:",acc_label_list)
+
            lossnames = ("total" ,
                        "fl_loss",
                        "iT_loss",
@@ -262,7 +263,7 @@ def main():
                   tdata_start = time.time()
                    
                   num_good_entries = 0
-                  full_predict = [torch.empty((0,4),device=DEVICE), torch.empty((0,4),device=DEVICE), torch.empty((0,4),device=DEVICE), torch.empty((0,4),device=DEVICE), torch.empty((0,4),device=DEVICE), torch.empty((0,4),device=DEVICE)]
+                  full_predict = [torch.empty((0,3),device=DEVICE), torch.empty((0,4),device=DEVICE), torch.empty((0,4),device=DEVICE), torch.empty((0,4),device=DEVICE), torch.empty((0,4),device=DEVICE), torch.empty((0,4),device=DEVICE)]
                   print("GETTING DATA:")
                   batch = next(iter(batched_data))
                   # print("batch:",batch)
@@ -282,7 +283,7 @@ def main():
                   # print("predict_t:",predict_t)
                   for k in range(0,len(predict_t)):
                       full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
-
+                  update_confusion(full_predict,truth_list,confusion_true,confusion_pred)
                   # loss calc:
                   fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list, DEVICE)
                 
@@ -301,41 +302,43 @@ def main():
                   end = time.time()
                   # measure accuracy and update meters
                   acc_values = accuracy(full_predict,
-                                   truth_list,
-                                   acc_meters,
-                                   acc_hist)
+                                        truth_list,
+                                        acc_meters,
+                                        acc_hist,
+                                        acc_meters_binary)
 
-                  # make confusion matrix
-                  confusion_true, confusion_pred = update_confusion(full_predict,truth_list,confusion_true,confusion_pred)
                   # update time meter
                   time_meters["accuracy"].update(time.time()-end)
-                   
+                
                   # write to tensorboard
-                  print("writing to tensorboard")
                   loss_scalars = { x:y.avg for x,y in loss_meters.items() }
                   writer.add_scalars('data/valid_loss', loss_scalars, i )
 
                   acc_scalars = { x:y.avg for x,y in acc_meters.items() }
                   writer.add_scalars('data/valid_accuracy', acc_scalars, i )
+                  # print("acc_scalars_binary:",acc_scalars_binary)
+                  acc_scalars_binary = { x:y.avg for x,y in acc_meters_binary.items() }
+                  writer.add_scalars('data/valid_accuracy_binary', acc_scalars_binary, i )
 
                   # measure elapsed time for batch
                   time_meters["batch"].update(time.time()-batchstart)
-                    
+                
                   time_scalars = { x:y.avg for x,y in time_meters.items() }
-                  writer.add_scalars('valid times', time_scalars, i )
+                  writer.add_scalars('data/valid times', time_scalars, i )
 
                   if validbatches_per_print>0 and i % validbatches_per_print == 0:
                       prep_status_message( "valid-batch", i, acc_meters, loss_meters, time_meters, False )
               save_lists(confusion_true,confusion_pred, acc_hist, ii)
-              print("acc_hist:",acc_hist)
+              # print("acc_hist:",acc_hist)
            print("about to make confusion")
-           make_confusion_matrix(confusion_true,confusion_pred,normalization)
+           make_confusion_matrix(normalization)
            print("about to make histogram")
            
-           make_histogram(acc_hist, accnames, acc_label_list)           
-           print("about to make kernel")
+           make_histogram(accnames, acc_label_list)           
+
+           make_particle_count()
            # make pngs of the first layer of kernels
-           make_kernel_img(model)
+           # make_kernel_img(model)
            print("done with all that")
            prep_status_message( "Valid-Iter", ii, acc_meters, loss_meters, time_meters, False )
 
@@ -358,26 +361,30 @@ def update_confusion(full_predict,truth_list,confusion_true,confusion_pred):
     return confusion_true, confusion_pred
 
 def save_lists(confusion_true,confusion_pred, acc_hist, ii):
-    # print("confusion true:",confusion_true)
-    # print("confusion_pred:",confusion_pred)
-    
     # clear txt files on first iteration
     if ii == 0:
-        open('confusion_true_lists.txt', 'w').close()
-        open('confusion_pred_lists.txt', 'w').close()
-        open('histogram_accuracy_lists.txt', 'w').close()
+        # print("first iteration")
+        open('temp_txts/confusion_true_lists.txt', 'w').close()
+        open('temp_txts/confusion_pred_lists.txt', 'w').close()
+        open('temp_txts/histogram_accuracy_lists.txt', 'w').close()
     
-    with open(r"confusion_true_lists.txt","a") as con_t_file:
+    with open(r"temp_txts/confusion_true_lists.txt","a") as con_t_file:
+        # print("saving confusion true")
+        # print(confusion_true)
         for outputs in confusion_true:
             for i in outputs:
                 con_t_file.write(str(i))
             con_t_file.write("\n")
-    with open(r"confusion_pred_lists.txt","a") as con_p_file:
+    with open(r"temp_txts/confusion_pred_lists.txt","a") as con_p_file:
+        # print("saving confusion pred")
+        # print(confusion_pred)
         for outputs in confusion_pred:
             for i in outputs:
                 con_p_file.write(str(i))
             con_p_file.write("\n")
-    with open(r"histogram_accuracy_lists.txt","a") as hist_file:
+    with open(r"temp_txts/histogram_accuracy_lists.txt","a") as hist_file:
+        # print("saving histogram accuracy")
+        # print(acc_hist)
         for names in acc_hist:
             # print("outputs:",names)
             outputs = acc_hist[names]
@@ -389,7 +396,7 @@ def save_lists(confusion_true,confusion_pred, acc_hist, ii):
                     hist_file.write(" ")
                 hist_file.write("\n")
 
-def make_confusion_matrix(confusion_true,confusion_pred,normalization):
+def make_confusion_matrix(normalization):
     plot_list = []
     label_list = [["CC NuE","CC NuMu","NC NuE","NC NuMu"],
                   ["QE","RES","DIS","Other"],
@@ -405,7 +412,7 @@ def make_confusion_matrix(confusion_true,confusion_pred,normalization):
                   "Number of Neutrons"]
     con_t = [[],[],[],[],[],[]]
     con_p = [[],[],[],[],[],[]]
-    with open(r"confusion_true_lists.txt","r") as con_t_file:
+    with open(r"temp_txts/confusion_true_lists.txt","r") as con_t_file:
         lines = con_t_file.readlines()
         count = 0
         for line in lines:
@@ -414,7 +421,7 @@ def make_confusion_matrix(confusion_true,confusion_pred,normalization):
             for i in line:
                 con_t[count].append(int(i))
             count+=1
-    with open(r"confusion_pred_lists.txt","r") as con_p_file:
+    with open(r"temp_txts/confusion_pred_lists.txt","r") as con_p_file:
         lines = con_p_file.readlines()
         count = 0
         for line in lines:
@@ -426,8 +433,8 @@ def make_confusion_matrix(confusion_true,confusion_pred,normalization):
             count+=1
     # print("con_t:",con_t)
     # print("con_p:",con_p)
-    for i in range(0,len(confusion_pred)):
-        print("making array")
+    for i in range(0,len(con_p)):
+        # print("making array")
         if normalization == "none":
             array = skm.confusion_matrix(con_t[i],con_p[i], labels=[0,1,2,3])
         else:
@@ -454,7 +461,7 @@ def make_confusion_matrix(confusion_true,confusion_pred,normalization):
         # print("9")
         plot_list.append(fig)
         # print("10")
-        plt.savefig("confusion_matrices/Confusion_OT_%d.png"%(i))
+        plt.savefig("confusion_matrices/Confusion_%d.png"%(i))
         # print("11")
         plt.close()
     n = normalization
@@ -463,40 +470,70 @@ def make_confusion_matrix(confusion_true,confusion_pred,normalization):
         for i in range(len(plot_list)):
             pdf.savefig(plot_list[i])
 
-def make_histogram(acc_hist, accnames, acc_label_list):
+def make_particle_count():
+    count_t = [[],[],[],[],[],[]]
+    count_p = [[],[],[],[],[],[]]
+    with open(r"temp_txts/confusion_true_lists.txt","r") as count_t_file:
+        lines = count_t_file.readlines()
+        count = 0
+        for line in lines:
+            count = count % 6
+            line = line[:-1] # removes \n from end
+            for i in line:
+                count_t[count].append(int(i))
+            count+=1
+    with open(r"temp_txts/confusion_pred_lists.txt","r") as count_p_file:
+        lines = count_p_file.readlines()
+        count = 0
+        for line in lines:
+            count = count % 6
+            line = line[:-1] # removes \n from end
+            for i in line:
+                count_p[count].append(int(i))
+            count+=1
+    # print("truth counts:",count_t)
+    # print("prediction counts:",count_p)
+    differences = []
+    for i in range(len(count_t[0])):
+        sum_t = 0
+        sum_p = 0
+        for j in range(2,6):
+            sum_t += count_t[j][i]
+            sum_p += count_p[j][i]
+        differences.append(sum_p - sum_t)
+    # print("differences:",differences)
+    
+    plt.clf()
+    plt.hist(differences, bins=25, range=(-12,12), histtype="step")
+    plt.xlabel("Predicted Particles - Truth Particles")
+    plt.ylabel("Number per bin")
+    plt.title("Diff. between Predicted/Truth Particle Counts")
+    # plt.legend()
+    plt.tight_layout()
+    plt.savefig("histograms/particle_counts_histogram_OT.png")
+    plt.close()
+    
+def make_histogram(accnames, acc_label_list):
     acc_hist_2 = {}
     for n in accnames:
         acc_hist_2[n] = [[],[],[],[]]
-    print("acc_hist_2:",acc_hist_2)
-    with open(r"histogram_accuracy_lists.txt","r") as hist_file:
+    with open(r"temp_txts/histogram_accuracy_lists.txt","r") as hist_file:
         lines = hist_file.readlines()
         count = 0
-        # count2 = 0
-        # print("lines:",lines)
         for line in lines:
-            # print("line:",line)
             count = count % 24
             line = line[:-1] # removes \n from end
             num = ""
-            # print("count//4 = ",count//4)
-            # print("count%4 = ",count%4)
             for i in line:
-                # print("i:",i)
-                
                 if i != " " and i != "\n":
                     num = num + i
                 else:
-                    print("num:", num)
                     acc_hist_2[accnames[count//4]][count%4].append(float(num))
                     num = ""
-            
-            # print("count/4 = ",count/4)
             count+=1
-    # print("usual method:",acc_hist)
-    print("from txtfile:",acc_hist_2)
     for n in accnames:
         plt.clf()
-        plt.hist(acc_hist[n], bins=20, range=(0,1), histtype="step", label=acc_label_list[n])
+        plt.hist(acc_hist_2[n], bins=20, range=(0,1), histtype="step", label=acc_label_list[n])
         plt.xlabel("Prediction Value")
         plt.ylabel("Number per bin")
         plt.title(n)
@@ -504,7 +541,6 @@ def make_histogram(acc_hist, accnames, acc_label_list):
         plt.tight_layout()
         plt.savefig("histograms/%s_histogram_OT.png"%(n))
         plt.close()
-
 
 def make_kernel_img(model):
     no_of_layers=0
@@ -528,13 +564,9 @@ def make_kernel_img(model):
                         if type(layer)==scn.SubmanifoldConvolution:
                             no_of_layers+=1
                             conv_layers.append(layer)
-    print("no_of_layers:",no_of_layers)
-
-
     kernel_list = []
     conv = conv_layers[0]
     kernels = conv.weight.detach().cpu()
-    print("kernels shape:",kernels.shape)
     # print("kernels:",kernels)
     kernels = kernels - kernels.min()
     kernels = kernels / kernels.max()
@@ -578,7 +610,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def accuracy(predict,true,acc_meters,acc_hist):
+def accuracy(predict,true,acc_meters,acc_hist,acc_meters_binary):
     """Computes the accuracy metrics."""
     # inputs:
     #  assuming all pytorch tensors
@@ -589,7 +621,8 @@ def accuracy(predict,true,acc_meters,acc_hist):
     # needs to be as gpu as possible!
     if profile:
         start = time.time()
-    
+    sums = [0,0,0,0,0,0]
+
     for i in range(0,true[0].shape[0]):
         acc_meters["flavors"].update( predict[0][i][true[0][i]] )
         acc_meters["Interaction Type"].update( predict[1][i][true[1][i]] )
@@ -604,13 +637,32 @@ def accuracy(predict,true,acc_meters,acc_hist):
         acc_hist["Num Charged Pions"][true[3][i]].append(predict[3][i][true[3][i]].item())
         acc_hist["Num Neutral Pions"][true[4][i]].append(predict[4][i][true[4][i]].item())
         acc_hist["Num Neutrons"][true[5][i]].append(predict[5][i][true[5][i]].item())
-
-
+        
+        if torch.argmax(predict[0][i]).item() == true[0][i]:
+            sums[0]+=1
+        if torch.argmax(predict[1][i]).item() == true[1][i]:
+            sums[1]+=1
+        if torch.argmax(predict[2][i]).item() == true[2][i]:
+            sums[2]+=1
+        if torch.argmax(predict[3][i]).item() == true[3][i]:
+            sums[3]+=1
+        if torch.argmax(predict[4][i]).item() == true[4][i]:
+            sums[4]+=1
+        if torch.argmax(predict[5][i]).item() == true[5][i]:
+            sums[5]+=1
+    acc_meters_binary["flavors"].update(sums[0])
+    acc_meters_binary["Interaction Type"].update(sums[1])
+    acc_meters_binary["Num Protons"].update(sums[2])
+    acc_meters_binary["Num Charged Pions"].update(sums[3])
+    acc_meters_binary["Num Neutral Pions"].update(sums[4])
+    acc_meters_binary["Num Neutrons"].update(sums[5])
+    
     if profile:
         torch.cuda.synchronize()
         start = time.time()
 
     return acc_meters["flavors"],acc_meters["Interaction Type"],acc_meters["Num Protons"],acc_meters["Num Charged Pions"],acc_meters["Num Neutral Pions"],acc_meters["Num Neutrons"]
+
 def dump_lr_schedule( startlr, numepochs ):
     for epoch in range(0,numepochs):
         lr = startlr*(0.5**(epoch//300))

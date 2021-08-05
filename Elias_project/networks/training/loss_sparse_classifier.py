@@ -16,12 +16,6 @@ import torch.nn.functional as F
 
 # sparse submanifold convnet library
 import sparseconvnet as scn
-# -------------------------------------------------------------------------
-# HolePixelLoss
-# This loss mimics nividia's pixelwise loss for holes (L1)
-# used in the infill network
-# how well does the network do in dead regions?
-# -------------------------------------------------------------------------
 
 # taken from torch.nn.modules.loss
 def _assert_no_grad(variable):
@@ -37,23 +31,9 @@ class SparseClassifierLoss(nn.modules.loss._WeightedLoss):
         self.size_average = size_average
         #self.mean = torch.mean.cuda()
 
-    def forward(self,predict,true,device):
-        """
-        predict: (b,1,h,w) tensor with output from logsoftmax
-        adc:  (b,h,w) tensor with true adc values
-        """
-        
-        # for i in range(0,len(true)):
-        #     _assert_no_grad(true[i])
-        #     true[i] = true[i].long()
-        # if predict == -1:
-        #     return
-        # if predict == -2:
-        #     print("predict == -2")
-        #     return
-
+    def forward(self,predict,true,device):        
         # 6 losses, each with weight tensors
-        fl_weight_t = torch.tensor([1.0,1.0,1.0,1.0],device=device)
+        fl_weight_t = torch.tensor([1.0,1.0,1.0],device=device)
         flavorsLoss=torch.nn.CrossEntropyLoss(weight=fl_weight_t, size_average=self.size_average)
         
         iT_weight_t = torch.tensor([1.0,1.0,1.0,1.0],device=device)
@@ -72,7 +52,6 @@ class SparseClassifierLoss(nn.modules.loss._WeightedLoss):
         nNeutronLoss=torch.nn.CrossEntropyLoss(weight=nN_weight_t, size_average=self.size_average)
         
         print("beginning loss calc:")
-        
         fl_loss = flavorsLoss(predict[0],true[0])
         print("fl_loss:",fl_loss)
         
