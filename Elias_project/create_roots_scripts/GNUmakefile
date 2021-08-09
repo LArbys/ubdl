@@ -16,6 +16,9 @@ all: make_event_display make_event_display_nbrnd create_larcvImage2d create_nbkr
 create_sparse_nbkrnd: create_sparse_nbkrnd.cxx
 				$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o create_sparse_nbkrnd $(LIBS)
 
+split_dataset: split_dataset.cxx
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o split_dataset $(LIBS)
+
 make_event_display: make_event_display.cxx
 				$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o make_event_display $(LIBS)
 

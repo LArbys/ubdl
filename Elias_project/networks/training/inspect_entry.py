@@ -9,11 +9,11 @@ from ublarcvapp import ublarcvapp
 
 import torch
 
-infile = "/media/data/larbys/ebengh01/SparseClassifierTrainingSet.root"
+infile = "/media/data/larbys/ebengh01/SparseClassifierTrainingSet_1.root"
 batchsize = 1
 nbatches = 1
 verbosity = True
-entry = 466856
+entry = 339712
 truthtrack_SCE = ublarcvapp.mctools.TruthTrackSCE()
 
 # Initialize the IO Manager:
@@ -141,19 +141,16 @@ if planes == 0:
                 coords[k-2] = np.append(coords[k-2],[[ev_sparse_np[j,0],ev_sparse_np[j,1]]],axis=0)
                 inputs[k-2] = np.append(inputs[k-2],[[ev_sparse_np[j,k]]],axis=0)
     # print("coords.shape",len(coords[0]))
-    if len(coords[0]) <= 70:
+    if len(coords[0]) <= 20:
         print("INPUT TOO SMALL")
         bad_entries += 1
-    elif len(coords[1]) <= 70:
+    elif len(coords[1]) <= 20:
         print("INPUT TOO SMALL")
         bad_entries += 1
-    elif len(coords[2]) <= 70:
+    elif len(coords[2]) <= 20:
         print("INPUT TOO SMALL")
         bad_entries += 1
     else:
-        print(len(coords[0]))
-        print(len(coords[1]))
-        print(len(coords[2]))
         good_entries += 1
         data = [coords,inputs]
         full_image_list.append(data)
@@ -166,6 +163,9 @@ if planes == 0:
 else:
     print("DEAD PLANES")
     bad_entries += 1
+print(len(coords[0]))
+print(len(coords[1]))
+print(len(coords[2]))
 print()
 print("MAX LEN:",max_len)
 len_eff = len(full_image_list)

@@ -15,12 +15,13 @@ import torch
 """
 load_rootfile_training
 Purpose: loads in the rootfile for training/validation
-Parameters: infile, optional start entry/end entry. Default will run through the
-            whole file
-Returns: a list of: sparse images, runs, subruns, events, truth, filepaths, entries
+Parameters: infile, batchsize, number of batches, bool verbosity for printing,
+            start entry (default 0), end entry (default end of file), bool rand
+            (default true)
+Returns: a list of: sparse images, runs, subruns, events, truth, filepaths,
+                    entries, max pixel length, effective length(length of the image list)
 """
-def load_rootfile_training(infile, batchsize, nbatches, verbosity, start_entry = 0, end_entry = -1):
-    truthtrack_SCE = ublarcvapp.mctools.TruthTrackSCE()
+def load_rootfile_training(infile, batchsize, nbatches, verbosity, start_entry = 0, end_entry = -1, rand=True):
 
     # Initialize the IO Manager:
     iocv = larcv.IOManager(larcv.IOManager.kREAD,"io",larcv.IOManager.kTickForward)
@@ -45,15 +46,17 @@ def load_rootfile_training(infile, batchsize, nbatches, verbosity, start_entry =
     if start_entry > end_entry or start_entry < 0:
         start_entry = 0
     max_len = 0
-    bad_entries = 0
-    good_entries = 0
+
     # beginning the loop
-    while good_entries < nbatches*batchsize:
-        print("entries done so far:",good_entries)
-        # i = 73848
-        i = random.randrange(end_entry)
+    if rand:
+        entry_list = random.sample(range(start_entry,end_entry),nbatches*batchsize)
+    else:
+        if (start_entry + nbatches*batchsize) < end_entry:
+            entry_list = [*range(start_entry,start_entry + nbatches*batchsize)]
+        else:
+            entry_list = [*range(start_entry,end_entry)]
+    for i in entry_list:
         print("Loading Entry:", i, "of range", start_entry, end_entry)
-        
         iocv.read_entry(i)
 
         # ev_wire
@@ -79,10 +82,11 @@ def load_rootfile_training(infile, batchsize, nbatches, verbosity, start_entry =
             elif flavors == 2 or flavors == 3:
                 c_flavors = 1
         else: # nc_cc = 0
-            if flavors == 0 or flavors == 1:
-                c_flavors = 2
-            elif flavors == 2 or flavors == 3:
-                c_flavors = 3
+            c_flavors = 2
+            # if flavors == 0 or flavors == 1:
+            #     c_flavors = 2
+            # elif flavors == 2 or flavors == 3:
+            #     c_flavors = 3
 
         interactionType = (subrun%100)//10
 
@@ -130,54 +134,38 @@ def load_rootfile_training(infile, batchsize, nbatches, verbosity, start_entry =
             print("event:",event)
 
         
-        if planes == 0:
-            coords_u = np.empty((0,2))
-            coords_v = np.empty((0,2))
-            coords_y = np.empty((0,2))
-            inputs_u = np.empty((0,1))
-            inputs_v = np.empty((0,1))
-            inputs_y = np.empty((0,1))
-            coords = [coords_u, coords_v, coords_y]
-            inputs = [inputs_u, inputs_v, inputs_y]
-            coords = [coords_u.astype('long'), coords_v.astype('long'), coords_y.astype('long')]
-            # coords = [coords_u.astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
-            inputs = [inputs_u.astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
-            pts = ev_sparse_np.shape[0]
-            for j in range (0,pts):
-                for k in range(2,5):
-                    if ev_sparse_np[j,k] != 0:
-                        coords[k-2] = np.append(coords[k-2],[[ev_sparse_np[j,0],ev_sparse_np[j,1]]],axis=0)
-                        inputs[k-2] = np.append(inputs[k-2],[[ev_sparse_np[j,k]]],axis=0)
-            # print("coords.shape",len(coords[0]))
-            if len(coords[0]) <= 20:
-                print("INPUT TOO SMALL")
-                bad_entries += 1
-            elif len(coords[1]) <= 20:
-                print("INPUT TOO SMALL")
-                bad_entries += 1
-            elif len(coords[2]) <= 20:
-                print("INPUT TOO SMALL")
-                bad_entries += 1
-            else:
-                good_entries += 1
-                print(len(coords[0]))
-                print(len(coords[1]))
-                print(len(coords[2]))
-                data = [coords,inputs]
-                full_image_list.append(data)
-                runs.append(ev_sparse.run())
-                subruns.append(subrun)
-                events.append(event)
-                truth.append(truth_list)
-                filepaths.append(infile)
-                entries.append(i)
-        else:
-            print("DEAD PLANES")
-            bad_entries += 1
+        coords_u = np.empty((0,2))
+        coords_v = np.empty((0,2))
+        coords_y = np.empty((0,2))
+        inputs_u = np.empty((0,1))
+        inputs_v = np.empty((0,1))
+        inputs_y = np.empty((0,1))
+        coords = [coords_u, coords_v, coords_y]
+        inputs = [inputs_u, inputs_v, inputs_y]
+        coords = [coords_u.astype('long'), coords_v.astype('long'), coords_y.astype('long')]
+        # coords = [coords_u.astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
+        inputs = [inputs_u.astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
+        pts = ev_sparse_np.shape[0]
+        for j in range (0,pts):
+            for k in range(2,5):
+                if ev_sparse_np[j,k] != 0:
+                    coords[k-2] = np.append(coords[k-2],[[ev_sparse_np[j,0],ev_sparse_np[j,1]]],axis=0)
+                    inputs[k-2] = np.append(inputs[k-2],[[ev_sparse_np[j,k]]],axis=0)
+        print(len(coords[0]))
+        print(len(coords[1]))
+        print(len(coords[2]))
+        data = [coords,inputs]
+        full_image_list.append(data)
+        runs.append(ev_sparse.run())
+        subruns.append(subrun)
+        events.append(event)
+        truth.append(truth_list)
+        filepaths.append(infile)
+        entries.append(i)
     print()
     print("MAX LEN:",max_len)
     len_eff = len(full_image_list)
-    for i in range(start_entry, len_eff):
+    for i in range(len_eff):
         # print("padding entry ",i)
         for j in range(0,3):
             full_image_list[i][0][j] = np.append(full_image_list[i][0][j],np.zeros((max_len-full_image_list[i][0][j].shape[0],2),dtype=np.float32),0)
@@ -186,80 +174,11 @@ def load_rootfile_training(infile, batchsize, nbatches, verbosity, start_entry =
     return full_image_list, runs, subruns, events, truth, filepaths, entries, max_len, len_eff
 
 """
-split_into_planes
-Purpose: Takes a sparse image and splits it into each individual plane, with a
-         set of coordinates for each point on the plane. Also discounts entries
-         with dead planes and entries that are too small to make it through the
-         network
-Parameters: all_data: the full data/truth information, optional start entry/end
-            entry. Default will run through the whole file
-Returns: a list of the sparse coordinates/values as np arrays, a list of the truth values
-"""
-def split_into_planes(all_data, start_entry = 0, end_entry = -1):
-    img_list = []
-    # truth_list = []
-    coords_u = np.empty((0,2))
-    coords_v = np.empty((0,2))
-    coords_y = np.empty((0,2))
-    inputs_u = np.empty((0,1))
-    inputs_v = np.empty((0,1))
-    inputs_y = np.empty((0,1))
-    coords = [coords_u, coords_v, coords_y]
-    inputs = [inputs_u, inputs_v, inputs_y]
-
-    full_img_list = all_data[0]
-    full_truth_list = all_data[1]
-    print("Len of full_img_list:",len(full_img_list))
-    print("Len of full_truth_list:",len(full_truth_list))
-    
-    good_entries = []
-    
-    if end_entry > len(full_img_list) or end_entry == -1:
-        end_entry = len(full_img_list)
-    if start_entry > end_entry or start_entry < 0:
-        start_entry = 0
-    for i in range(start_entry, end_entry):
-        coords = [coords_u.astype('float32'), coords_v.astype('float32'), coords_y.astype('float32')]
-        inputs = [inputs_u.astype('float32'), inputs_v.astype('float32'), inputs_y.astype('float32')]
-
-        sparse_data = full_img_list[i]
-        # print("sparse_data.shape",sparse_data.shape)
-        pts = sparse_data.shape[0]
-        for j in range(0,pts):
-            if sparse_data[j][0] == 0:
-                pts = j - 1
-                break
-        plane_count = full_truth_list[6]
-        for j in range (0,pts):
-            for k in range(2,5):
-                if sparse_data[j,k] != 0:
-                    coords[k-2] = np.append(coords[k-2],[[sparse_data[j,0],sparse_data[j,1]]],axis=0)
-                    inputs[k-2] = np.append(inputs[k-2],[[sparse_data[j,k]]],axis=0)
-        print("coords.shape",len(coords[0]))
-        if pts <= 82 or plane_count[0] != 0:
-            for j in range(0,3):
-                print("coords:",coords[j].shape)
-            print("INPUT TOO SMALL")
-        else:
-            good_entries.append(i)
-            planes = [coords,inputs]
-            img_list.append(planes)
-    print("good_entries:",good_entries)
-    for j in range(0,len(full_truth_list)):
-        temp_truth_1 = torch.chunk(full_truth_list[j],end_entry)
-        temp_truth_t = torch.empty(0,dtype=torch.long)
-        for k in good_entries:
-            temp_truth_t = torch.cat((temp_truth_t,temp_truth_1[k]),0)
-        full_truth_list[j] = temp_truth_t
-        
-    return img_list, full_truth_list
-
-"""
-get_coords_inputs_tensor
-Purpose: Takes the image list and converts from np arrays to torch tensors
-Parameters: img_list: list of coordinates/values, optional start entry/end
-            entry. Default will run through the whole file
-Returns: a list of coordinates/values as torch tensors
+split_batch
+Purpose: Takes the batch and splits into truth and img list. Trims 0-padding off
+         images, puts all the data in the correct device, puts images into tensors
+Parameters: batch, batchsize, device
+Returns: a list of coordinates/values as torch tensors and the truth list
 """
 def split_batch(batch, batchsize, device):
     working_device = torch.device(device)
@@ -268,70 +187,45 @@ def split_batch(batch, batchsize, device):
     for truth in truth_list_temp:
         truth = truth.to(device)
         truth_list.append(truth)
-        # print("truth:",truth)
-        # print("truth.device:",truth.device)
-    # print("truth_list:",truth_list)
-    # for truth in truth_list:
-    #     print("truth:",truth)
-    #     print("truth.device:",truth.device)
 
     split_batch = []
+    # print("batch:",batch)
     for i in range(0, batchsize):
         pts = [0,0,0]
         done = [False,False,False]
+        # print("curr_len from:",batch[0][1][0][i].shape, batch[0][1][1][i].shape, batch[0][1][2][i].shape)
         curr_len = max(batch[0][1][0][i].shape[0], batch[0][1][1][i].shape[0], batch[0][1][2][i].shape[0])
         # print("curr_len:",curr_len)
         for k in range(0,curr_len):
+            # print("curr_len:",curr_len)
             if done[0] == True and done[1] == True and done[2] == True:
                 break
             for j in range(0,3):
-                # print("batch[0][0][j][i][k]:",batch[0][0][j][i][k])
-                # print("torch.tensor((0,0),dtype=torch.float64):",torch.tensor((0,0),dtype=torch.float64))
-                # print("boolean:",torch.all(batch[0][0][j][i][k] != torch.tensor((0,0),dtype=torch.float64)) and done[j] == False)
-                if torch.all(batch[0][0][j][i][k] == torch.tensor((0,0),dtype=torch.float64)) and k != 0 and done[j] == False: # (batch[0][0][j][i][k][1] != 0 and batch[0][0][j][i][k][0] != 0) and k != 0
-                    # print("good value")
-                    # print("done[j]:",done[j])
-                    # note: [coords/inputs or truth][coords or inputs][plane (0-2)][batch][pts][first coord]
-                    # print("k:",k)
+                # print("j,i,k:",j,i,k)
+                # print("done:",done)
+                # print("thingy:",k == batch[0][1][j][i].shape[0])
+                if k == batch[0][1][j][i].shape[0] and k != curr_len:
+                    # print("Should be done thingy, k:",k)
+                    pts[j] = k
+                    done[j] = True
+                elif done[j] == False and torch.all(batch[0][0][j][i][k] == torch.tensor((0,0),dtype=torch.float64)) and k != 0: # (batch[0][0][j][i][k][1] != 0 and batch[0][0][j][i][k][0] != 0) and k != 0
+                    # print("Should be done oldboy, k:",k)
                     pts[j] = k
                     done[j] = True
                     
         print("pts:",pts)
-        coord_t = [torch.cuda.FloatTensor(), torch.cuda.FloatTensor(), torch.cuda.FloatTensor()]
-        input_t = [torch.cuda.FloatTensor(), torch.cuda.FloatTensor(), torch.cuda.FloatTensor()]
+        if device == torch.device("cpu"):
+            coord_t = [torch.FloatTensor(), torch.FloatTensor(), torch.FloatTensor()]
+            input_t = [torch.FloatTensor(), torch.FloatTensor(), torch.FloatTensor()]
+        else:
+            coord_t = [torch.cuda.FloatTensor(), torch.cuda.FloatTensor(), torch.cuda.FloatTensor()]
+            input_t = [torch.cuda.FloatTensor(), torch.cuda.FloatTensor(), torch.cuda.FloatTensor()]
         for j in range(3):
-            # print("coord_t[j]:",coord_t[j].device)
-            # coord_t[j] = torch.split(batch[0][0][j][i],(0,pts[j],curr_len-pts[j]))[1]
-            # coord_t[j] = torch.tensor(coord_t[j].detach().clone(), device=device)
-            coord_t[j] = torch.tensor(torch.split(batch[0][0][j][i],(0,pts[j],curr_len-pts[j]))[1], device=device)
-            # print("temp:",temp.device)
-            # coord_t[j] = torch.cuda.FloatTensor(torch.split(batch[0][0][j][i],(0,pts[j],curr_len-pts[j]))[1])
-
-            # coord_t[j] = torch.split(batch[0][0][j][i],(0,pts[j],curr_len-pts[j]))[1]
-            # print("coord_t[j]:",coord_t[j].device)
-
-            # print("coord.dtype:",coord_t[j].dtype)
-            # coord_t[j] = batch[0][0][j][i]
             
-            
+            # coord_t[j] = torch.tensor(batch[0][0][j][i], device=device)
+            # input_t[j] = torch.tensor(batch[0][1][j][i], device=device)
             input_t[j] = torch.tensor(torch.split(batch[0][1][j][i],(0,pts[j],curr_len-pts[j]))[1], device=device)
-            # input_t[j] = torch.split(batch[0][1][j][i],(0,pts[j],curr_len-pts[j]))[1]
-            # print("input.dtypeP",input_t[j].dtype)
-            # coord_t[j] = torch.from_numpy(batch[0][0][j][i])
-            # input_t[j] = torch.from_numpy(batch[0][1][j][i])
+            coord_t[j] = torch.tensor(torch.split(batch[0][0][j][i],(0,pts[j],curr_len-pts[j]))[1], device=device)
         split_batch.append([coord_t,input_t])
 
     return split_batch,truth_list
-
-
-
-
-"""
-get_truth_planes NOTE: not used, won't work for batchsize > 1
-Purpose: pops the dead planes truth info off the truth list for a given entry
-Parameters: truth list, entry number
-Returns: the truth value for dead planes
-"""
-def get_truth_planes(truth, entry):
-    planes = truth.pop()
-    return planes

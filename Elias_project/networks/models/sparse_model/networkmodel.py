@@ -44,9 +44,6 @@ class SparseClassifier(nn.Module):
         self.maxPool = scn.MaxPooling(self._dimension,2,2)
         
         self.inputshape2 = [self._inputshape[0]/2,self._inputshape[1]/2]
-        # self.SEResNetB2 = scn.Sequential()
-        # for i in range(3):
-        #     self.SEResNetB2.add(b2.SEResNetB2(self._dimension, self._nin_features, self._nout_features))
         
         self.SEResNetB2_1 = b2.SEResNetB2(self._dimension, self._nin_features, self._nout_features)
         self.SEResNetB2_2 = b2.SEResNetB2(self._dimension, self._nin_features, self._nout_features)
@@ -55,7 +52,6 @@ class SparseClassifier(nn.Module):
         # concatenate in forward pass
         self.makeSparse = scn.DenseToSparse(self._dimension)
         inputshape3 = self.inputshape2
-        # inputshape3[0] = 3*self.inputshape2[0]
         self._nin_features = 3*self._nin_features
         self._nout_features = self._nin_features
         self.SEResNetBN = bn.SEResNetBN(self._dimension, self._nin_features, self._nout_features)
@@ -71,7 +67,7 @@ class SparseClassifier(nn.Module):
                           nn.Flatten(),
                           nn.Linear(self._nout_features, 1000)
                       )
-        self.flavors = nn.Linear(1000, 4)
+        self.flavors = nn.Linear(1000, 3)
         self.interactionType = nn.Linear(1000, 4)
         self.nProton = nn.Linear(1000, 4)
         self.nCPion = nn.Linear(1000, 4)
@@ -157,28 +153,22 @@ class SparseClassifier(nn.Module):
         # output layers
         if self._show_sizes:
             print ("output:",x.shape)
-        a = self.flavors(x).view(1,4)
-        # print("a device:",a.device)
+        a = self.flavors(x).view(1,3)
         if self._show_sizes:
             print ("flavors:",a.shape)
         b = self.interactionType(x).view(1,4)
-        # print("b device:",b.device)
         if self._show_sizes:
             print ("Interaction type:",b.shape)
         c = self.nProton(x).view(1,4)
-        # print("c device:",c.device)
         if self._show_sizes:
             print ("num protons:",c.shape)
         d = self.nCPion(x).view(1,4)
-        # print("d device:",d.device)
         if self._show_sizes:
             print ("num charged pions:",d.shape)
         e = self.nNPion(x).view(1,4)
-        # print("e device:",e.device)
         if self._show_sizes:
             print ("num neutral pions:",e.shape)
         f = self.nNeutron(x).view(1,4)
-        # print("f device:",f.device)
         if self._show_sizes:
             print ("num Neutrons:",f.shape)
         out = [a,b,c,d,e,f]
@@ -266,7 +256,7 @@ class SparseClassifier(nn.Module):
         # output layers
         if self._show_sizes:
             print ("output:",x.shape)
-        a = self.flavors(x).view(1,4)
+        a = self.flavors(x).view(1,3)
         a = self.SoftMax(a)
         if self._show_sizes:
             print ("flavors:",a.shape)
@@ -297,7 +287,6 @@ class SparseClassifier(nn.Module):
         print(f"Full network in {gtoc - gtic:0.4f} seconds")
         return out
     
-           
     def concatenateInputs(self, input):
         out = torch.cat(input,1)        
         return out
