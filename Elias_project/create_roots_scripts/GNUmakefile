@@ -24,6 +24,9 @@ make_event_display_nbrnd: make_event_display_no_background.cxx
 	
 create_larcvImage2d: create_larcvImage2d.cxx
 				$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o create_larcvImage2d $(LIBS)
+				
+create_img2d_w_vertex: create_img2d_w_vertex.cxx
+				$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o create_img2d_w_vertex $(LIBS)
 
 create_nbkrnd_larcvImage2d: create_nbkrnd_larcvImage2d.cxx
 				$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o create_nbkrnd_larcvImage2d $(LIBS)
