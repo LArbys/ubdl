@@ -52,8 +52,7 @@ then
 elif [ $MACHINE == "blade" ]
 then
     echo "SETUP TARITREE's RAZER BLADE"
-
-    source /home/twongjirad/software/root6/6.14.02/bin/thisroot.sh
+    source /home/twongjirad/software/root6/py3_build/bin/thisroot.sh
 
     export CUDA_HOME=/usr/local/cuda
     [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
