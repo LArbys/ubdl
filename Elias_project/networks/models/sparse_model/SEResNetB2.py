@@ -18,12 +18,12 @@ class SEResNetB2(nn.Module):
         self.dim = dimension
         self.nIn = in_channels
         self.nOut = out_channels
-        self.preRes = scn.BatchNormReLU(self.nIn)
+        self.preRes = scn.BatchNormLeakyReLU(self.nIn)
         self.convA = scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False)
-        self.BatchNormReLU = scn.BatchNormReLU(self.nIn)
+        self.BatchNormLeakyReLU = scn.BatchNormLeakyReLU(self.nIn)
         self.convB = scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False)
         self.SE = se.SELayer(self.nIn)
-        self.postRes = scn.BatchNormReLU(self.nIn)
+        self.postRes = scn.BatchNormLeakyReLU(self.nIn)
     
     def forward(self, x, inputshape, device):
         x = self.preRes(x)
@@ -35,7 +35,7 @@ class SEResNetB2(nn.Module):
     
     def resBlock(self, x, inputshape, device):
         x = self.convA(x)
-        x = self.BatchNormReLU(x)
+        x = self.BatchNormLeakyReLU(x)
         x = self.convB(x)
         x = self.SE(x, inputshape, device)
         return x

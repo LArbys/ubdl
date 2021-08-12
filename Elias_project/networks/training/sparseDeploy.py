@@ -53,7 +53,7 @@ GPUMODE=True
 RESUME_FROM_CHECKPOINT=True
 RUNPROFILER=False
 
-CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint_OT.50th.tar"
+CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint.150th.tar"
 # INPUTFILE_TRAIN="/media/data/larbys/ebengh01/SparseClassifierTrainingSet_2.root" # output_10001.root SparseClassifierTrainingSet_2.root
 INPUTFILE_VALID="/media/data/larbys/ebengh01/SparseClassifierValidationSet_2.root" # output_9656.root SparseClassifierValidationSet_2.root
 TICKBACKWARD=False
@@ -466,7 +466,7 @@ def make_confusion_matrix(normalization):
         plt.close()
     n = normalization
     # print("about to make pdf:")
-    with PdfPages('confusion_matrices/%s_normalized_OT.pdf'%(n)) as pdf:
+    with PdfPages('confusion_matrices/%s_normalized_0s.pdf'%(n)) as pdf:
         for i in range(len(plot_list)):
             pdf.savefig(plot_list[i])
 
@@ -510,7 +510,7 @@ def make_particle_count():
     plt.title("Diff. between Predicted/Truth Particle Counts")
     # plt.legend()
     plt.tight_layout()
-    plt.savefig("histograms/particle_counts_histogram_OT.png")
+    plt.savefig("histograms/particle_counts_histogram_0s.png")
     plt.close()
     
 def make_histogram(accnames, acc_label_list):
@@ -539,7 +539,7 @@ def make_histogram(accnames, acc_label_list):
         plt.title(n)
         plt.legend()
         plt.tight_layout()
-        plt.savefig("histograms/%s_histogram_OT.png"%(n))
+        plt.savefig("histograms/%s_histogram_0s.png"%(n))
         plt.close()
 
 def make_kernel_img(model):

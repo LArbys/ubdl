@@ -29,50 +29,55 @@ import torch.nn.functional as F
 
 # tensorboardX
 from tensorboardX import SummaryWriter
+import socket
 
-sys.path.append("/home/ebengh01/ubdl/Elias_project/networks/models/sparse_model")
-from networkmodel import SparseClassifier
-from SparseClassDataset import load_classifier_larcvdata
+
+sys.path.append("/home/ebengh01/ubdl/Elias_project/networks/models/dense_model")
+from dense_networkmodel import SparseClassifier
+from DenseClassDataset import load_classifier_larcvdata
 from loss_sparse_classifier import SparseClassifierLoss
-import dataLoader_testing as dl # TODO: change this to non-testing
+import dense_dataLoader as dl
+import custom_shuffle
 
-# from sparseinfill import SparseInfill
-# from sparseinfilldata import load_infill_larcvdata
-# from loss_sparse_infill import SparseInfillLoss
 
 # ===================================================
 # TOP-LEVEL PARAMETERS
-GPUMODE=False # TODO: keep this false until we set up gpu on trex
+GPUMODE=True
 RESUME_FROM_CHECKPOINT=False
 RUNPROFILER=False
 
-CHECKPOINT_FILE="model_best.tar"
-INPUTFILE_TRAIN="/home/ebengh01/ubdl/Elias_project/networks/data/output_10001.root"
-INPUTFILE_VALID="/home/ebengh01/ubdl/Elias_project/networks/data/output_9656.root"
+CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint8.2100th.tar"
+INPUTFILE_TRAIN="/media/data/larbys/ebengh01/SparseClassifierTrainingSet_3.root" # output_10001.root SparseClassifierTrainingSet.root
+INPUTFILE_VALID="/media/data/larbys/ebengh01/SparseClassifierValidationSet_2.root" # output_9656.root SparseClassifierValidationSet.root
 TICKBACKWARD=False
 PLANE = 0
 start_iter  = 0
-num_iters   = 3
+num_iters   = 50000
 IMAGE_WIDTH=3458 # real image 3456
-IMAGE_HEIGHT=1030 # real image 1008
-BATCHSIZE_TRAIN=4
-BATCHSIZE_VALID=4
+IMAGE_HEIGHT=1026 # real image 1008, 1030 for not depth concat
+BATCHSIZE_TRAIN=8
+BATCHSIZE_VALID=8
 NWORKERS_TRAIN=1
 NWORKERS_VALID=1
 ADC_THRESH=0.0
-DEVICE_IDS=[0]
+DEVICE_IDS=[0,1]
 GPUID=DEVICE_IDS[0]
 # map multi-training weights
 CHECKPOINT_MAP_LOCATIONS={"cuda:0":"cuda:0",
                           "cuda:1":"cuda:1"}
 CHECKPOINT_MAP_LOCATIONS=None
 CHECKPOINT_FROM_DATA_PARALLEL=False
-ITER_PER_CHECKPOINT=1000
+ITER_PER_CHECKPOINT=150 # roughly every day
 # ===================================================
 
 # global variables
 best_prec1 = 0.0  # best accuracy, use to decide when to save network weights
-writer = SummaryWriter()
+
+# set log directory
+DateTimeHostname = time.strftime("%b%d_%X") + "_" + socket.gethostname()
+logdir = "/media/data/larbys/ebengh01/runs/" + DateTimeHostname
+print("logdir:",logdir)
+writer = SummaryWriter(logdir=logdir)
 
 def main():
 
@@ -81,10 +86,11 @@ def main():
     global num_iters
 
     if GPUMODE:
-        DEVICE = torch.device("cuda:%d"%(DEVICE_IDS[0]))
+        DEVICE = torch.device("cuda:%d"%(GPUID))
+        torch.cuda.set_device(GPUID)
     else:
         DEVICE = torch.device("cpu")
-
+    print("device:",DEVICE)
     # create model, mark it to run on the GPU
     imgdims = 2
     ninput_features  = 64
@@ -93,18 +99,17 @@ def main():
     model = SparseClassifier( (IMAGE_HEIGHT,IMAGE_WIDTH), 
                            ninput_features, noutput_features,
                            show_sizes=False).to(DEVICE)
-
     # Resume training option
     if RESUME_FROM_CHECKPOINT:
         print ("RESUMING FROM CHECKPOINT FILE ",CHECKPOINT_FILE)
         checkpoint = torch.load( CHECKPOINT_FILE, map_location=CHECKPOINT_MAP_LOCATIONS ) # load weights to gpuid
         best_prec1 = checkpoint["best_prec1"]
-        if CHECKPOINT_FROM_DATA_PARALLEL:
-            model = nn.DataParallel( model, device_ids=DEVICE_IDS ) # distribute across device_ids
+        # if CHECKPOINT_FROM_DATA_PARALLEL:
+        #     model = nn.DataParallel( model, device_ids=DEVICE_IDS ) # distribute across device_ids
         model.load_state_dict(checkpoint["state_dict"])
 
-    if not CHECKPOINT_FROM_DATA_PARALLEL and len(DEVICE_IDS)>1:
-        model = nn.DataParallel( model, device_ids=DEVICE_IDS ).to(device=DEVICE) # distribute across device_ids
+    # if not CHECKPOINT_FROM_DATA_PARALLEL and len(DEVICE_IDS)>1:
+    #     model = nn.DataParallel( model, device_ids=DEVICE_IDS ).to(device=DEVICE) # distribute across device_ids
 
     # uncomment to dump model
     if False:
@@ -125,7 +130,7 @@ def main():
     start_epoch = 0
     epochs      = 10
     iter_per_epoch = None # determined later
-    iter_per_valid = 1#10
+    iter_per_valid = 10
 
 
     nbatches_per_itertrain = 5
@@ -139,9 +144,9 @@ def main():
     # SETUP OPTIMIZER
 
     # SGD w/ momentum
-    optimizer = torch.optim.SGD(model.parameters(), lr,
-                               momentum=momentum,
-                               weight_decay=weight_decay)
+    # optimizer = torch.optim.SGD(model.parameters(), lr,
+    #                            momentum=momentum,
+    #                            weight_decay=weight_decay)
 
     # ADAM
     # betas default: (0.9, 0.999) for (grad, grad^2). smoothing coefficient for grad. magnitude calc.
@@ -149,35 +154,15 @@ def main():
     #                             lr=lr,
     #                             weight_decay=weight_decay)
     # RMSPROP
-    # optimizer = torch.optim.RMSprop(model.parameters(),
-    #                                 lr=lr,
-    #                                 weight_decay=weight_decay)
+    optimizer = torch.optim.RMSprop(model.parameters(),
+                                    lr=lr,
+                                    weight_decay=weight_decay)
 
     # optimize algorithms based on input size (good if input size is constant)
     cudnn.benchmark = True
 
-    # LOAD THE DATASET
-    # iotrain = dl.load_rootfile_training(INPUTFILE_TRAIN)
-    iotrain = load_classifier_larcvdata( "training", INPUTFILE_TRAIN,
-                                      BATCHSIZE_TRAIN, NWORKERS_TRAIN,
-                                      input_producer_name="nbkrnd_sparse",
-                                      true_producer_name="nbkrnd_sparse",
-                                      plane = 0,
-                                      tickbackward=TICKBACKWARD,
-                                      readonly_products=None )
-    iotrain.set_nentries(iotrain.get_len_eff())
-    iovalid = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
-                                      BATCHSIZE_VALID, NWORKERS_VALID,
-                                      input_producer_name="nbkrnd_sparse",
-                                      true_producer_name="nbkrnd_sparse",
-                                      plane = 0,
-                                      tickbackward=TICKBACKWARD,
-                                      readonly_products=None )
-    iovalid.set_nentries(iovalid.get_len_eff())
-    print ("pause to give time to feeders")
-
-    NENTRIES = iotrain.get_len_eff()
-    #NENTRIES = 100000
+        
+    NENTRIES = 337567 # Taken from rootfile
     print ("Number of entries in training set: ",NENTRIES)
 
     if NENTRIES>0:
@@ -204,10 +189,10 @@ def main():
            optimizer.load_state_dict(checkpoint['optimizer'])
         # if GPUMODE:
         #    optimizer.cuda(GPUID)
-
+        verbosity = False
+        
         for ii in range(start_iter, num_iters):
-
-            adjust_learning_rate(optimizer, ii, lr)
+            lr = adjust_learning_rate(optimizer, ii, lr)
             print ("MainLoop Iter:%d Epoch:%d.%d "%(ii,ii/iter_per_epoch,ii%iter_per_epoch),)
             for param_group in optimizer.param_groups:
                 print ("lr=%.3e"%(param_group['lr'])),
@@ -215,9 +200,9 @@ def main():
 
             # train for one iteration
             try:
-                _ = train(iotrain, DEVICE, BATCHSIZE_TRAIN, model,
+                _ = train(INPUTFILE_TRAIN, DEVICE, BATCHSIZE_TRAIN, model,
                           criterion, optimizer,
-                          nbatches_per_itertrain, ii, trainbatches_per_print)
+                          nbatches_per_itertrain, ii, trainbatches_per_print, NWORKERS_TRAIN, TICKBACKWARD, verbosity)
           
             except ValueError:
                 print ("Error in training routine!")
@@ -229,9 +214,9 @@ def main():
             # evaluate on validation set
             if ii%iter_per_valid==0 and ii>0:
                 try:
-                    totloss = validate(iovalid, DEVICE, BATCHSIZE_VALID, model,
+                    totloss = validate(INPUTFILE_VALID, DEVICE, BATCHSIZE_VALID, model,
                               criterion, optimizer,
-                              nbatches_per_itervalid, ii, validbatches_per_print)
+                              nbatches_per_itervalid, ii, validbatches_per_print, NWORKERS_VALID, TICKBACKWARD, verbosity)
                 except ValueError:
                     print ("Error in validation routine!")
                     # print (ValueError.message)
@@ -265,6 +250,15 @@ def main():
                     'best_prec1': best_prec1,
                     'optimizer' : optimizer.state_dict(),
                 }, False, ii)
+            if ii==2505:
+                print ("saving periodic checkpoint")
+                save_checkpoint({
+                    'iter':ii,
+                    'epoch': ii/iter_per_epoch,
+                    'state_dict': model.state_dict(),
+                    'best_prec1': best_prec1,
+                    'optimizer' : optimizer.state_dict(),
+                }, False, 0, filename="/media/data/larbys/ebengh01/checkpoint2505.pth.tar")
             # flush the print buffer after iteration
             sys.stdout.flush()
 
@@ -286,7 +280,7 @@ def main():
     writer.close()
 
 
-def train(iotrain, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq):
+def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq, NWORKERS_TRAIN, TICKBACKWARD, verbosity):
     print("IN TRAIN")
     global writer
     # timers for profiling
@@ -327,43 +321,55 @@ def train(iotrain, device, batchsize, model, criterion, optimizer, nbatches, iit
 
     # switch to train mode
     model.train()
+    end = time.time()
+    iotrain = load_classifier_larcvdata( "training", INPUTFILE_TRAIN,
+                                      batchsize, NWORKERS_TRAIN,
+                                      nbatches, verbosity,
+                                      input_producer_name="nbkrnd_sparse",
+                                      true_producer_name="nbkrnd_sparse",
+                                      tickbackward=TICKBACKWARD,
+                                      readonly_products=None )
+    iotrain.set_nentries(iotrain.get_len_eff())
+    
+    generator = torch.Generator()
+    generator.manual_seed(int(torch.empty(()).uniform_().item()))
+    
+    rand_sample = custom_shuffle.RandomSampler(iotrain, generator=generator)
+    batch_sample = custom_shuffle.BatchSampler(rand_sample, batchsize, True)
 
     nnone = 0
-    batched_data = torch.utils.data.DataLoader(iotrain, batch_size=batchsize, shuffle=True)
-
+    batched_data = torch.utils.data.DataLoader(iotrain, batch_sampler=batch_sample)
+    
+    time_meters["data"].update(time.time()-end)
+    
     for i in range(0,nbatches):
         print("iiter ",iiter," batch ",i," of ",nbatches)
         batchstart = time.time()
 
         # GET THE DATA
-        end = time.time()
-        time_meters["data"].update(time.time()-end)
-        
-        full_predict = [torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4))]
+        full_predict = [torch.empty((0,3),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device)]
         print("GETTING DATA:")
         batch = next(iter(batched_data))
-        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize)
+        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize, device)
         
         for j in range(0,batchsize):
+            end = time.time()
             coord_t = coords_inputs_t[j][0]
             input_t = coords_inputs_t[j][1]
-           
             # compute output
             if RUNPROFILER:
                 torch.cuda.synchronize()
-            end = time.time()
-            predict_t = model(coord_t, input_t, batchsize)
-            
+            print("Entry",j,"in batch")
+            predict_t = model(coord_t, input_t, batchsize, device)
             for k in range(0,len(predict_t)):
                 full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
-        
+            time_meters["forward"].update(time.time()-end)
         # loss calc:
-        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
-    
+        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list, device)
+        
         if RUNPROFILER:
             torch.cuda.synchronize()
-        time_meters["forward"].update(time.time()-end)
-    
+        
         # compute gradient and do SGD step
         if RUNPROFILER:
             torch.cuda.synchronize()
@@ -404,18 +410,19 @@ def train(iotrain, device, batchsize, model, criterion, optimizer, nbatches, iit
 
         # measure elapsed time for batch
         time_meters["batch"].update(time.time()-batchstart)
+        
+        time_scalars = { x:y.avg for x,y in time_meters.items() }
+        writer.add_scalars('data/train time', time_scalars, iiter )
 
         # print status
         if print_freq>0 and i%print_freq == 0:
             prep_status_message( "train-batch", i, acc_meters, loss_meters, time_meters,True )
     
-    
     prep_status_message( "Train-Iteration", iiter, acc_meters, loss_meters, time_meters, True )
         
     return loss_meters['total'].avg
 
-
-def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq):
+def validate(INPUTFILE_VALID, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq, NWORKERS_VALID, TICKBACKWARD, verbosity):
     print("IN VALIDATE")
     """
     inputs
@@ -433,8 +440,6 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
     """
     global writer
 
-
-
     # accruacy and loss meters
     accnames = ("flavors",
                 "Interaction Type",
@@ -444,8 +449,10 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
                 "Num Neutrons")
 
     acc_meters  = {}
+    acc_meters_binary = {}
     for n in accnames:
         acc_meters[n] = AverageMeter()
+        acc_meters_binary[n] = AverageMeter()
 
     lossnames = ("total" ,
                 "fl_loss",
@@ -470,7 +477,22 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
     iterstart = time.time()
     nnone = 0
     
-    batched_data = torch.utils.data.DataLoader(all_data, batch_size=batchsize, shuffle=True)
+    iovalid = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
+                                      batchsize, NWORKERS_VALID,
+                                      nbatches, verbosity,
+                                      input_producer_name="nbkrnd_sparse",
+                                      true_producer_name="nbkrnd_sparse",
+                                      tickbackward=TICKBACKWARD,
+                                      readonly_products=None )
+    iovalid.set_nentries(iovalid.get_len_eff())
+    
+    generator = torch.Generator()
+    generator.manual_seed(int(torch.empty(()).uniform_().item()))
+    
+    rand_sample = custom_shuffle.RandomSampler(iovalid, generator=generator)
+    batch_sample = custom_shuffle.BatchSampler(rand_sample, batchsize, True)
+    
+    batched_data = torch.utils.data.DataLoader(iovalid, batch_sampler=batch_sample)
     
     
     for i in range(0,nbatches):
@@ -480,29 +502,27 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
         tdata_start = time.time()
         
         num_good_entries = 0
-        full_predict = [torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4)), torch.empty((0,4))]
+        full_predict = [torch.empty((0,3),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device)]
         print("GETTING DATA:")
         batch = next(iter(batched_data))
-        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize)
+        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize, device)
         
         time_meters["data"].update( time.time()-tdata_start )
 
         # compute output
-        tforward = time.time()
-        
         for j in range(0,batchsize):
+            tforward = time.time()
             coord_t = coords_inputs_t[j][0]
             input_t = coords_inputs_t[j][1]
-            
-            predict_t = model.deploy(coord_t, input_t, batchsize)
+            print("Entry",j,"in batch")
+            predict_t = model.deploy(coord_t, input_t, batchsize, device)
             for k in range(0,len(predict_t)):
                 full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
+            time_meters["forward"].update(time.time()-tforward)
 
         # loss calc:
-        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
+        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list, device)
     
-        time_meters["forward"].update(time.time()-tforward)
-
         # measure accuracy and update meters
         # update loss meters
         loss_meters["total"].update( totloss.item() )
@@ -513,14 +533,15 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
         loss_meters["nNP_loss"].update( nNP_loss.item() )
         loss_meters["nN_loss"].update( nN_loss.item() )
 
-
+        end = time.time()
         # measure accuracy and update meters
         acc_values = accuracy(full_predict,
                          truth_list,
-                         acc_meters)
+                         acc_meters,
+                         acc_meters_binary,
+                         batchsize)
 
         # update time meter
-        end = time.time()
         time_meters["accuracy"].update(time.time()-end)
         
         # write to tensorboard
@@ -529,12 +550,16 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
 
         acc_scalars = { x:y.avg for x,y in acc_meters.items() }
         writer.add_scalars('data/valid_accuracy', acc_scalars, iiter )
+        # print("acc_scalars_binary:",acc_scalars_binary)
+        acc_scalars_binary = { x:y.avg for x,y in acc_meters_binary.items() }
+        writer.add_scalars('data/valid_accuracy_binary', acc_scalars_binary, iiter )
 
         # measure elapsed time for batch
         time_meters["batch"].update(time.time()-batchstart)
+        
+        time_scalars = { x:y.avg for x,y in time_meters.items() }
+        writer.add_scalars('data/valid times', time_scalars, iiter )
 
-        # measure elapsed time for batch
-        time_meters["batch"].update( time.time()-batchstart )
         if print_freq>0 and i % print_freq == 0:
             prep_status_message( "valid-batch", i, acc_meters, loss_meters, time_meters, False )
 
@@ -543,12 +568,12 @@ def validate(all_data, device, batchsize, model, criterion, optimizer, nbatches,
 
     return loss_meters['total'].avg#,acc_meters['nP_loss'].avg
 
-def save_checkpoint(state, is_best, p, filename='/media/ebengh01/checkpoint.pth.tar'):
+def save_checkpoint(state, is_best, p, filename='/media/data/larbys/ebengh01/dense_checkpoint.pth.tar'):
     if p>0:
-        filename = "/media/ebengh01/checkpoint.%dth.tar"%(p)
+        filename = "/media/data/larbys/ebengh01/dense_checkpoint.%dth.tar"%(p)
     torch.save(state, filename)
     if is_best:
-        shutil.copyfile(filename, 'model_best.tar')
+        shutil.copyfile(filename, '/media/data/larbys/ebengh01/dense_model_best.tar')
 
 
 class AverageMeter(object):
@@ -569,29 +594,28 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def adjust_learning_rate(optimizer, epoch, lr):
+def adjust_learning_rate(optimizer, iter, lr):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    #lr = lr * (0.5 ** (epoch // 300))
-    lr = lr
+    #lr = lr * (0.5 ** (iter // 300))
+    # lr = lr
+    if iter % (8440/2) == 0:
+        lr = lr/10
+        print("Adjust learning rate to ",lr)
     #lr = lr*0.992
-    #print "adjust learning rate to ",lr
+    
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+    return lr
 
 
-def accuracy(predict,true,acc_meters):
+def accuracy(predict,true,acc_meters,acc_meters_binary,batchsize):
     """Computes the accuracy metrics."""
-    # inputs:
-    #  assuming all pytorch tensors
-    # metrics:
-
-    
     profile = False
 
     # needs to be as gpu as possible!
     if profile:
         start = time.time()
-    
+    sums = [0,0,0,0,0,0]
     for i in range(0,true[0].shape[0]):
         acc_meters["flavors"].update( predict[0][i][true[0][i]] )
         acc_meters["Interaction Type"].update( predict[1][i][true[1][i]] )
@@ -599,6 +623,25 @@ def accuracy(predict,true,acc_meters):
         acc_meters["Num Charged Pions"].update( predict[3][i][true[3][i]] )
         acc_meters["Num Neutral Pions"].update( predict[4][i][true[4][i]] )
         acc_meters["Num Neutrons"].update( predict[5][i][true[5][i]] )
+        
+        if torch.argmax(predict[0][i]).item() == true[0][i]:
+            sums[0]+=1
+        if torch.argmax(predict[1][i]).item() == true[1][i]:
+            sums[1]+=1
+        if torch.argmax(predict[2][i]).item() == true[2][i]:
+            sums[2]+=1
+        if torch.argmax(predict[3][i]).item() == true[3][i]:
+            sums[3]+=1
+        if torch.argmax(predict[4][i]).item() == true[4][i]:
+            sums[4]+=1
+        if torch.argmax(predict[5][i]).item() == true[5][i]:
+            sums[5]+=1
+    acc_meters_binary["flavors"].update(sums[0]/batchsize)
+    acc_meters_binary["Interaction Type"].update(sums[1]/batchsize)
+    acc_meters_binary["Num Protons"].update(sums[2]/batchsize)
+    acc_meters_binary["Num Charged Pions"].update(sums[3]/batchsize)
+    acc_meters_binary["Num Neutral Pions"].update(sums[4]/batchsize)
+    acc_meters_binary["Num Neutrons"].update(sums[5]/batchsize)
 
 
     if profile:
@@ -606,6 +649,7 @@ def accuracy(predict,true,acc_meters):
         start = time.time()
 
     return acc_meters["flavors"],acc_meters["Interaction Type"],acc_meters["Num Protons"],acc_meters["Num Charged Pions"],acc_meters["Num Neutral Pions"],acc_meters["Num Neutrons"]
+
 def dump_lr_schedule( startlr, numepochs ):
     for epoch in range(0,numepochs):
         lr = startlr*(0.5**(epoch//300))

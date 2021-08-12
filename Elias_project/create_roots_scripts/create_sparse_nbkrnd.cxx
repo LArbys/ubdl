@@ -171,10 +171,12 @@ int main(int nargs, char** argv){
 		std::cout << "out_sparse length: " << out_sparse.len() << "\n";
 		if (out_sparse.len() == 0) zero_count++;
 		// ^note that this^ will not necessarily catch any zero planes
-		ev_out_adc_dlreco_sparse->Emplace( std::move(out_sparse) );
-		print_rse(run_wire, subrun, event);
-		out_larcv->set_id( run_wire, subrun, event);
-	    out_larcv->save_entry();
+		if (out_sparse.len() <= 8000){
+			ev_out_adc_dlreco_sparse->Emplace( std::move(out_sparse) );
+			print_rse(run_wire, subrun, event);
+			out_larcv->set_id( run_wire, subrun, event);
+			out_larcv->save_entry();
+		}
 	}
 	
 	} //End of entry loop

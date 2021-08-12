@@ -33,7 +33,7 @@ import socket
 
 
 sys.path.append("/home/ebengh01/ubdl/Elias_project/networks/models/sparse_model")
-from networkmodel import SparseClassifier
+from networkmodel_big_kernels import SparseClassifier
 from SparseClassDataset import load_classifier_larcvdata
 from loss_sparse_classifier import SparseClassifierLoss
 import dataLoader as dl
@@ -46,13 +46,13 @@ GPUMODE=True
 RESUME_FROM_CHECKPOINT=False
 RUNPROFILER=False
 
-CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint8.2100th.tar"
+CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint.150th.tar"
 INPUTFILE_TRAIN="/media/data/larbys/ebengh01/SparseClassifierTrainingSet_3.root" # output_10001.root SparseClassifierTrainingSet.root
 INPUTFILE_VALID="/media/data/larbys/ebengh01/SparseClassifierValidationSet_2.root" # output_9656.root SparseClassifierValidationSet.root
 TICKBACKWARD=False
 PLANE = 0
 start_iter  = 0
-num_iters   = 50000
+num_iters   = 20
 IMAGE_WIDTH=3458 # real image 3456
 IMAGE_HEIGHT=1026 # real image 1008, 1030 for not depth concat
 BATCHSIZE_TRAIN=8
@@ -61,7 +61,7 @@ NWORKERS_TRAIN=1
 NWORKERS_VALID=1
 ADC_THRESH=0.0
 DEVICE_IDS=[0,1] # TODO: get this working for multiple gpu
-GPUID=DEVICE_IDS[1]
+GPUID=DEVICE_IDS[0]
 # map multi-training weights
 CHECKPOINT_MAP_LOCATIONS={"cuda:0":"cuda:0",
                           "cuda:1":"cuda:1"}
@@ -118,9 +118,9 @@ def main():
 
     # define loss function (criterion) and optimizer
     criterion = SparseClassifierLoss().to(device=DEVICE)
-
+    
     # training parameters
-    lr = 1.0e-3
+    lr = 1.0e-1
     momentum = 0.9
     weight_decay = 1.0e-4
 
@@ -197,7 +197,7 @@ def main():
             for param_group in optimizer.param_groups:
                 print ("lr=%.3e"%(param_group['lr'])),
                 print()
-
+            
             # train for one iteration
             try:
                 _ = train(INPUTFILE_TRAIN, DEVICE, BATCHSIZE_TRAIN, model,
@@ -298,7 +298,7 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
                 "Num Charged Pions",
                 "Num Neutral Pions",
                 "Num Neutrons")
-
+    
     acc_meters  = {}
     for n in accnames:
         acc_meters[n] = AverageMeter()
@@ -315,6 +315,13 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
     for l in lossnames:
         loss_meters[l] = AverageMeter()
 
+    grad_names = ("conv1",
+                  "SEResNetB2_1.convA",
+                  "final_conv")
+    grad_meters = {}
+    for g in grad_names:
+        grad_meters[g] = AverageMeter()
+    
     time_meters = {}
     for l in ["batch","data","forward","backward","accuracy"]:
         time_meters[l] = AverageMeter()
@@ -392,7 +399,43 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         loss_meters["nCP_loss"].update( nCP_loss.item() )
         loss_meters["nNP_loss"].update( nNP_loss.item() )
         loss_meters["nN_loss"].update( nN_loss.item() )
-    
+        
+        # print("model.conv1.weight:",model.conv1.weight)
+        # print("model.conv1.weight.grad:",model.conv1.weight.grad)
+        # print("model.SEResNetB2_1.convA.weight.grad:",model.SEResNetB2_1.convA.weight.grad)
+        # 
+        # for module in model.SEResNetBN.purpleBlockP1_1:
+        #     print("model.SEResNetBN.purpleBlockP1_1.module.weight.grad:",module.weight.grad)
+        # for module in model.SEResNetBN.greenBlockP1_1:
+        #     print("model.SEResNetBN.greenBlockP1_1.module.weight.grad:",module.weight.grad)
+        # for module in model.SEResNetBN.orangeBlockP1_1:
+        #     print("model.SEResNetBN.orangeBlockP1_1.module.weight.grad:",module.weight.grad)
+        # for module in model.SEResNetBN.blueBlockP1_1:
+        #     print("model.SEResNetBN.blueBlockP1_1.module.weight.grad:",module.weight.grad)
+        # print("model.final_conv.weight.grad:",model.final_conv.weight.grad)
+        
+        writer.add_histogram("model.conv1.weight.grad", model.conv1.weight.grad, iiter)
+        writer.add_histogram("model.SEResNetB2_1.convA.weight.grad", model.SEResNetB2_1.convA.weight.grad, iiter)
+        for module in model.SEResNetBN.purpleBlockP1_1:
+            writer.add_histogram("model.SEResNetBN.purpleBlockP1_1.%s"%(module), module.weight.grad, iiter)
+        for module in model.SEResNetBN.greenBlockP1_1:
+            writer.add_histogram("model.SEResNetBN.greenBlockP1_1.%s"%(module), module.weight.grad, iiter)
+        for module in model.SEResNetBN.orangeBlockP1_1:
+            writer.add_histogram("model.SEResNetBN.orangeBlockP1_1.%s"%(module), module.weight.grad, iiter)
+        for module in model.SEResNetBN.blueBlockP1_1:
+            writer.add_histogram("model.SEResNetBN.blueBlockP1_1.%s"%(module), module.weight.grad, iiter)
+        writer.add_histogram("model.final_conv.weight.grad", model.final_conv.weight.grad, iiter)
+        # writer.add_histogram("", , iiter)
+        # writer.add_histogram("", , iiter)
+        # writer.add_histogram("", , iiter)
+        # writer.add_histogram("", , iiter)
+        
+        # grad_meters["conv1"].update(model.conv1.weight.grad)
+        # grad_meters["SEResNetB2_1.convA"].update(model.SEResNetB2_1.convA.weight.grad)
+        # grad_meters["final_conv"].update(model.final_conv.weight.grad)
+        # for tag, parm in model.named_parameters():
+        #     writer.add_histogram(tag, parm.grad, iiter)
+        
         # measure accuracy and update meters
         # acc_values = accuracy(full_predict,
         #                  truth_list,
@@ -400,10 +443,13 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
     
         # update time meter
         time_meters["accuracy"].update(time.time()-end)
-        
+        print("writing to tensorboard")
         # write to tensorboard
         loss_scalars = { x:y.avg for x,y in loss_meters.items() }
         writer.add_scalars('data/train_loss', loss_scalars, iiter )
+        
+        # grad_scalars = { x:y.avg for x,y in grad_meters.items() }
+        # writer.add_scalars('data/train_grad', grad_scalars, iiter )
         
         # acc_scalars = { x:y.avg for x,y in acc_meters.items() }
         # writer.add_scalars('data/train_accuracy', acc_scalars, iiter )
@@ -570,7 +616,7 @@ def validate(INPUTFILE_VALID, device, batchsize, model, criterion, optimizer, nb
 
 def save_checkpoint(state, is_best, p, filename='/media/data/larbys/ebengh01/checkpoint.pth.tar'):
     if p>0:
-        filename = "/media/data/larbys/ebengh01/checkpoint8.%dth.tar"%(p)
+        filename = "/media/data/larbys/ebengh01/checkpoint.%dth.tar"%(p)
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, '/media/data/larbys/ebengh01/model_best.tar')

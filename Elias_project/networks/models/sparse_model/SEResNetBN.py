@@ -21,25 +21,25 @@ class SEResNetBN(nn.Module):
         self.nIn = in_channels
         self.nOut = out_channels
         self.dim = dimension
-        self.postRes = scn.ReLU()
-        self.postSE = scn.ReLU()
+        self.postRes = scn.LeakyReLU()
+        self.postSE = scn.LeakyReLU()
         self.purpleBlockP1_1 = scn.Sequential(
                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                               scn.BatchNormReLU(self.nIn),
+                               scn.BatchNormLeakyReLU(self.nIn),
                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                scn.BatchNormalization(self.nIn)
                            )
         self.PurpleSE_1 = se.SELayer(self.nIn)
         self.purpleBlockP1_2 = scn.Sequential(
                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                               scn.BatchNormReLU(self.nIn),
+                               scn.BatchNormLeakyReLU(self.nIn),
                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                scn.BatchNormalization(self.nIn)
                            )
         self.PurpleSE_2 = se.SELayer(self.nIn)
         self.purpleBlockP1_3 = scn.Sequential(
                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                               scn.BatchNormReLU(self.nIn),
+                               scn.BatchNormLeakyReLU(self.nIn),
                                scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                scn.BatchNormalization(self.nIn)
                            )
@@ -56,7 +56,7 @@ class SEResNetBN(nn.Module):
         self.greenTransitionBlockP1 = scn.Sequential(
                                         scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                         scn.MaxPooling(self.dim, 1, 2),
-                                        scn.BatchNormReLU(self.nOut),
+                                        scn.BatchNormLeakyReLU(self.nOut),
                                         scn.SubmanifoldConvolution(self.dim, self.nOut, self.nOut, 3, False),
                                         scn.BatchNormalization(self.nOut)
                                     )
@@ -64,21 +64,21 @@ class SEResNetBN(nn.Module):
         self.nIn = self.nOut
         self.greenBlockP1_1 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                                scn.BatchNormReLU(self.nIn),
+                                scn.BatchNormLeakyReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
         self.greenSE_1 = se.SELayer(self.nIn)
         self.greenBlockP1_2 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                                scn.BatchNormReLU(self.nIn),
+                                scn.BatchNormLeakyReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
         self.greenSE_2 = se.SELayer(self.nIn)
         self.greenBlockP1_3 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                                scn.BatchNormReLU(self.nIn),
+                                scn.BatchNormLeakyReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
@@ -91,7 +91,7 @@ class SEResNetBN(nn.Module):
         self.orangeTransitionBlockP1 = scn.Sequential(
                                         scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                         scn.MaxPooling(self.dim, 1, 2),
-                                        scn.BatchNormReLU(self.nOut),
+                                        scn.BatchNormLeakyReLU(self.nOut),
                                         scn.SubmanifoldConvolution(self.dim, self.nOut, self.nOut, 3, False),
                                         scn.BatchNormalization(self.nOut)
                                     )
@@ -99,35 +99,35 @@ class SEResNetBN(nn.Module):
         self.nIn = self.nOut
         self.orangeBlockP1_1 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                                scn.BatchNormReLU(self.nIn),
+                                scn.BatchNormLeakyReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
         self.orangeSE_1 = se.SELayer(self.nIn)
         self.orangeBlockP1_2 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                                scn.BatchNormReLU(self.nIn),
+                                scn.BatchNormLeakyReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
         self.orangeSE_2 = se.SELayer(self.nIn)
         self.orangeBlockP1_3 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                                scn.BatchNormReLU(self.nIn),
+                                scn.BatchNormLeakyReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
         self.orangeSE_3 = se.SELayer(self.nIn)
         self.orangeBlockP1_4 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                                scn.BatchNormReLU(self.nIn),
+                                scn.BatchNormLeakyReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
         self.orangeSE_4 = se.SELayer(self.nIn)
         self.orangeBlockP1_5 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                                scn.BatchNormReLU(self.nIn),
+                                scn.BatchNormLeakyReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
@@ -141,7 +141,7 @@ class SEResNetBN(nn.Module):
         self.blueTransitionBlockP1 = scn.Sequential(
                                         scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                         scn.MaxPooling(self.dim, 1, 2),
-                                        scn.BatchNormReLU(self.nOut),
+                                        scn.BatchNormLeakyReLU(self.nOut),
                                         scn.SubmanifoldConvolution(self.dim, self.nOut, self.nOut, 3, False),
                                         scn.BatchNormalization(self.nOut)
                                     )        
@@ -149,14 +149,14 @@ class SEResNetBN(nn.Module):
         self.nIn = self.nOut
         self.blueBlockP1_1 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                                scn.BatchNormReLU(self.nIn),
+                                scn.BatchNormLeakyReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )
         self.blueSE_1 = se.SELayer(self.nIn)
         self.blueBlockP1_2 = scn.Sequential(
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
-                                scn.BatchNormReLU(self.nIn),
+                                scn.BatchNormLeakyReLU(self.nIn),
                                 scn.SubmanifoldConvolution(self.dim, self.nIn, self.nOut, 3, False),
                                 scn.BatchNormalization(self.nIn)
                             )

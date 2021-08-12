@@ -7,7 +7,7 @@ from larcv import larcv
 # from larcvdataset.larcvserver import LArCVServer
 import torch
 from torch.utils import data as torchdata
-import dataLoader as dl # TODO: Change this back
+import dataLoader as dl
 
 def load_classifier_larcvdata( name, inputfile, batchsize, nworkers, nbatches, verbosity,
                             input_producer_name,true_producer_name,

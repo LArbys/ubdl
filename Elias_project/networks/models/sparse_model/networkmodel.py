@@ -49,6 +49,7 @@ class SparseClassifier(nn.Module):
         self.SEResNetB2_2 = b2.SEResNetB2(self._dimension, self._nin_features, self._nout_features)
         self.SEResNetB2_3 = b2.SEResNetB2(self._dimension, self._nin_features, self._nout_features)
         self.makeDense = scn.SparseToDense(self._dimension, self._nin_features)
+        self.dropout2 = nn.Dropout(p=0.2)
         # concatenate in forward pass
         self.makeSparse = scn.DenseToSparse(self._dimension)
         inputshape3 = self.inputshape2
@@ -63,6 +64,7 @@ class SparseClassifier(nn.Module):
         self.outputAvg = gavg.SparseGlobalAvgPool2d()
         self.makeDense2 = scn.SparseToDense(self._dimension, self._nout_features)
         self.final_conv = nn.Conv2d(self._nin_features,self._nout_features,(65,217))
+        self.dropout5 = nn.Dropout()
         self.output = nn.Sequential(
                           nn.Flatten(),
                           nn.Linear(self._nout_features, 1000)
@@ -117,18 +119,24 @@ class SparseClassifier(nn.Module):
             if self._show_sizes:
                 print ("SEResNetB2:",n[i].features.shape)
                 print ("SEResNetB2:",n[i].spatial_size)
+            tic = time.perf_counter()
             n[i]=self.makeDense(n[i])
+            toc = time.perf_counter()
+            print(f"makeDense_%d in {toc - tic:0.4f} seconds"%(i))
+            if self._show_sizes:
+                print ("makeDense:",n[i].shape)
         # concatenate the inputs while dense, then sparsifies
-        if self._show_sizes:
-            print ("makeDense:",n[i].shape)
+        tic = time.perf_counter()
         x = self.concatenateInputs(n)
         if self._show_sizes:
             print ("Concatenate:",x.shape)
+        x = self.dropout2(x)
         x = self.makeSparse(x)
         if self._show_sizes:
             print("size of sparse after concat:",x.features.shape)
             print("size of sparse after concat:",x.spatial_size)
-        
+        toc = time.perf_counter()
+        print(f"Concat and makeSparse in {toc - tic:0.4f} seconds")
         tic = time.perf_counter()
         # run through the SEResNet Block N (modeled off resnet-34)
         x = self.SEResNetBN(x, inputshape2, device)
@@ -149,6 +157,7 @@ class SparseClassifier(nn.Module):
         x = self.final_conv(x)
         if self._show_sizes:
             print("before flatten:",x.shape)
+        x = self.dropout5(x)
         x=self.output(x)
         # output layers
         if self._show_sizes:

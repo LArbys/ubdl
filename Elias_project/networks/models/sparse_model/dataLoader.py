@@ -22,7 +22,6 @@ Returns: a list of: sparse images, runs, subruns, events, truth, filepaths,
                     entries, max pixel length, effective length(length of the image list)
 """
 def load_rootfile_training(infile, batchsize, nbatches, verbosity, start_entry = 0, end_entry = -1, rand=True):
-
     # Initialize the IO Manager:
     iocv = larcv.IOManager(larcv.IOManager.kREAD,"io",larcv.IOManager.kTickForward)
     iocv.reverse_all_products() # Do I need this?
@@ -47,7 +46,7 @@ def load_rootfile_training(infile, batchsize, nbatches, verbosity, start_entry =
         start_entry = 0
     max_len = 0
 
-    # beginning the loop
+    # determine how to pull entries
     if rand:
         entry_list = random.sample(range(start_entry,end_entry),nbatches*batchsize)
     else:
@@ -55,6 +54,7 @@ def load_rootfile_training(infile, batchsize, nbatches, verbosity, start_entry =
             entry_list = [*range(start_entry,start_entry + nbatches*batchsize)]
         else:
             entry_list = [*range(start_entry,end_entry)]
+    # begin iterating over entries
     for i in entry_list:
         print("Loading Entry:", i, "of range", start_entry, end_entry)
         iocv.read_entry(i)
