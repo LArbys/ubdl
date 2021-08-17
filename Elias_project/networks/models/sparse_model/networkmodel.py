@@ -154,10 +154,12 @@ class SparseClassifier(nn.Module):
         inputshape2[1] = inputshape2[1]//2 + 1
         
         x = self.makeDense2(x)
+        print("x shape after dense:",x.shape)
         x = self.final_conv(x)
         if self._show_sizes:
             print("before flatten:",x.shape)
         x = self.dropout5(x)
+        print("x.shape before output:",x.shape)
         x=self.output(x)
         # output layers
         if self._show_sizes:

@@ -33,7 +33,7 @@ import socket
 
 
 sys.path.append("/home/ebengh01/ubdl/Elias_project/networks/models/sparse_model")
-from networkmodel_big_kernels import SparseClassifier
+from networkmodel_vanilla import SparseClassifier
 from SparseClassDataset import load_classifier_larcvdata
 from loss_sparse_classifier import SparseClassifierLoss
 import dataLoader as dl
@@ -46,8 +46,8 @@ GPUMODE=True
 RESUME_FROM_CHECKPOINT=False
 RUNPROFILER=False
 
-CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint.150th.tar"
-INPUTFILE_TRAIN="/media/data/larbys/ebengh01/SparseClassifierTrainingSet_3.root" # output_10001.root SparseClassifierTrainingSet.root
+CHECKPOINT_FILE="/media/data/larbys/ebengh01/model_best.tar"
+INPUTFILE_TRAIN="/media/data/larbys/ebengh01/SparseClassifierTrainingSet_3.root" # output_10001.root SparseClassifierTrainingSet_3.root
 INPUTFILE_VALID="/media/data/larbys/ebengh01/SparseClassifierValidationSet_2.root" # output_9656.root SparseClassifierValidationSet.root
 TICKBACKWARD=False
 PLANE = 0
@@ -55,19 +55,19 @@ start_iter  = 0
 num_iters   = 20
 IMAGE_WIDTH=3458 # real image 3456
 IMAGE_HEIGHT=1026 # real image 1008, 1030 for not depth concat
-BATCHSIZE_TRAIN=8
-BATCHSIZE_VALID=8
+BATCHSIZE_TRAIN=1
+BATCHSIZE_VALID=1
 NWORKERS_TRAIN=1
 NWORKERS_VALID=1
 ADC_THRESH=0.0
 DEVICE_IDS=[0,1] # TODO: get this working for multiple gpu
-GPUID=DEVICE_IDS[0]
+GPUID=DEVICE_IDS[1]
 # map multi-training weights
 CHECKPOINT_MAP_LOCATIONS={"cuda:0":"cuda:0",
                           "cuda:1":"cuda:1"}
 CHECKPOINT_MAP_LOCATIONS=None
 CHECKPOINT_FROM_DATA_PARALLEL=False
-ITER_PER_CHECKPOINT=150 # roughly every day
+ITER_PER_CHECKPOINT=350 # roughly every day
 # ===================================================
 
 # global variables
@@ -98,7 +98,7 @@ def main():
     # self, inputshape, nin_features, nout_features, show_sizes
     model = SparseClassifier( (IMAGE_HEIGHT,IMAGE_WIDTH), 
                            ninput_features, noutput_features,
-                           show_sizes=False).to(DEVICE)
+                           show_sizes=True).to(DEVICE)
     # Resume training option
     if RESUME_FROM_CHECKPOINT:
         print ("RESUMING FROM CHECKPOINT FILE ",CHECKPOINT_FILE)
@@ -120,7 +120,7 @@ def main():
     criterion = SparseClassifierLoss().to(device=DEVICE)
     
     # training parameters
-    lr = 1.0e-1
+    lr = 1.0e-4
     momentum = 0.9
     weight_decay = 1.0e-4
 
@@ -373,6 +373,7 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
             time_meters["forward"].update(time.time()-end)
         # loss calc:
         fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list, device)
+        print("done with loss")
         
         if RUNPROFILER:
             torch.cuda.synchronize()
@@ -381,8 +382,11 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         if RUNPROFILER:
             torch.cuda.synchronize()
         end = time.time()
+        print("optimzer.zero_grad:")
         optimizer.zero_grad()
+        print("backwards pass:")
         totloss.backward()
+        print("step:")
         optimizer.step()
         if RUNPROFILER:
             torch.cuda.synchronize()
@@ -391,6 +395,7 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         # measure accuracy and record loss
         end = time.time()
     
+        print("updating loss meters")
         # update loss meters
         loss_meters["total"].update( totloss.item() )
         loss_meters["fl_loss"].update( fl_loss.item() )
@@ -403,7 +408,6 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         # print("model.conv1.weight:",model.conv1.weight)
         # print("model.conv1.weight.grad:",model.conv1.weight.grad)
         # print("model.SEResNetB2_1.convA.weight.grad:",model.SEResNetB2_1.convA.weight.grad)
-        # 
         # for module in model.SEResNetBN.purpleBlockP1_1:
         #     print("model.SEResNetBN.purpleBlockP1_1.module.weight.grad:",module.weight.grad)
         # for module in model.SEResNetBN.greenBlockP1_1:
@@ -414,17 +418,17 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         #     print("model.SEResNetBN.blueBlockP1_1.module.weight.grad:",module.weight.grad)
         # print("model.final_conv.weight.grad:",model.final_conv.weight.grad)
         
-        writer.add_histogram("model.conv1.weight.grad", model.conv1.weight.grad, iiter)
-        writer.add_histogram("model.SEResNetB2_1.convA.weight.grad", model.SEResNetB2_1.convA.weight.grad, iiter)
-        for module in model.SEResNetBN.purpleBlockP1_1:
-            writer.add_histogram("model.SEResNetBN.purpleBlockP1_1.%s"%(module), module.weight.grad, iiter)
-        for module in model.SEResNetBN.greenBlockP1_1:
-            writer.add_histogram("model.SEResNetBN.greenBlockP1_1.%s"%(module), module.weight.grad, iiter)
-        for module in model.SEResNetBN.orangeBlockP1_1:
-            writer.add_histogram("model.SEResNetBN.orangeBlockP1_1.%s"%(module), module.weight.grad, iiter)
-        for module in model.SEResNetBN.blueBlockP1_1:
-            writer.add_histogram("model.SEResNetBN.blueBlockP1_1.%s"%(module), module.weight.grad, iiter)
-        writer.add_histogram("model.final_conv.weight.grad", model.final_conv.weight.grad, iiter)
+        # writer.add_histogram("model.conv1.weight.grad", model.conv1.weight.grad, iiter)
+        # writer.add_histogram("model.SEResNetB2_1.convA.weight.grad", model.SEResNetB2_1.convA.weight.grad, iiter)
+        # for module in model.SEResNetBN.purpleBlockP1_1:
+        #     writer.add_histogram("model.SEResNetBN.purpleBlockP1_1.%s"%(module), module.weight.grad, iiter)
+        # for module in model.SEResNetBN.greenBlockP1_1:
+        #     writer.add_histogram("model.SEResNetBN.greenBlockP1_1.%s"%(module), module.weight.grad, iiter)
+        # for module in model.SEResNetBN.orangeBlockP1_1:
+        #     writer.add_histogram("model.SEResNetBN.orangeBlockP1_1.%s"%(module), module.weight.grad, iiter)
+        # for module in model.SEResNetBN.blueBlockP1_1:
+        #     writer.add_histogram("model.SEResNetBN.blueBlockP1_1.%s"%(module), module.weight.grad, iiter)
+        # writer.add_histogram("model.final_conv.weight.grad", model.final_conv.weight.grad, iiter)
         # writer.add_histogram("", , iiter)
         # writer.add_histogram("", , iiter)
         # writer.add_histogram("", , iiter)
@@ -440,13 +444,14 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         # acc_values = accuracy(full_predict,
         #                  truth_list,
         #                  acc_meters)
-    
+        
         # update time meter
         time_meters["accuracy"].update(time.time()-end)
         print("writing to tensorboard")
         # write to tensorboard
         loss_scalars = { x:y.avg for x,y in loss_meters.items() }
         writer.add_scalars('data/train_loss', loss_scalars, iiter )
+        print("loss scalars written")
         
         # grad_scalars = { x:y.avg for x,y in grad_meters.items() }
         # writer.add_scalars('data/train_grad', grad_scalars, iiter )
@@ -459,6 +464,7 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         
         time_scalars = { x:y.avg for x,y in time_meters.items() }
         writer.add_scalars('data/train time', time_scalars, iiter )
+        print("time scalars written")
 
         # print status
         if print_freq>0 and i%print_freq == 0:

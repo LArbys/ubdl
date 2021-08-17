@@ -10,9 +10,8 @@ import torch
 # from MiscFunctions import cropped_np, unravel_array, reravel_array
 # from LArMatchModel import get_larmatch_features
 
-def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
-    truthtrack_SCE = ublarcvapp.mctools.TruthTrackSCE()
-    # infile = PARAMS['INFILE']
+def load_rootfile_training(infile, batchsize, nbatches, verbosity, start_entry = 0, end_entry = -1, rand=True):
+    # Initialize the IO Manager:
     iocv = larcv.IOManager(larcv.IOManager.kREAD,"io",larcv.IOManager.kTickForward)
     iocv.reverse_all_products() # Do I need this?
     iocv.add_in_file(infile)
@@ -21,9 +20,6 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
     nentries_cv = iocv.get_n_entries()
 
     # Get Rid of those pesky IOManager Warning Messages (orig cxx)
-	# larcv::logger larcv_logger
-	# larcv::msg::Level_t log_level = larcv::msg::kCRITICAL
-	# larcv_logger.force_level(log_level)
     full_image_list = []
     runs = []
     subruns   = []
@@ -37,32 +33,24 @@ def load_rootfile_training(infile, start_entry = 0, end_entry = -1):
         end_entry = nentries_cv
     if start_entry > end_entry or start_entry < 0:
         start_entry = 0
-    for i in range(start_entry, end_entry):
-    # for i in range(8,9):
-        print()
+    # determine how to pull entries
+    if rand:
+        entry_list = random.sample(range(start_entry,end_entry),nbatches*batchsize)
+    else:
+        if (start_entry + nbatches*batchsize) < end_entry:
+            entry_list = [*range(start_entry,start_entry + nbatches*batchsize)]
+        else:
+            entry_list = [*range(start_entry,end_entry)]
+    # begin iterating over entries
+    for i in entry_list:
         print("Loading Entry:", i, "of range", start_entry, end_entry)
-        print()
         iocv.read_entry(i)
         
         # ev_wire
-        ev_sparse    = iocv.get_data(larcv.kProductSparseImage,"nbkrnd_sparse")
-        ev_sparse_v = ev_sparse.SparseImageArray()
+        ev_sparse    = iocv.get_data(larcv.kProductSparseImage,"thresh10")
+        ev_sparse_v = ev_sparse.Image2DArray()
         # Get Sparse Image to a Numpy Array
-        
-        # rows = y_wire_image2d.meta().rows()
-        # cols = y_wire_image2d.meta().cols()
-        # for c in range(cols):
-        #     for r in range(rows):
-        #         y_wire_np[c][r] = y_wire_image2d.pixel(r,c)
-        
-        # if PARAMS['USE_CONV_IM']:
-        #     y_wire_np = get_larmatch_features(PARAMS, y_wire_image2d)
-        # else:
-        
-        
-        ev_sparse_np = larcv.as_sparseimg_ndarray(ev_sparse_v[0])
-        # for i in range(0,3):
-        #     ev_sparse_np[i] = larcv.as_sparseimg_ndarray(ev_sparse_v[i]) # I am Speed.
+        ev_sparse_np = larcv.as_img2d_ndarray(ev_sparse_v[0])
             
         print("shape test")
         print(ev_sparse_np.shape)

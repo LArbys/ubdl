@@ -71,4 +71,6 @@ class SparseClassifierLoss(nn.modules.loss._WeightedLoss):
         print("nN_loss:",nN_loss)
 
         totloss = fl_loss + iT_loss + nP_loss + nCP_loss + nNP_loss + nN_loss
+        print("total loss:",totloss)
+        
         return fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss
