@@ -193,8 +193,6 @@ def main():
                                         rand=False)
        
        try:
-           
-
            # switch to evaluate mode
            model.eval()
            start_entry = 0
@@ -248,16 +246,6 @@ def main():
               
               iterstart = time.time()
               nnone = 0
-              # print("start entry before loading data:",start_entry)
-              # iodeploy = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
-              #                                   BATCHSIZE_DEPLOY, NWORKERS_VALID,
-              #                                   nbatches_per_iterdeploy, verbosity,
-              #                                   input_producer_name="nbkrnd_sparse",
-              #                                   true_producer_name="nbkrnd_sparse",
-              #                                   tickbackward=TICKBACKWARD,
-              #                                   readonly_products=None,
-              #                                   start_entry=start_entry, end_entry=-1, rand=False)
-              print("start entry:",start_entry)
               iodeploy = SparseClassifierDataset(deploy_file, start_entry=start_entry)
               iodeploy.set_nentries(iodeploy.get_len_eff())
               start_entry+=(BATCHSIZE_DEPLOY*nbatches_per_iterdeploy)
@@ -272,10 +260,6 @@ def main():
 
               
               for i in range(0,nbatches_per_iterdeploy):
-                  if i == 0:
-                      print("confusion_true:",confusion_true)
-                      print("confusion_pred:",confusion_pred)
-                      print("acc_hist:",acc_hist)
                   print("iiter ",ii," batch ",i," of ",nbatches_per_iterdeploy)
                   batchstart = time.time()
                   tdata_start = time.time()
@@ -332,19 +316,19 @@ def main():
                 
                   # write to tensorboard
                   loss_scalars = { x:y.avg for x,y in loss_meters.items() }
-                  writer.add_scalars('data/valid_loss', loss_scalars, i )
+                  writer.add_scalars('data/valid_loss', loss_scalars, i+ii*nbatches_per_iterdeploy )
 
                   acc_scalars = { x:y.avg for x,y in acc_meters.items() }
-                  writer.add_scalars('data/valid_accuracy', acc_scalars, i )
+                  writer.add_scalars('data/valid_accuracy', acc_scalars, i+ii*nbatches_per_iterdeploy )
                   # print("acc_scalars_binary:",acc_scalars_binary)
                   acc_scalars_binary = { x:y.avg for x,y in acc_meters_binary.items() }
-                  writer.add_scalars('data/valid_accuracy_binary', acc_scalars_binary, i )
+                  writer.add_scalars('data/valid_accuracy_binary', acc_scalars_binary, i+ii*nbatches_per_iterdeploy )
 
                   # measure elapsed time for batch
                   time_meters["batch"].update(time.time()-batchstart)
                 
                   time_scalars = { x:y.avg for x,y in time_meters.items() }
-                  writer.add_scalars('data/valid times', time_scalars, i )
+                  writer.add_scalars('data/valid times', time_scalars, i+ii*nbatches_per_iterdeploy )
 
                   if validbatches_per_print>0 and i % validbatches_per_print == 0:
                       prep_status_message( "valid-batch", i, acc_meters, loss_meters, time_meters, False )

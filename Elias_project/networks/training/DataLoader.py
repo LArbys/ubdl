@@ -52,13 +52,11 @@ class RootFileDataLoader(object):
         if self.rand:
             entry_list = random.sample(range(start_entry,end_entry),self.nbatches*self.batchsize)
         else:
-            print("nonrandom")
             if (start_entry + self.nbatches*self.batchsize) < end_entry:
                 entry_list = [*range(start_entry,start_entry + self.nbatches*self.batchsize)]
             else:
                 entry_list = [*range(start_entry,end_entry)]
         # begin iterating over entries
-        print("entry list:",entry_list)
         for i in entry_list:
             print("Loading Entry:", i, "of range", start_entry, end_entry)
             self.iocv.read_entry(i)

@@ -52,16 +52,13 @@ RUNPROFILER=False
 CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint_gpuOT.800th.tar"
 INPUTFILE_TRAIN="/media/data/larbys/ebengh01/output_10001.root" # output_10001.root SparseClassifierTrainingSet_3.root
 INPUTFILE_VALID="/media/data/larbys/ebengh01/SparseClassifierValidationSet_2.root" # output_9656.root SparseClassifierValidationSet.root
-# TICKBACKWARD=False
 PLANE = 0
 start_iter  = 0
-num_iters   = 2
+num_iters   = 6000
 IMAGE_WIDTH=3458 # real image 3456
 IMAGE_HEIGHT=1026 # real image 1008, 1030 for not depth concat
 BATCHSIZE_TRAIN=4
 BATCHSIZE_VALID=4
-# NWORKERS_TRAIN=1
-# NWORKERS_VALID=1
 ADC_THRESH=0.0
 DEVICE_IDS=[0,1] # TODO: get this working for multiple gpu
 GPUID=DEVICE_IDS[1]
@@ -70,7 +67,7 @@ GPUID=DEVICE_IDS[1]
 #                           "cuda:1":"cuda:1"}
 # CHECKPOINT_MAP_LOCATIONS=None
 CHECKPOINT_FROM_DATA_PARALLEL=False
-ITER_PER_CHECKPOINT=350 # roughly every day
+ITER_PER_CHECKPOINT=2000 # roughly every day
 # ===================================================
 
 # global variables
@@ -135,7 +132,7 @@ def main():
     start_epoch = 0
     epochs      = 10
     iter_per_epoch = None # determined later
-    iter_per_valid = 1#0
+    iter_per_valid = 10
 
 
     nbatches_per_itertrain = 5
@@ -167,7 +164,7 @@ def main():
     cudnn.benchmark = True
 
         
-    NENTRIES = 337567 # Taken from rootfile
+    NENTRIES = 37 # Taken from rootfile
     print ("Number of entries in training set: ",NENTRIES)
 
     if NENTRIES>0:
@@ -217,9 +214,6 @@ def main():
             
             # train for one iteration
             try:
-                # _ = train(train_file, DEVICE, BATCHSIZE_TRAIN, model,
-                #           criterion, optimizer,
-                #           nbatches_per_itertrain, ii, trainbatches_per_print)
                 _ = train(train_file, model, DEVICE, criterion, optimizer,
                           BATCHSIZE_TRAIN, nbatches_per_itertrain, ii,
                           trainbatches_per_print)
@@ -233,9 +227,6 @@ def main():
             # evaluate on validation set
             if ii%iter_per_valid==0 and ii>0:
                 try:
-                    # totloss = validate(valid_file, DEVICE, BATCHSIZE_VALID, model,
-                    #           criterion, optimizer,
-                    #           nbatches_per_itervalid, ii, validbatches_per_print)
                     totloss = validate(valid_file, model, DEVICE, criterion,
                               BATCHSIZE_VALID, nbatches_per_itervalid, ii,
                               validbatches_per_print)
@@ -352,13 +343,7 @@ def train(train_file, model, device, criterion, optimizer, batchsize, nbatches, 
     # switch to train mode
     model.train()
     end = time.time()
-    # iotrain = load_classifier_larcvdata( "training", INPUTFILE_TRAIN,
-    #                                   batchsize, NWORKERS_TRAIN,
-    #                                   nbatches, verbosity,
-    #                                   input_producer_name="nbkrnd_sparse",
-    #                                   true_producer_name="nbkrnd_sparse",
-    #                                   tickbackward=TICKBACKWARD,
-    #                                   readonly_products=None )
+    
     iotrain = SparseClassifierDataset(train_file)
     iotrain.set_nentries(iotrain.get_len_eff())
     
@@ -554,13 +539,6 @@ def validate(valid_file, model, device, criterion, batchsize, nbatches, iiter, p
     iterstart = time.time()
     nnone = 0
     
-    # iovalid = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
-    #                                   batchsize, NWORKERS_VALID,
-    #                                   nbatches, verbosity,
-    #                                   input_producer_name="nbkrnd_sparse",
-    #                                   true_producer_name="nbkrnd_sparse",
-    #                                   tickbackward=TICKBACKWARD,
-    #                                   readonly_products=None )
     iovalid = SparseClassifierDataset(valid_file)
     iovalid.set_nentries(iovalid.get_len_eff())
     
