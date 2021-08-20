@@ -37,12 +37,14 @@ class SEResNetBN(nn.Module):
         self.nOut = self.nIn//2
         self.blueBlock = res.create_resnet_layer(3, self.nIn, self.nOut)        
     
-    def forward(self, x, inputshape, device):
+    def forward(self, x, inputshape):
         # Purple Block:
+        print("initial BN device:",x.features.device)
         tic = time.perf_counter()
         x = self.purpleBlock(x)
         toc = time.perf_counter()
         print(f"purpleBlock in {toc - tic:0.4f} seconds")
+        print("post purpleBlock:",x.features.device)
         
         inputshape[0] = inputshape[0]//2 + 1
         inputshape[1] = inputshape[1]//2 + 1
@@ -51,6 +53,7 @@ class SEResNetBN(nn.Module):
         x = self.greenBlock(x)
         toc = time.perf_counter()
         print(f"greenBlock in {toc - tic:0.4f} seconds")
+        print("post greenBlock:",x.features.device)
 
         inputshape[0] = inputshape[0]//2 + 1
         inputshape[1] = inputshape[1]//2 + 1
@@ -58,6 +61,7 @@ class SEResNetBN(nn.Module):
         x = self.orangeBlock(x)
         toc = time.perf_counter()
         print(f"orangeBlock in {toc - tic:0.4f} seconds")
+        print("post orangeBlock:",x.features.device)
 
         inputshape[0] = inputshape[0]//2 + 1
         inputshape[1] = inputshape[1]//2 + 1
@@ -65,6 +69,7 @@ class SEResNetBN(nn.Module):
         x = self.blueBlock(x)
         toc = time.perf_counter()
         print(f"blueBlock in {toc - tic:0.4f} seconds")
+        print("post blueBlock:",x.features.device)
 
         return x
     
@@ -75,11 +80,11 @@ class SEResNetBN(nn.Module):
     #     x = self.postSE(x)
     #     return x
     
-    def greenTransitionBlock(self, x, inputshape, device):
-        x = self.greenTransitionBlockP1(x)
-        x = self.greenTSE(x, inputshape, device)
-        x = self.postSE(x)
-        return x
+    # def greenTransitionBlock(self, x, inputshape, device):
+    #     x = self.greenTransitionBlockP1(x)
+    #     x = self.greenTSE(x, inputshape, device)
+    #     x = self.postSE(x)
+    #     return x
     
     # def greenBlock(self, x, inputshape, device):
     #     x = self.greenBlockP1(x)
@@ -87,11 +92,11 @@ class SEResNetBN(nn.Module):
     #     x = self.postSE(x)
     #     return x
     
-    def orangeTransitionBlock(self, x, inputshape, device):
-        x = self.orangeTransitionBlockP1(x)
-        x = self.orangeTSE(x, inputshape, device)
-        x = self.postSE(x)
-        return x
+    # def orangeTransitionBlock(self, x, inputshape, device):
+    #     x = self.orangeTransitionBlockP1(x)
+    #     x = self.orangeTSE(x, inputshape, device)
+    #     x = self.postSE(x)
+    #     return x
     
     # def orangeBlock(self, x, inputshape, device):
     #     x = self.orangeBlockP1(x)
@@ -99,11 +104,11 @@ class SEResNetBN(nn.Module):
     #     x = self.postSE(x)
     #     return x
     
-    def blueTransitionBlock(self, x, inputshape, device):
-        x = self.blueTransitionBlockP1(x)
-        x = self.blueTSE(x, inputshape, device)
-        x = self.postSE(x)
-        return x
+    # def blueTransitionBlock(self, x, inputshape, device):
+    #     x = self.blueTransitionBlockP1(x)
+    #     x = self.blueTSE(x, inputshape, device)
+    #     x = self.postSE(x)
+    #     return x
     
     # def blueBlock(self, x, inputshape, device):
     #     x = self.blueBlockP1(x)

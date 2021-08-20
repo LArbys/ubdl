@@ -22,10 +22,10 @@ import torch.distributed as dist
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
-import torchvision.transforms as transforms
-import torchvision.datasets as datasets
-import torchvision.models as models
-import torch.nn.functional as F
+# import torchvision.transforms as transforms
+# import torchvision.datasets as datasets
+# import torchvision.models as models
+# import torch.nn.functional as F
 
 # tensorboardX
 from tensorboardX import SummaryWriter
@@ -39,10 +39,10 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 sys.path.append("/home/ebengh01/ubdl/Elias_project/networks/models/sparse_model")
-from networkmodel import SparseClassifier
-from SparseClassDataset import load_classifier_larcvdata
+from networkmodel_vanilla import SparseClassifier
+from DataLoader import RootFileDataLoader
+from SparseDataset import SparseClassifierDataset
 from loss_sparse_classifier import SparseClassifierLoss
-import dataLoader as dl
 import sparseconvnet as scn
 
 
@@ -53,22 +53,22 @@ GPUMODE=True
 RESUME_FROM_CHECKPOINT=True
 RUNPROFILER=False
 
-CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint.150th.tar"
+CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint_gpuOT.2th.tar"
 # INPUTFILE_TRAIN="/media/data/larbys/ebengh01/SparseClassifierTrainingSet_2.root" # output_10001.root SparseClassifierTrainingSet_2.root
-INPUTFILE_VALID="/media/data/larbys/ebengh01/SparseClassifierValidationSet_2.root" # output_9656.root SparseClassifierValidationSet_2.root
+INPUTFILE_DEPLOY="/media/data/larbys/ebengh01/SparseClassifierValidationSet_2.root" # output_9656.root SparseClassifierValidationSet_2.root
 TICKBACKWARD=False
 start_iter  = 0
-num_iters   = 2
+num_iters   = 10
 IMAGE_WIDTH=3458 # real image 3456
 IMAGE_HEIGHT=1026 # real image 1008, 1030 for not depth concat
-BATCHSIZE_VALID=1
+BATCHSIZE_DEPLOY=1
 NWORKERS_VALID=1
 DEVICE_IDS=[0,1] # TODO: get this working for multiple gpu
 GPUID=DEVICE_IDS[0]
 # map multi-training weights
-CHECKPOINT_MAP_LOCATIONS={"cuda:0":"cuda:0",
-                          "cuda:1":"cuda:1"}
-CHECKPOINT_MAP_LOCATIONS=None
+# CHECKPOINT_MAP_LOCATIONS={"cuda:0":"cuda:0",
+#                           "cuda:1":"cuda:1"}
+# CHECKPOINT_MAP_LOCATIONS=None
 CHECKPOINT_FROM_DATA_PARALLEL=False
 ITER_PER_CHECKPOINT=1000
 # ===================================================
@@ -91,8 +91,10 @@ def main():
     if GPUMODE:
         DEVICE = torch.device("cuda:%d"%(GPUID))
         torch.cuda.set_device(GPUID)
+        CHECKPOINT_MAP_LOCATIONS = "cuda:%d"%(GPUID)
     else:
         DEVICE = torch.device("cpu")
+        CHECKPOINT_MAP_LOCATIONS = "cpu"
     print("device:",DEVICE)
     # create model, mark it to run on the GPU
     imgdims = 2
@@ -104,11 +106,12 @@ def main():
                            show_sizes=False).to(DEVICE)
     # Resume training option
     print ("RESUMING FROM CHECKPOINT FILE ",CHECKPOINT_FILE)
-    checkpoint = torch.load( CHECKPOINT_FILE, map_location=CHECKPOINT_MAP_LOCATIONS ) # load weights to gpuid
+    checkpoint = torch.load( CHECKPOINT_FILE, map_location="cpu" ) # load weights to gpuid
     best_prec1 = checkpoint["best_prec1"]
     # if CHECKPOINT_FROM_DATA_PARALLEL:
     #     model = nn.DataParallel( model, device_ids=DEVICE_IDS ) # distribute across device_ids
     model.load_state_dict(checkpoint["state_dict"])
+    model.to(DEVICE)
 
     # if not CHECKPOINT_FROM_DATA_PARALLEL and len(DEVICE_IDS)>1:
     #     model = nn.DataParallel( model, device_ids=DEVICE_IDS ).to(device=DEVICE) # distribute across device_ids
@@ -119,22 +122,22 @@ def main():
         # print("model.children:",list(model.children()))
         return
   
-    # define loss function (criterion) and optimizer
-    criterion = SparseClassifierLoss().to(device=DEVICE)
+    # define loss function (criterion)
+    criterion = SparseClassifierLoss(DEVICE).to(device=DEVICE)
 
     # training parameters
-    lr = 1.0e-3
-    weight_decay = 1.0e-4
+    # lr = 1.0e-3
+    # weight_decay = 1.0e-4
 
     # training length
-    batchsize_valid = BATCHSIZE_VALID#*len(DEVICE_IDS)
+    batchsize_deploy = BATCHSIZE_DEPLOY#*len(DEVICE_IDS)
     start_epoch = 0
     epochs      = 10
     iter_per_epoch = None # determined later
     iter_per_valid = 1
 
-    nbatches_per_itervalid = 100
-    itersize_valid         = batchsize_valid*nbatches_per_itervalid
+    nbatches_per_iterdeploy = 100
+    itersize_valid         = batchsize_deploy*nbatches_per_iterdeploy
     validbatches_per_print = 1
     
     # confusion matrix normalization
@@ -143,9 +146,9 @@ def main():
     
     # SETUP OPTIMIZER
     # RMSPROP
-    optimizer = torch.optim.RMSprop(model.parameters(),
-                                    lr=lr,
-                                    weight_decay=weight_decay)
+    # optimizer = torch.optim.RMSprop(model.parameters(),
+    #                                 lr=lr,
+    #                                 weight_decay=weight_decay)
 
     # optimize algorithms based on input size (good if input size is constant)
     cudnn.benchmark = True
@@ -170,85 +173,96 @@ def main():
 
     with torch.autograd.profiler.profile(enabled=RUNPROFILER) as prof:
        print ("RESUMING FROM CHECKPOINT FILE ",CHECKPOINT_FILE)
-       checkpoint = torch.load( CHECKPOINT_FILE, map_location=CHECKPOINT_MAP_LOCATIONS )
+       checkpoint = torch.load( CHECKPOINT_FILE, map_location="cpu" )
        best_prec1 = checkpoint["best_prec1"]
        model.load_state_dict(checkpoint["state_dict"])
-       optimizer.load_state_dict(checkpoint['optimizer'])
+       # optimizer.load_state_dict(checkpoint['optimizer'])
        # if GPUMODE:
        #    optimizer.cuda(GPUID)
        verbosity = False
-       for param_group in optimizer.param_groups:
-           print ("lr=%.3e"%(param_group['lr'])),
-           print()
-        # evaluate on validation set
+       # for param_group in optimizer.param_groups:
+       #     print ("lr=%.3e"%(param_group['lr'])),
+       #     print()
+       # evaluate on validation set
+       
+       deploy_file = RootFileDataLoader(INPUTFILE_DEPLOY,
+                                        DEVICE,
+                                        BATCHSIZE_DEPLOY,
+                                        nbatches_per_iterdeploy,
+                                        verbosity,
+                                        rand=False)
+       
        try:
-           # accruacy and loss meters and confusion matrix
-           accnames = ("flavors",
-                       "Interaction Type",
-                       "Num Protons",
-                       "Num Charged Pions",
-                       "Num Neutral Pions",
-                       "Num Neutrons")
-           acclabelnames = (["CC NuE","CC NuMu","NC NuE","NC NuMu"],
-                        ["QE", "RES", "DIS", "Other"],
-                        ["0", "1", "2", ">2"],
-                        ["0", "1", "2", ">2"],
-                        ["0", "1", "2", ">2"],
-                        ["0", "1", "2", ">2"])
-
-           acc_meters = {}
-           acc_meters_binary = {}
-           acc_label_list = {}
-           idx = 0
-           for n in accnames:
-               acc_meters[n] = AverageMeter()
-               acc_meters_binary[n] = AverageMeter()
-               acc_label_list[n] = acclabelnames[idx]
-               idx+=1
-
-           lossnames = ("total" ,
-                       "fl_loss",
-                       "iT_loss",
-                       "nP_loss",
-                       "nCP_loss",
-                       "nNP_loss",
-                       "nN_loss")
-
-           loss_meters = {}
-           for l in lossnames:
-               loss_meters[l] = AverageMeter()
            
-           # confusion_true = [[],[],[],[],[],[]]
-           # confusion_pred = [[],[],[],[],[],[]]
-
-           # timers for profiling
-           time_meters = {}
-           for l in ["batch","data","forward","backward","accuracy"]:
-               time_meters[l] = AverageMeter()
 
            # switch to evaluate mode
-           # model.eval()
+           model.eval()
            start_entry = 0
            
            for ii in range(start_iter, num_iters):
               print ("MainLoop Iter:%d Epoch:%d.%d "%(ii,ii/iter_per_epoch,ii%iter_per_epoch),)
 
+              # accruacy and loss meters and confusion matrix
+              accnames = ("flavors",
+                          "Interaction Type",
+                          "Num Protons",
+                          "Num Charged Pions",
+                          "Num Neutral Pions",
+                          "Num Neutrons")
+              acclabelnames = (["CC NuE","CC NuMu","NC NuE","NC NuMu"],
+                           ["QE", "RES", "DIS", "Other"],
+                           ["0", "1", "2", ">2"],
+                           ["0", "1", "2", ">2"],
+                           ["0", "1", "2", ">2"],
+                           ["0", "1", "2", ">2"])
 
+              acc_meters = {}
+              acc_meters_binary = {}
+              acc_label_list = {}
+              idx = 0
+              for n in accnames:
+                  acc_meters[n] = AverageMeter()
+                  acc_meters_binary[n] = AverageMeter()
+                  acc_label_list[n] = acclabelnames[idx]
+                  idx+=1
+
+              lossnames = ("total" ,
+                          "fl_loss",
+                          "iT_loss",
+                          "nP_loss",
+                          "nCP_loss",
+                          "nNP_loss",
+                          "nN_loss")
+
+              loss_meters = {}
+              for l in lossnames:
+                  loss_meters[l] = AverageMeter()
+              
+              # confusion_true = [[],[],[],[],[],[]]
+              # confusion_pred = [[],[],[],[],[],[]]
+
+              # timers for profiling
+              time_meters = {}
+              for l in ["batch","data","forward","backward","accuracy"]:
+                  time_meters[l] = AverageMeter()
+              
               iterstart = time.time()
               nnone = 0
               # print("start entry before loading data:",start_entry)
-              iovalid = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
-                                                BATCHSIZE_VALID, NWORKERS_VALID,
-                                                nbatches_per_itervalid, verbosity,
-                                                input_producer_name="nbkrnd_sparse",
-                                                true_producer_name="nbkrnd_sparse",
-                                                tickbackward=TICKBACKWARD,
-                                                readonly_products=None,
-                                                start_entry=start_entry, end_entry=-1, rand=False)
-              iovalid.set_nentries(iovalid.get_len_eff())
-              start_entry+=(BATCHSIZE_VALID*nbatches_per_itervalid)
+              # iodeploy = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
+              #                                   BATCHSIZE_DEPLOY, NWORKERS_VALID,
+              #                                   nbatches_per_iterdeploy, verbosity,
+              #                                   input_producer_name="nbkrnd_sparse",
+              #                                   true_producer_name="nbkrnd_sparse",
+              #                                   tickbackward=TICKBACKWARD,
+              #                                   readonly_products=None,
+              #                                   start_entry=start_entry, end_entry=-1, rand=False)
+              print("start entry:",start_entry)
+              iodeploy = SparseClassifierDataset(deploy_file, start_entry=start_entry)
+              iodeploy.set_nentries(iodeploy.get_len_eff())
+              start_entry+=(BATCHSIZE_DEPLOY*nbatches_per_iterdeploy)
               # print("start entry after loading data:",start_entry)
-              batched_data = torch.utils.data.DataLoader(iovalid, batch_size=BATCHSIZE_VALID, shuffle=True)
+              batched_data = torch.utils.data.DataLoader(iodeploy, batch_size=BATCHSIZE_DEPLOY, shuffle=True)
               
               confusion_true = [[],[],[],[],[],[]]
               confusion_pred = [[],[],[],[],[],[]]
@@ -257,8 +271,12 @@ def main():
                  acc_hist[n] = [[],[],[],[]]
 
               
-              for i in range(0,nbatches_per_itervalid):
-                  print("iiter ",ii," batch ",i," of ",nbatches_per_itervalid)
+              for i in range(0,nbatches_per_iterdeploy):
+                  if i == 0:
+                      print("confusion_true:",confusion_true)
+                      print("confusion_pred:",confusion_pred)
+                      print("acc_hist:",acc_hist)
+                  print("iiter ",ii," batch ",i," of ",nbatches_per_iterdeploy)
                   batchstart = time.time()
                   tdata_start = time.time()
                    
@@ -267,25 +285,27 @@ def main():
                   print("GETTING DATA:")
                   batch = next(iter(batched_data))
                   # print("batch:",batch)
-                  coords_inputs_t,truth_list = dl.split_batch(batch, BATCHSIZE_VALID, DEVICE)
+                  coords_inputs_t,truth_list = RootFileDataLoader.split_batch(deploy_file, batch)
                     
                   time_meters["data"].update( time.time()-tdata_start )
 
                   # compute output
                   tforward = time.time()
                     
-                  # for j in range(0,BATCHSIZE_VALID):
+                  # for j in range(0,BATCHSIZE_DEPLOY):
                   j = 0
                   coord_t = coords_inputs_t[j][0]
                   input_t = coords_inputs_t[j][1]
                   print("Entry",j,"in batch")
-                  predict_t = model.deploy(coord_t, input_t, BATCHSIZE_VALID, DEVICE)
+                  with torch.no_grad():
+                      predict_t = model.deploy(coord_t, input_t, BATCHSIZE_DEPLOY)
                   # print("predict_t:",predict_t)
                   for k in range(0,len(predict_t)):
                       full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
-                  update_confusion(full_predict,truth_list,confusion_true,confusion_pred)
+                  confusion_true, confusion_pred = update_confusion(full_predict,truth_list,confusion_true,confusion_pred)
                   # loss calc:
-                  fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list, DEVICE)
+                  with torch.no_grad():
+                      fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
                 
                   time_meters["forward"].update(time.time()-tforward)
 
@@ -329,7 +349,6 @@ def main():
                   if validbatches_per_print>0 and i % validbatches_per_print == 0:
                       prep_status_message( "valid-batch", i, acc_meters, loss_meters, time_meters, False )
               save_lists(confusion_true,confusion_pred, acc_hist, ii)
-              # print("acc_hist:",acc_hist)
            print("about to make confusion")
            make_confusion_matrix(normalization)
            print("about to make histogram")
@@ -356,6 +375,8 @@ def main():
 
 def update_confusion(full_predict,truth_list,confusion_true,confusion_pred):
     for i in range(0,len(full_predict)):
+        # print("truth_list[i]",truth_list[i])
+        # print("truth_list[i][0].item():",truth_list[i][0].item())
         confusion_true[i].append(truth_list[i][0].item())
         confusion_pred[i].append(torch.argmax(full_predict[i][0]).item())
     return confusion_true, confusion_pred
@@ -466,7 +487,7 @@ def make_confusion_matrix(normalization):
         plt.close()
     n = normalization
     # print("about to make pdf:")
-    with PdfPages('confusion_matrices/%s_normalized_0s.pdf'%(n)) as pdf:
+    with PdfPages('confusion_matrices/%s_normalized_gpuOT.pdf'%(n)) as pdf:
         for i in range(len(plot_list)):
             pdf.savefig(plot_list[i])
 
@@ -510,7 +531,7 @@ def make_particle_count():
     plt.title("Diff. between Predicted/Truth Particle Counts")
     # plt.legend()
     plt.tight_layout()
-    plt.savefig("histograms/particle_counts_histogram_0s.png")
+    plt.savefig("histograms/particle_counts_histogram_gpuOT.png")
     plt.close()
     
 def make_histogram(accnames, acc_label_list):
@@ -539,7 +560,7 @@ def make_histogram(accnames, acc_label_list):
         plt.title(n)
         plt.legend()
         plt.tight_layout()
-        plt.savefig("histograms/%s_histogram_0s.png"%(n))
+        plt.savefig("histograms/%s_histogram_gpuOT.png"%(n))
         plt.close()
 
 def make_kernel_img(model):
@@ -584,13 +605,12 @@ def make_kernel_img(model):
         plt.close()
 
 
-def save_checkpoint(state, is_best, p, filename='/media/data/larbys/ebengh01/checkpoint.pth.tar'):
-    if p>0:
-        filename = "/media/data/larbys/ebengh01/checkpoint.%dth.tar"%(p)
-    torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, 'model_best.tar')
-
+# def save_checkpoint(state, is_best, p, filename='/media/data/larbys/ebengh01/checkpoint.pth.tar'):
+#     if p>0:
+#         filename = "/media/data/larbys/ebengh01/checkpoint.%dth.tar"%(p)
+#     torch.save(state, filename)
+#     if is_best:
+#         shutil.copyfile(filename, 'model_best.tar')
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -663,13 +683,13 @@ def accuracy(predict,true,acc_meters,acc_hist,acc_meters_binary):
 
     return acc_meters["flavors"],acc_meters["Interaction Type"],acc_meters["Num Protons"],acc_meters["Num Charged Pions"],acc_meters["Num Neutral Pions"],acc_meters["Num Neutrons"]
 
-def dump_lr_schedule( startlr, numepochs ):
-    for epoch in range(0,numepochs):
-        lr = startlr*(0.5**(epoch//300))
-        if epoch%10==0:
-            print ("Epoch [%d] lr=%.3e"%(epoch,lr))
-    print ("Epoch [%d] lr=%.3e"%(epoch,lr))
-    return
+# def dump_lr_schedule( startlr, numepochs ):
+#     for epoch in range(0,numepochs):
+#         lr = startlr*(0.5**(epoch//300))
+#         if epoch%10==0:
+#             print ("Epoch [%d] lr=%.3e"%(epoch,lr))
+#     print ("Epoch [%d] lr=%.3e"%(epoch,lr))
+#     return
 
 def prep_status_message( descripter, iternum, acc_meters, loss_meters, timers, istrain ):
     print ("------------------------------------------------------------------------")

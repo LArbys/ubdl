@@ -4,6 +4,7 @@
 
 # python,numpy
 import os,sys
+os.environ['CUDA_LAUNCH_BLOCKING']='1'
 import shutil
 import time
 import traceback
@@ -22,10 +23,10 @@ import torch.distributed as dist
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
-import torchvision.transforms as transforms
-import torchvision.datasets as datasets
-import torchvision.models as models
-import torch.nn.functional as F
+# import torchvision.transforms as transforms
+# import torchvision.datasets as datasets
+# import torchvision.models as models
+# import torch.nn.functional as F
 
 # tensorboardX
 from tensorboardX import SummaryWriter
@@ -34,10 +35,12 @@ import socket
 
 sys.path.append("/home/ebengh01/ubdl/Elias_project/networks/models/sparse_model")
 from networkmodel_vanilla import SparseClassifier
-from SparseClassDataset import load_classifier_larcvdata
+from DataLoader import RootFileDataLoader
+from SparseDataset import SparseClassifierDataset
 from loss_sparse_classifier import SparseClassifierLoss
-import dataLoader as dl
 import custom_shuffle
+
+
 
 
 # ===================================================
@@ -46,26 +49,26 @@ GPUMODE=True
 RESUME_FROM_CHECKPOINT=False
 RUNPROFILER=False
 
-CHECKPOINT_FILE="/media/data/larbys/ebengh01/model_best.tar"
-INPUTFILE_TRAIN="/media/data/larbys/ebengh01/SparseClassifierTrainingSet_3.root" # output_10001.root SparseClassifierTrainingSet_3.root
+CHECKPOINT_FILE="/media/data/larbys/ebengh01/checkpoint_gpuOT.800th.tar"
+INPUTFILE_TRAIN="/media/data/larbys/ebengh01/output_10001.root" # output_10001.root SparseClassifierTrainingSet_3.root
 INPUTFILE_VALID="/media/data/larbys/ebengh01/SparseClassifierValidationSet_2.root" # output_9656.root SparseClassifierValidationSet.root
-TICKBACKWARD=False
+# TICKBACKWARD=False
 PLANE = 0
 start_iter  = 0
-num_iters   = 20
+num_iters   = 2
 IMAGE_WIDTH=3458 # real image 3456
 IMAGE_HEIGHT=1026 # real image 1008, 1030 for not depth concat
-BATCHSIZE_TRAIN=1
-BATCHSIZE_VALID=1
-NWORKERS_TRAIN=1
-NWORKERS_VALID=1
+BATCHSIZE_TRAIN=4
+BATCHSIZE_VALID=4
+# NWORKERS_TRAIN=1
+# NWORKERS_VALID=1
 ADC_THRESH=0.0
 DEVICE_IDS=[0,1] # TODO: get this working for multiple gpu
 GPUID=DEVICE_IDS[1]
 # map multi-training weights
-CHECKPOINT_MAP_LOCATIONS={"cuda:0":"cuda:0",
-                          "cuda:1":"cuda:1"}
-CHECKPOINT_MAP_LOCATIONS=None
+# CHECKPOINT_MAP_LOCATIONS={"cuda:0":"cuda:0",
+#                           "cuda:1":"cuda:1"}
+# CHECKPOINT_MAP_LOCATIONS=None
 CHECKPOINT_FROM_DATA_PARALLEL=False
 ITER_PER_CHECKPOINT=350 # roughly every day
 # ===================================================
@@ -75,7 +78,7 @@ best_prec1 = 0.0  # best accuracy, use to decide when to save network weights
 
 # set log directory
 DateTimeHostname = time.strftime("%b%d_%X") + "_" + socket.gethostname()
-logdir = "/media/data/larbys/ebengh01/runs/" + DateTimeHostname
+logdir = "/media/data/larbys/ebengh01/runs/" + DateTimeHostname + "_gpuOT"
 print("logdir:",logdir)
 writer = SummaryWriter(logdir=logdir)
 
@@ -88,8 +91,10 @@ def main():
     if GPUMODE:
         DEVICE = torch.device("cuda:%d"%(GPUID))
         torch.cuda.set_device(GPUID)
+        CHECKPOINT_MAP_LOCATIONS = "cuda:%d"%(GPUID)
     else:
         DEVICE = torch.device("cpu")
+        CHECKPOINT_MAP_LOCATIONS = "cpu"
     print("device:",DEVICE)
     # create model, mark it to run on the GPU
     imgdims = 2
@@ -98,16 +103,16 @@ def main():
     # self, inputshape, nin_features, nout_features, show_sizes
     model = SparseClassifier( (IMAGE_HEIGHT,IMAGE_WIDTH), 
                            ninput_features, noutput_features,
-                           show_sizes=True).to(DEVICE)
+                           show_sizes=True).to(device=DEVICE)
     # Resume training option
     if RESUME_FROM_CHECKPOINT:
         print ("RESUMING FROM CHECKPOINT FILE ",CHECKPOINT_FILE)
-        checkpoint = torch.load( CHECKPOINT_FILE, map_location=CHECKPOINT_MAP_LOCATIONS ) # load weights to gpuid
+        checkpoint = torch.load( CHECKPOINT_FILE, map_location="cpu" ) # load weights to gpuid
         best_prec1 = checkpoint["best_prec1"]
         # if CHECKPOINT_FROM_DATA_PARALLEL:
         #     model = nn.DataParallel( model, device_ids=DEVICE_IDS ) # distribute across device_ids
         model.load_state_dict(checkpoint["state_dict"])
-
+        model.to(device=DEVICE)
     # if not CHECKPOINT_FROM_DATA_PARALLEL and len(DEVICE_IDS)>1:
     #     model = nn.DataParallel( model, device_ids=DEVICE_IDS ).to(device=DEVICE) # distribute across device_ids
 
@@ -117,10 +122,10 @@ def main():
         return
 
     # define loss function (criterion) and optimizer
-    criterion = SparseClassifierLoss().to(device=DEVICE)
+    criterion = SparseClassifierLoss(DEVICE).to(device=DEVICE)
     
     # training parameters
-    lr = 1.0e-4
+    lr = 1.0e-3
     momentum = 0.9
     weight_decay = 1.0e-4
 
@@ -130,7 +135,7 @@ def main():
     start_epoch = 0
     epochs      = 10
     iter_per_epoch = None # determined later
-    iter_per_valid = 10
+    iter_per_valid = 1#0
 
 
     nbatches_per_itertrain = 5
@@ -183,13 +188,25 @@ def main():
         # Resume training option
         if RESUME_FROM_CHECKPOINT:
            print ("RESUMING FROM CHECKPOINT FILE ",CHECKPOINT_FILE)
-           checkpoint = torch.load( CHECKPOINT_FILE, map_location=CHECKPOINT_MAP_LOCATIONS )
+           checkpoint = torch.load( CHECKPOINT_FILE, map_location="cpu" )
            best_prec1 = checkpoint["best_prec1"]
            model.load_state_dict(checkpoint["state_dict"])
            optimizer.load_state_dict(checkpoint['optimizer'])
         # if GPUMODE:
         #    optimizer.cuda(GPUID)
         verbosity = False
+        
+        # initialize root files:
+        train_file = RootFileDataLoader(INPUTFILE_TRAIN,
+                                        DEVICE,
+                                        BATCHSIZE_TRAIN,
+                                        nbatches_per_itertrain,
+                                        verbosity)
+        valid_file = RootFileDataLoader(INPUTFILE_VALID,
+                                        DEVICE,
+                                        BATCHSIZE_VALID,
+                                        nbatches_per_itervalid,
+                                        verbosity)
         
         for ii in range(start_iter, num_iters):
             lr = adjust_learning_rate(optimizer, ii, lr)
@@ -200,10 +217,12 @@ def main():
             
             # train for one iteration
             try:
-                _ = train(INPUTFILE_TRAIN, DEVICE, BATCHSIZE_TRAIN, model,
-                          criterion, optimizer,
-                          nbatches_per_itertrain, ii, trainbatches_per_print, NWORKERS_TRAIN, TICKBACKWARD, verbosity)
-          
+                # _ = train(train_file, DEVICE, BATCHSIZE_TRAIN, model,
+                #           criterion, optimizer,
+                #           nbatches_per_itertrain, ii, trainbatches_per_print)
+                _ = train(train_file, model, DEVICE, criterion, optimizer,
+                          BATCHSIZE_TRAIN, nbatches_per_itertrain, ii,
+                          trainbatches_per_print)
             except ValueError:
                 print ("Error in training routine!")
                 # print (ValueError.message)
@@ -214,9 +233,12 @@ def main():
             # evaluate on validation set
             if ii%iter_per_valid==0 and ii>0:
                 try:
-                    totloss = validate(INPUTFILE_VALID, DEVICE, BATCHSIZE_VALID, model,
-                              criterion, optimizer,
-                              nbatches_per_itervalid, ii, validbatches_per_print, NWORKERS_VALID, TICKBACKWARD, verbosity)
+                    # totloss = validate(valid_file, DEVICE, BATCHSIZE_VALID, model,
+                    #           criterion, optimizer,
+                    #           nbatches_per_itervalid, ii, validbatches_per_print)
+                    totloss = validate(valid_file, model, DEVICE, criterion,
+                              BATCHSIZE_VALID, nbatches_per_itervalid, ii,
+                              validbatches_per_print)
                 except ValueError:
                     print ("Error in validation routine!")
                     # print (ValueError.message)
@@ -250,15 +272,15 @@ def main():
                     'best_prec1': best_prec1,
                     'optimizer' : optimizer.state_dict(),
                 }, False, ii)
-            if ii==2505:
-                print ("saving periodic checkpoint")
-                save_checkpoint({
-                    'iter':ii,
-                    'epoch': ii/iter_per_epoch,
-                    'state_dict': model.state_dict(),
-                    'best_prec1': best_prec1,
-                    'optimizer' : optimizer.state_dict(),
-                }, False, 0, filename="/media/data/larbys/ebengh01/checkpoint2505.pth.tar")
+            # if ii==800:
+            #     print ("saving periodic checkpoint")
+            #     save_checkpoint({
+            #         'iter':ii,
+            #         'epoch': ii/iter_per_epoch,
+            #         'state_dict': model.state_dict(),
+            #         'best_prec1': best_prec1,
+            #         'optimizer' : optimizer.state_dict(),
+            #     }, False, 0, filename="/media/data/larbys/ebengh01/checkpoint800.pth.tar")
             # flush the print buffer after iteration
             sys.stdout.flush()
 
@@ -280,7 +302,8 @@ def main():
     writer.close()
 
 
-def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq, NWORKERS_TRAIN, TICKBACKWARD, verbosity):
+# def train(train_file, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq):
+def train(train_file, model, device, criterion, optimizer, batchsize, nbatches, iiter, print_freq):
     print("IN TRAIN")
     global writer
     # timers for profiling
@@ -329,13 +352,14 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
     # switch to train mode
     model.train()
     end = time.time()
-    iotrain = load_classifier_larcvdata( "training", INPUTFILE_TRAIN,
-                                      batchsize, NWORKERS_TRAIN,
-                                      nbatches, verbosity,
-                                      input_producer_name="nbkrnd_sparse",
-                                      true_producer_name="nbkrnd_sparse",
-                                      tickbackward=TICKBACKWARD,
-                                      readonly_products=None )
+    # iotrain = load_classifier_larcvdata( "training", INPUTFILE_TRAIN,
+    #                                   batchsize, NWORKERS_TRAIN,
+    #                                   nbatches, verbosity,
+    #                                   input_producer_name="nbkrnd_sparse",
+    #                                   true_producer_name="nbkrnd_sparse",
+    #                                   tickbackward=TICKBACKWARD,
+    #                                   readonly_products=None )
+    iotrain = SparseClassifierDataset(train_file)
     iotrain.set_nentries(iotrain.get_len_eff())
     
     generator = torch.Generator()
@@ -357,7 +381,7 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         full_predict = [torch.empty((0,3),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device)]
         print("GETTING DATA:")
         batch = next(iter(batched_data))
-        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize, device)
+        coords_inputs_t,truth_list = RootFileDataLoader.split_batch(train_file, batch)
         
         for j in range(0,batchsize):
             end = time.time()
@@ -367,12 +391,12 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
             if RUNPROFILER:
                 torch.cuda.synchronize()
             print("Entry",j,"in batch")
-            predict_t = model(coord_t, input_t, batchsize, device)
+            predict_t = model(coord_t, input_t, batchsize)
             for k in range(0,len(predict_t)):
                 full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
             time_meters["forward"].update(time.time()-end)
         # loss calc:
-        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list, device)
+        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
         print("done with loss")
         
         if RUNPROFILER:
@@ -416,9 +440,10 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         #     print("model.SEResNetBN.orangeBlockP1_1.module.weight.grad:",module.weight.grad)
         # for module in model.SEResNetBN.blueBlockP1_1:
         #     print("model.SEResNetBN.blueBlockP1_1.module.weight.grad:",module.weight.grad)
+        # print("model.final_conv.weight:",model.final_conv.weight)
         # print("model.final_conv.weight.grad:",model.final_conv.weight.grad)
         
-        # writer.add_histogram("model.conv1.weight.grad", model.conv1.weight.grad, iiter)
+        writer.add_histogram("model.conv1.weight.grad", model.conv1.weight.grad, iiter)
         # writer.add_histogram("model.SEResNetB2_1.convA.weight.grad", model.SEResNetB2_1.convA.weight.grad, iiter)
         # for module in model.SEResNetBN.purpleBlockP1_1:
         #     writer.add_histogram("model.SEResNetBN.purpleBlockP1_1.%s"%(module), module.weight.grad, iiter)
@@ -428,7 +453,7 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         #     writer.add_histogram("model.SEResNetBN.orangeBlockP1_1.%s"%(module), module.weight.grad, iiter)
         # for module in model.SEResNetBN.blueBlockP1_1:
         #     writer.add_histogram("model.SEResNetBN.blueBlockP1_1.%s"%(module), module.weight.grad, iiter)
-        # writer.add_histogram("model.final_conv.weight.grad", model.final_conv.weight.grad, iiter)
+        writer.add_histogram("model.final_conv.weight.grad", model.final_conv.weight.grad, iiter)
         # writer.add_histogram("", , iiter)
         # writer.add_histogram("", , iiter)
         # writer.add_histogram("", , iiter)
@@ -474,7 +499,7 @@ def train(INPUTFILE_TRAIN, device, batchsize, model, criterion, optimizer, nbatc
         
     return loss_meters['total'].avg
 
-def validate(INPUTFILE_VALID, device, batchsize, model, criterion, optimizer, nbatches, iiter, print_freq, NWORKERS_VALID, TICKBACKWARD, verbosity):
+def validate(valid_file, model, device, criterion, batchsize, nbatches, iiter, print_freq):
     print("IN VALIDATE")
     """
     inputs
@@ -529,13 +554,14 @@ def validate(INPUTFILE_VALID, device, batchsize, model, criterion, optimizer, nb
     iterstart = time.time()
     nnone = 0
     
-    iovalid = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
-                                      batchsize, NWORKERS_VALID,
-                                      nbatches, verbosity,
-                                      input_producer_name="nbkrnd_sparse",
-                                      true_producer_name="nbkrnd_sparse",
-                                      tickbackward=TICKBACKWARD,
-                                      readonly_products=None )
+    # iovalid = load_classifier_larcvdata( "validation", INPUTFILE_VALID,
+    #                                   batchsize, NWORKERS_VALID,
+    #                                   nbatches, verbosity,
+    #                                   input_producer_name="nbkrnd_sparse",
+    #                                   true_producer_name="nbkrnd_sparse",
+    #                                   tickbackward=TICKBACKWARD,
+    #                                   readonly_products=None )
+    iovalid = SparseClassifierDataset(valid_file)
     iovalid.set_nentries(iovalid.get_len_eff())
     
     generator = torch.Generator()
@@ -557,7 +583,7 @@ def validate(INPUTFILE_VALID, device, batchsize, model, criterion, optimizer, nb
         full_predict = [torch.empty((0,3),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device), torch.empty((0,4),device=device)]
         print("GETTING DATA:")
         batch = next(iter(batched_data))
-        coords_inputs_t,truth_list = dl.split_batch(batch, batchsize, device)
+        coords_inputs_t,truth_list = RootFileDataLoader.split_batch(valid_file, batch)
         
         time_meters["data"].update( time.time()-tdata_start )
 
@@ -567,13 +593,15 @@ def validate(INPUTFILE_VALID, device, batchsize, model, criterion, optimizer, nb
             coord_t = coords_inputs_t[j][0]
             input_t = coords_inputs_t[j][1]
             print("Entry",j,"in batch")
-            predict_t = model.deploy(coord_t, input_t, batchsize, device)
+            with torch.no_grad():
+                predict_t = model.deploy(coord_t, input_t, batchsize)
             for k in range(0,len(predict_t)):
                 full_predict[k] = torch.cat((full_predict[k],predict_t[k]),0)
             time_meters["forward"].update(time.time()-tforward)
 
         # loss calc:
-        fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list, device)
+        with torch.no_grad():
+            fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(full_predict, truth_list)
     
         # measure accuracy and update meters
         # update loss meters
@@ -620,12 +648,12 @@ def validate(INPUTFILE_VALID, device, batchsize, model, criterion, optimizer, nb
 
     return loss_meters['total'].avg#,acc_meters['nP_loss'].avg
 
-def save_checkpoint(state, is_best, p, filename='/media/data/larbys/ebengh01/checkpoint.pth.tar'):
+def save_checkpoint(state, is_best, p, filename='/media/data/larbys/ebengh01/checkpoint_gpuOT.pth.tar'):
     if p>0:
-        filename = "/media/data/larbys/ebengh01/checkpoint.%dth.tar"%(p)
+        filename = "/media/data/larbys/ebengh01/checkpoint_gpuOT.%dth.tar"%(p)
     torch.save(state, filename)
     if is_best:
-        shutil.copyfile(filename, '/media/data/larbys/ebengh01/model_best.tar')
+        shutil.copyfile(filename, '/media/data/larbys/ebengh01/model_best_gpuOT.tar')
 
 
 class AverageMeter(object):
