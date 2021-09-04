@@ -6,7 +6,7 @@
 	url = https://github.com/LArbys/ublarcvapp
 [submodule "larlite"]
 	path = larlite
-	url = https://github.com/larlight/larlite
+	url = https://github.com/NuTufts/larlite.git
 [submodule "Geo2D"]
 	path = Geo2D
 	url = https://github.com/LArbys/Geo2D
