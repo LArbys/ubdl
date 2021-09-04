@@ -8,16 +8,10 @@ build_log=${__ubdl_buildall_py3_workdir__}/build.log
 
 echo "<<< BUILD LARLITE >>>"
 cd larlite
-make >& $build_log 2>&1
-echo "<<< BUILD LARLITE/UserDev/BasicTool >>>"
-cd UserDev/BasicTool
-make -j4 >> $build_log 2>&1
-echo "<<< BUILD LARLITE/UserDev/SelectionTool/LEEPreCuts >>>"
-cd ../SelectionTool/LEEPreCuts
-git submodule init
-git submodule update
-make -j4 >> $build_log 2>&1
-cd $__ubdl_buildall_py3_workdir__
+mkdir build
+cd build
+cmake -DUSE_PYTHON3=ON ../
+make install -j4
 
 echo "<<< BUILD GEO2D >>>"
 cd Geo2D
@@ -34,7 +28,7 @@ cd larcv
 mkdir -p build
 cd build
 cmake -DUSE_PYTHON3=ON -DUSE_OPENCV=ON -DUSE_FNAL=ON -DUSE_TORCH=OFF ../
-make install >> ${build_log} 2>&1
+make install -j4 >> ${build_log} 2>&1
 cd $__ubdl_buildall_py3_workdir__
 
 echo "<<< BUILD CILANTRO >>>"
@@ -51,7 +45,7 @@ cd ublarcvapp
 source configure.sh
 cd build
 cmake -DUSE_OPENCV=ON ../
-make install >> ${build_log} 2>&1
+make install -j4 >> ${build_log} 2>&1
 cd $__ubdl_buildall_py3_workdir__
 
 echo "<<< BUILD LARFLOW >>>"
@@ -60,7 +54,7 @@ cd larflow
 source configure.sh
 cd build
 cmake -DUSE_PYTHON3=ON ../
-make install >> ${build_log} 2>&1
+make install -j4 >> ${build_log} 2>&1
 cd $__ubdl_buildall_py3_workdir__
 
 echo "built ubdl modules"
