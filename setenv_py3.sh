@@ -60,6 +60,17 @@ then
     export OPENCV_INCDIR=/usr/include
     export OPENCV_LIBDIR=/usr/local/lib    
     
+elif [ $MACHINE == "pop-os" ]
+then
+    echo "SETUP TARITREE's RAZER BLADE PRO"
+    source /usr/local/root/root-6.24.04/bin/thisroot.sh
+
+    export CUDA_HOME=/usr/local/cuda
+    [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+    export OPENCV_INCDIR=/usr/include/opencv4
+    export OPENCV_LIBDIR=/usr/lib/x86_64-linux-gnu/
+    
 else
     echo "DEFAULT SETUP (COMPAT WITH SINGULARITY CONTAINER)"
     #source /usr/local/root/bin/thisroot.sh
