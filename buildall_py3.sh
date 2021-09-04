@@ -12,6 +12,7 @@ mkdir build
 cd build
 cmake -DUSE_PYTHON3=ON ../
 make install -j4
+cd $__ubdl_buildall_py3_workdir__
 
 echo "<<< BUILD GEO2D >>>"
 cd Geo2D
