@@ -16,6 +16,7 @@ cd $__ubdl_buildall_py3_workdir__
 
 echo "<<< BUILD GEO2D >>>"
 cd Geo2D
+source config/setup.sh
 #make -j4 >> ${build_log} 2>&1
 make -j4
 cd $__ubdl_buildall_py3_workdir__
