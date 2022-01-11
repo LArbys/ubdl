@@ -63,9 +63,9 @@ then
 elif [ $MACHINE == "pop-os" ]
 then
     echo "SETUP TARITREE's RAZER BLADE PRO"
-    source /usr/local/root/root-6.24.04/bin/thisroot.sh
+    source /home/twongjirad/software/root/build_gcc11/bin/thisroot.sh
 
-    export CUDA_HOME=/usr/local/cuda
+    export CUDA_HOME=/usr/lib/cuda/
     [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
 
     export OPENCV_INCDIR=/usr/include/opencv4
@@ -73,8 +73,8 @@ then
     
 else
     echo "DEFAULT SETUP (COMPAT WITH SINGULARITY CONTAINER)"
-    #source /usr/local/root/bin/thisroot.sh
-    source /usr/local/root/root-6.22.06/bin/thisroot.sh
+    source /usr/local/root/bin/thisroot.sh
+    #source /usr/local/root/root-6.22.06/bin/thisroot.sh
 
     export CUDA_HOME=/usr/local/cuda/
     [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
