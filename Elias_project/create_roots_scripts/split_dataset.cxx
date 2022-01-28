@@ -62,7 +62,7 @@ int main(int nargs, char** argv){
 	}
 
   // create root output file
-  std::string output_file = output_dir + "SparseClassifierTrainingSet_3.root";
+  std::string output_file = output_dir + "SparseClassifierTrainingSet_5.root";
   int num_per_catagory = 30000;
 
 
