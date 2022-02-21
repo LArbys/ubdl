@@ -19,12 +19,12 @@ elif [ $MACHINE == "meitner" ]
 then
     echo "SETUP MEITNER"
 
-    source /usr/local/root6/bin/thisroot.sh
+    source /usr/local/root/v6.24.06/bin/thisroot.sh
 
     export CUDA_HOME=/usr/local/cuda-10.0
     [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
 
-    export OPENCV_INCDIR=/usr/include
+    export OPENCV_INCDIR=/usr/local/include/opencv4
     export OPENCV_LIBDIR=/usr/local/lib    
 
 elif [ $MACHINE == "goeppert" ]
