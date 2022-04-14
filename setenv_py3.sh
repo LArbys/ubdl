@@ -71,6 +71,23 @@ then
     export OPENCV_INCDIR=/usr/include/opencv4
     export OPENCV_LIBDIR=/usr/lib/x86_64-linux-gnu/
     
+elif [ $MACHINE == "mmr-Alienware-x15-R1" ]
+then
+    echo "SETUP MATT's ALIENWARE x15 R1"
+    source /home/matthew/software/root/install/bin/thisroot.sh
+
+    export CUDA_HOME=/usr/local/cuda-11.3/
+    [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+    export OPENCV_INCDIR=/usr/include/opencv4
+    export OPENCV_LIBDIR=/usr/lib/x86_64-linux-gnu/
+
+    export LIBTORCH_DIR="/home/matthew/software/pythonVEnvs/myPy3.8.10/lib/python3.8/site-packages/torch"
+    export LIBTORCH_LIBDIR=${LIBTORCH_DIR}/lib
+    export LIBTORCH_INCDIR=${LIBTORCH_DIR}/include
+    [[ ":$LD_LIBRARY_PATH:" != *":${LIBTORCH_LIBDIR}:"* ]] && \
+        export LD_LIBRARY_PATH="${LIBTORCH_LIBDIR}:${LD_LIBRARY_PATH}"
+   
 else
     echo "DEFAULT SETUP (COMPAT WITH SINGULARITY CONTAINER)"
     source /usr/local/root/bin/thisroot.sh
