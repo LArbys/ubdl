@@ -14,6 +14,30 @@ The vision for this reconstruction chain is to
 
 All these steps use deep convolutional neural networks.
 
+## Quick Start: clone and compile
+
+Need to do this the first time the repository is cloned from github.
+
+```
+git clone https://github.com/larbys/ubdl
+cd ubdl
+git submodule init
+git submodule update
+source setenv_py3.sh
+source configure.sh
+source buidlall_py3.sh
+```
+
+## Quick Start: Set up the environment
+
+Need to do this everytime you open a new terminal and want to use the code.
+
+```
+(go to top level folder -- the same folder as this README)
+source setenv_py3.sh
+source configure.sh
+```
+
 ## Repositories
 
 * [LArCV](https://github.com/larbys/larcv): image format IO library. Version 1 (as opposed to incompatible LArCV2 library).
