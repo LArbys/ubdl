@@ -9,6 +9,10 @@ LIBS = `root-config --libs`
 LIBS += `larlite-config --libs`
 LIBS += `larcv-config --libs`
 
+LIBS = `larcv-config --libs`
+LIBS += `larlite-config --libs` -llarlite_LArUtil
+LIBS += `root-config --libs`
+
 all: make_event_display create_larcvImage2d GetTruthInfo
 
 make_event_display: make_event_display.cxx
