@@ -2,20 +2,20 @@ import os,sys
 import shutil
 import time
 import torch
+import torch.nn as nn
 import numpy as np
 from InteractionDataset import InteractionClassifierDataset
-from InteractionDataset import planes_collate_fn
 import MinkowskiEngine as ME
 # import custom_shuffle
 
 # debug the setup of larmatch minkowski model
-sys.path.append("/home/ebengh01/ubdl/Elias_project/networks/LArVoxel_Architecture/models")
-from InteractionClassifier import InteractionClassifier
+sys.path.append("/home/ebengh01/ubdl/Elias_project/networks/Simple_Architecture/models")
+from SimpleInteractionClassifier import InteractionClassifier
 
 from tensorboardX import SummaryWriter
 import socket
 
-from loss_LArVoxel import SparseClassifierLoss
+from loss_simple import SparseClassifierLoss
 
 
 
@@ -27,7 +27,7 @@ RUNPROFILER=False
 
 CHECKPOINT_FILE = "/media/data/larbys/ebengh01/checkpoint_gpuOT.800th.tar"
 TRAINFILENAME   = "/media/data/larbys/ebengh01/output_10001.root" # output_10001.root SparseClassifierTrainingSet_5.root
-VALIDFILENAME   = "/media/data/larbys/ebengh01/output_10001.root" # SparseClassifierValidationSet_4.root
+VALIDFILENAME   = "/media/data/larbys/ebengh01/SparseClassifierValidationSet_4.root" # SparseClassifierValidationSet_4.root
 start_iter  = 0
 niters   = 3000
 IMAGE_WIDTH = 3458 # real image 3456
@@ -35,7 +35,7 @@ IMAGE_HEIGHT = 1026 # real image 1008, 1030 for not depth concat
 BATCHSIZE_TRAIN = 16
 BATCHSIZE_VALID = 16
 DEVICE_IDS = [0,1] # TODO: get this working for multiple gpu
-GPUID=DEVICE_IDS[0]
+GPUID=DEVICE_IDS[1]
 CHECKPOINT_FROM_DATA_PARALLEL=False
 ITER_PER_CHECKPOINT=2000 # roughly every day
 # ===================================================
@@ -45,7 +45,7 @@ best_prec1 = 0.0  # best accuracy, use to decide when to save network weights
 
 # set log directory
 DateTimeHostname = time.strftime("%b%d_%X") + "_" + socket.gethostname()
-logdir = "/media/data/larbys/ebengh01/runs/" + DateTimeHostname + "_LogLoss"
+logdir = "/media/data/larbys/ebengh01/runs/" + DateTimeHostname + "_OT"
 print("logdir:",logdir)
 tbWriter = SummaryWriter(logdir=logdir)
 
@@ -84,7 +84,7 @@ def main():
     criterion = SparseClassifierLoss(DEVICE, size_average=True).to(device=DEVICE)
 
     # training parameters
-    lr = 1.0e-1
+    lr = 1.0e-3
     momentum = 0.9
     weight_decay = 1.0e-4
 
@@ -140,7 +140,7 @@ def main():
     trainLoader = torch.utils.data.DataLoader(trainSet,
                                             batch_size=batchSizeTrain,
                                             shuffle=True,
-                                            collate_fn=planes_collate_fn,
+                                            collate_fn=ME.utils.batch_sparse_collate,
                                             generator=gen)
     
     
@@ -150,7 +150,8 @@ def main():
     validLoader = torch.utils.data.DataLoader(validSet,
                                             batch_size=batchSizeValid,
                                             shuffle=True,
-                                            collate_fn=planes_collate_fn)
+                                            collate_fn=ME.utils.batch_sparse_collate,
+                                            generator=gen)
 
 
     if NENTRIES > 0:
@@ -180,12 +181,12 @@ def main():
             lr = adjust_learning_rate(optimizer, iiter, lr)
 
         print(f"Iteration {iiter} (Training)")
-        _ = iteration(trainLoader, model, DEVICE, criterion, optimizer, nBatchesIterTrain, tbWriter, iiter, loss_meters, acc_meters, acc_meters_binary, time_meters, isTrain=True)
+        _ = iteration(trainLoader, model, DEVICE, criterion, optimizer, nBatchesIterTrain, batchSizeTrain, tbWriter, iiter, loss_meters, acc_meters, acc_meters_binary, time_meters, isTrain=True)
 
         if iiter != 0 and iiter % iter_per_valid == 0:
             print(f"Iteration {iiter} (Validation)")
             loss_meters_valid, acc_meters_valid, acc_meters_binary_valid, time_meters_valid = make_meters()
-            totloss = iteration(trainLoader, model, DEVICE, criterion, optimizer, nBatchesIterValid, tbWriter, iiter, loss_meters_valid, acc_meters_valid, acc_meters_binary_valid, time_meters_valid, isTrain=False)
+            totloss = iteration(trainLoader, model, DEVICE, criterion, optimizer, nBatchesIterValid, batchSizeValid, tbWriter, iiter, loss_meters_valid, acc_meters_valid, acc_meters_binary_valid, time_meters_valid, isTrain=False)
             # TODO: decide to save checkpoint
             prec1   = totloss
             is_best =  prec1 < best_prec1
@@ -211,7 +212,7 @@ def main():
         'optimizer' : optimizer.state_dict(),
     }, False, niters)
 
-def iteration(dataLoader, model, device, criterion, optimizer, nBatches, tbWriter, iiter, loss_meters, acc_meters, acc_meters_binary, time_meters, isTrain=True):
+def iteration(dataLoader, model, device, criterion, optimizer, nBatches, batchSize, tbWriter, iiter, loss_meters, acc_meters, acc_meters_binary, time_meters, isTrain=True):
     if isTrain:
         model.train()
         # optimizer.zero_grad()
@@ -223,41 +224,27 @@ def iteration(dataLoader, model, device, criterion, optimizer, nBatches, tbWrite
         print(f"Batch {i + 1} of {nBatches}")
 
         dtData = time.time()
-        batch = next(iter(dataLoader))
-        bcoord_u, bcoord_v, bcoord_y, bfeat_u, bfeat_v, bfeat_y, batchTruth = batch
-        batchSize = len(batchTruth) // 7
+        
+        coords, feats, labels = next(iter(dataLoader))
 
-        in_u = ME.TensorField(features=bfeat_u,coordinates=bcoord_u, device=device)
-        in_v = ME.TensorField(features=bfeat_v,coordinates=bcoord_v, coordinate_manager=in_u.coordinate_manager, device=device)
-        in_y = ME.TensorField(features=bfeat_y,coordinates=bcoord_y, coordinate_manager=in_u.coordinate_manager, device=device)
-        input = [in_u, in_v, in_y]
+        input = ME.TensorField(features=feats, coordinates=coords, device=device)
+
         time_meters["data"].update(time.time() - dtData)
 
-        # print(test_in.device)
-        # print("bfeat_u.ndim:",bfeat_u.ndim)
-        # print("bcoord_u.ndim:", bcoord_u.ndim)
-        # test_in = ME.SparseTensor(bfeat_u, bcoord_u)
-        # print("input made")
         dtForward = time.time()
         if isTrain:
             out = model(input)
         else:
             out = model.deploy(input)
         time_meters["forward"].update(time.time() - dtForward)
-        print("Output Returned")
-        # print(out)
-        # print(out.F)
 
-        # loss calc:
-        # print(batchTruth)
-        # print(batchTruth.view(7,4))
-        # print(batchTruth.view(4,7))
-        # temp = torch.transpose(batchTruth.view(batchSize,7), 0, 1).to(device)
-        # print(temp)
-        # temp2 = torch.cuda.LongTensor(temp)
-        truth = torch.tensor(torch.transpose(batchTruth.view(batchSize,7), 0, 1), dtype=torch.int64, device=device)
-        # fl_loss, iT_loss, nP_loss, nCP_loss, nNP_loss, nN_loss, totloss = criterion(out, truth)
-        totloss = criterion(out, truth)
+        truth = torch.tensor(torch.transpose(labels.view(batchSize, 7), 0, 1), dtype=torch.int64, device=device)
+
+        if isTrain:
+            pred = out.features
+        else:
+            pred = out
+        totloss = criterion(pred, truth)
 
         dtBackward = time.time()
         if isTrain:
@@ -278,7 +265,7 @@ def iteration(dataLoader, model, device, criterion, optimizer, nBatches, tbWrite
 
         dtAccuracy = time.time()
         if not isTrain:
-            update_acc_meters(out, truth, acc_meters, acc_meters_binary, batchSize)
+            update_acc_meters(pred, truth, acc_meters, acc_meters_binary, batchSize)
         time_meters["accuracy"].update(time.time() - dtAccuracy)
         time_meters["batch"].update(time.time() - dtBatch)
 
@@ -290,6 +277,12 @@ def iteration(dataLoader, model, device, criterion, optimizer, nBatches, tbWrite
 
             time_scalars = { x:y.val for x,y in time_meters.items() }
             tbWriter.add_scalars('data/train time', time_scalars, iiter )
+
+            # acc_scalars = { x:y.val for x,y in acc_meters.items() }
+            # tbWriter.add_scalars('data/train_accuracy', acc_scalars, iiter )
+
+            # acc_scalars_binary = { x:y.val for x,y in acc_meters_binary.items() }
+            # tbWriter.add_scalars('data/train_accuracy_binary', acc_scalars_binary, iiter )
         else:
             loss_scalars = { x:y.val for x,y in loss_meters.items() }
             tbWriter.add_scalars('data/valid_loss', loss_scalars, iiter )
@@ -358,14 +351,14 @@ def update_acc_meters(predict, true, acc_meters, acc_meters_binary, batchsize):
     
     sums = [0,0,0,0,0,0]
     for i in range(0, true[0].shape[0]):
-        acc_meters["flavors"].update(predict[0][i][true[0][i]])
+        acc_meters["flavors"].update(predict[i][true[0][i]])
         # acc_meters["Interaction Type"].update(predict[1][i][true[1][i]])
         # acc_meters["Num Protons"].update(predict[2][i][true[2][i]])
         # acc_meters["Num Charged Pions"].update(predict[3][i][true[3][i]])
         # acc_meters["Num Neutral Pions"].update(predict[4][i][true[4][i]])
         # acc_meters["Num Neutrons"].update(predict[5][i][true[5][i]])
         
-        if torch.argmax(predict[0][i]).item() == true[0][i]: sums[0] += 1
+        if torch.argmax(predict[i]).item() == true[0][i]: sums[0] += 1
         # if torch.argmax(predict[1][i]).item() == true[1][i]: sums[1] += 1
         # if torch.argmax(predict[2][i]).item() == true[2][i]: sums[2] += 1
         # if torch.argmax(predict[3][i]).item() == true[3][i]: sums[3] += 1
