@@ -1,6 +1,10 @@
 # ubdl
 
-Collection of repositories for the (new) MicroBooNE DL Reconstruction Chain
+Collection of repositories for the MicroBooNE DL Reconstruction Chain.
+
+The current version of the code has tools for implementing the "Gen-2" workflow.
+
+
 
 The vision for this reconstruction chain is to
 
