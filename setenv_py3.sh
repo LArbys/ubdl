@@ -63,7 +63,8 @@ then
 elif [ $MACHINE == "pop-os" ]
 then
     echo "SETUP TARITREE's RAZER BLADE PRO"
-    source /usr/local/root_6.32.02/bin/thisroot.sh
+    #source /usr/local/root_6.32.02/bin/thisroot.sh # enums arent working in pyroot for this newer version which prefers to use c++17?
+    source /usr/local/root/root-6.24.04/bin/thisroot.sh
 
     export CUDA_HOME=/usr/lib/cuda/
     [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
