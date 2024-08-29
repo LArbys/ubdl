@@ -3,6 +3,13 @@
 # WE NEED TO SETUP ENV VARIABLES FOR ROOT, CUDA, OPENCV
 alias python=python3
 MACHINE=`uname --nodename`
+if [ -z ${SINGULARITY_NAME} ]
+then
+    echo "not inside singularity container"
+else
+    echo "inside singularity container: ${SINGULARITY_CONTAINER}"
+    MACHINE=${SINGULARITY_NAME}
+fi
 
 if [ $MACHINE == "trex" ]
 then
@@ -89,7 +96,29 @@ then
     export LIBTORCH_INCDIR=${LIBTORCH_DIR}/include
     [[ ":$LD_LIBRARY_PATH:" != *":${LIBTORCH_LIBDIR}:"* ]] && \
         export LD_LIBRARY_PATH="${LIBTORCH_LIBDIR}:${LD_LIBRARY_PATH}"
-   
+elif [ $MACHINE == "singularity_minkowskiengine_u20.04.cu111.torch1.9.0_compute8_wjupyternotebook.sif" ]
+then
+    echo "SETUP CONTAINER: singularity_minkowskiengine_u20.04.cu111.torch1.9.0_compute8_wjupyternotebook.sif"    
+    source /usr/local/root/bin/thisroot.sh
+
+    export CUDA_HOME=/usr/local/cuda/
+    [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+    export OPENCV_INCDIR=/usr/include
+    export OPENCV_LIBDIR=/usr/local/lib
+
+elif [ $MACHINE == "ubdl_dlgen2_u22.04_torch2.4.0_me_xgboost.sif" ]
+then
+    
+    echo "SETUP FOR CONTAINER: ubdl_dlgen2_u22.04_torch2.4.0_me_xgboost.sif"
+    source /usr/local/bin/thisroot.sh
+
+    export CUDA_HOME=/usr/local/cuda/
+    [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+    export OPENCV_INCDIR=/usr/include/opencv4/
+    export OPENCV_LIBDIR=/usr/lib/x86_64-linux-gnu/
+    
 else
     echo "DEFAULT SETUP (COMPAT WITH SINGULARITY CONTAINER)"
     source /usr/local/root/bin/thisroot.sh
