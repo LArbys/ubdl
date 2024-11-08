@@ -115,6 +115,25 @@ then
     echo "Added XGBOOST_LIBDIR to LD Path: ${XGBOOST_LIBDIR}"
     echo "LD PATH: ${LD_LIBRARY_PATH}"
 
+elif [ $MACHINE == "singularity_minkowski_u20.04.cu111.torch1.9.0_jupyter_xgboost.sif" ]
+then
+    echo "SETUP CONTAINER: singularity_minkowski_u20.04.cu111.torch1.9.0_jupyter_xgboost.sif"
+    source /usr/local/root/bin/thisroot.sh
+
+    export CUDA_HOME=/usr/local/cuda/
+    [[ ":$LD_LIBRARY_PATH:" != *":${CUDA_HOME}/lib64:"* ]] && export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+    export OPENCV_INCDIR=/usr/include
+    export OPENCV_LIBDIR=/usr/local/lib
+
+    # setting up xgboost copy in common area
+    export XGBOOST_DIR=/usr/local/lib/cmake/xgboost
+    export XGBOOST_LIBDIR=/usr/local/lib
+    export XGBOOST_INCDIR=/usr/local//include    
+    [[ ":$LD_LIBRARY_PATH:" != *":${XGBOOST_LIBDIR}:"* ]] && export LD_LIBRARY_PATH="${XGBOOST_LIBDIR}:${LD_LIBRARY_PATH}"
+    echo "Added XGBOOST_LIBDIR to LD Path: ${XGBOOST_LIBDIR}"
+    echo "LD PATH: ${LD_LIBRARY_PATH}"
+
 elif [ $MACHINE == "ubdl_dlgen2_u22.04_torch2.4.0_me_xgboost.sif" ]
 then
     
