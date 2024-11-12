@@ -108,7 +108,8 @@ then
     export OPENCV_LIBDIR=/usr/local/lib
 
     # setting up xgboost copy in common area
-    export XGBOOST_DIR=/cluster/tufts/wongjiradlabnu/nutufts/u20_software/xgboost/v1.4.0/
+    #export XGBOOST_DIR=/cluster/tufts/wongjiradlabnu/nutufts/u20_software/xgboost/v1.4.0/
+    export XGBOOST_DIR=/home/twongjirad/working/larbys/gen2/container_u20_env/xgboost/
     export XGBOOST_LIBDIR=${XGBOOST_DIR}/lib
     export XGBOOST_INCDIR=${XGBOOST_DIR}/include    
     [[ ":$LD_LIBRARY_PATH:" != *":${XGBOOST_LIBDIR}:"* ]] && export LD_LIBRARY_PATH="${XGBOOST_LIBDIR}:${LD_LIBRARY_PATH}"
@@ -134,6 +135,8 @@ then
     echo "Added XGBOOST_LIBDIR to LD Path: ${XGBOOST_LIBDIR}"
     echo "LD PATH: ${LD_LIBRARY_PATH}"
 
+    export JUPYTER_CONFIG_DIR=~/.local/etc/jupyter    
+
 elif [ $MACHINE == "ubdl_dlgen2_u22.04_torch2.4.0_me_xgboost.sif" ]
 then
     
@@ -145,6 +148,7 @@ then
 
     export OPENCV_INCDIR=/usr/include/opencv4/
     export OPENCV_LIBDIR=/usr/lib/x86_64-linux-gnu/
+    export JUPYTER_CONFIG_DIR=~/.local/etc/jupyter
     
 else
     echo "DEFAULT SETUP (COMPAT WITH SINGULARITY CONTAINER)"
