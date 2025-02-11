@@ -1,6 +1,6 @@
 File=Table 
 Product=ubdl
-Version=v1_0_1
+Version=v2_me_06_03
  
 Group:
 
@@ -38,9 +38,8 @@ Common:
 
     # larlite
     envSet(LARLITE_BASEDIR,${UPS_PROD_DIR}/larlite)
-    envSet(LARLITE_COREDIR,${UPS_PROD_DIR}/larlite/core)
-    envSet(LARLITE_LIBDIR, ${UPS_PROD_DIR}/larlite/lib)
-    envSet(LARLITE_USERDEVDIR,${UPS_PROD_DIR}/larlite/UserDev)
+    envSet(LARLITE_COREDIR,${UPS_PROD_DIR}/larlite/larlite)
+    envSet(LARLITE_LIBDIR, ${UPS_PROD_DIR}/larlite/build/installed/lib)
     envSet(LARLITE_PYTHON,"python2")
     envSet(LARLTTE_PYTHON_VERSION,2)
 
@@ -113,15 +112,14 @@ Common:
     pathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/ublarcvserver/networks/sparse_ssnet )
 
     # add lib dir to ld path
-    pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larlite/lib )
+    pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larlite/build/installed/lib )
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/Geo2D/lib )
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larcv/build/installed/lib )
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/lib )
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larflow/build/lib )
 
     # add include dirst to root include path
-    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/core/ )
-    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/UserDev )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/build/installed/include )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/Geo2D/ )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/ )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larcv/build/installed/include )
@@ -133,6 +131,6 @@ End:
 #*************************************************
 #
 # ups declare command that works on gpvm:
-# ups declare ubdl v1_0_1 -r ubdl/v06_36_00 -f Linux64bit+2.6-2.12 -m ubdl.table -q e17:prof -U ups/
+# ups declare ubdl v2_me_06_03 -r ubdl/v2_me_06_03 -f Linux64bit+2.6-2.12 -m ubdl.table -q e17:prof -U ups/
 #
 #

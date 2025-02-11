@@ -2,11 +2,13 @@
 
 # Note locations here are some defaults that typically work for ubuntu.
 # they are also the locations used in the [ubdl container](https://github.com/larbys/larbys-containers)
+source /cvmfs/uboone.opensciencegrid.org/products/setup_uboone_mcc9.sh
 
 # ROOT
 # SETUP BY UPS
 
 setup root v6_12_06a -q e17:prof
+setup gcc v7_3_0 -q e17:prof
 
 
 # CUDA

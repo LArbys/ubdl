@@ -2,8 +2,7 @@
 
 Collection of repositories for the MicroBooNE DL Reconstruction Chain.
 
-The current version of the code has tools for implementing the "Gen-2" workflow.
-
+The current version of the code has tools for implementing the LANTERN (Liquid Argon NeuTrino Event Reconstruction with Networks) workflow.
 
 
 The vision for this reconstruction chain is to
@@ -29,8 +28,33 @@ git submodule init
 git submodule update
 source setenv_py3.sh
 source configure.sh
-source buidlall_py3.sh
+source buildall_py3.sh
 ```
+
+To build this repository on the Fermilab MicroBooNE GPVMs, go to the folder you want to clone and build and then:
+
+```
+apptainer shell -B /cvmfs -B /exp/uboone -B /pnfs/uboone -B /run/user -s /bin/bash --env UPS_OVERRIDE='-H Linux64bit+3.10-2.17' /cvmfs/uboone.opensciencegrid.org/containers/uboone-devel-sl7
+git clone https://github.com/larbys/ubdl
+git checkout -b v2_me_06_03 v2_me_06_02
+git submodule init
+git submodule update
+source scripts/setenv_fnal.sh
+source configure.sh
+source buildall_fnal.sh
+```
+
+For any build, one way to check if the compilations was successful is to run the following in the python interpretter:
+
+```
+>>> from larlite import larlite
+>>> from larcv import larcv
+>>> from ublarcvapp import ublarcvapp
+>>> from larflow import larflow
+>>> 
+```
+
+If you see no errors, this are (probably) OK.
 
 ## Quick Start: Set up the environment
 
@@ -96,6 +120,7 @@ More details about the LArCV1 version used here.
 
 ## TO DO LIST
 
-* go back reconfigure build system to use cmake: geo2d, laropencv?
-* support a build mode that produces a folder for UPS product
+* go back reconfigure build system to use cmake: geo2d, laropencv left
+* support a build mode that produces a folder for UPS product: (still done by hand)
 * documentation for how to setup the different net's workers
+* more documentation!
