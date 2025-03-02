@@ -6,6 +6,8 @@ alias python-config=python3-config
 __ubdl_buildall_py3_workdir__=$PWD
 build_log=${__ubdl_buildall_py3_workdir__}/build.log
 
+#BUILD_FLAG=$1
+
 echo "<<< BUILD LARLITE >>>"
 cd larlite
 mkdir build
