@@ -21,18 +21,18 @@ Qualifiers = "e17:prof"
     setupRequired( eigen    v3_3_4a    )
 
 Flavor     = ANY
-Qualifiers = "e17:prof"
+Qualifiers = "e26:prof"
 
   Action = GetProducts
     setupRequired( root     v6_28_12 -q e26:p3915:prof )
     setupRequired( python   v3_9_15 )    
     setupRequired( numpy    v1_24_3   -q e26:p3915 )
     setupRequired( boost    v1_82_0   -q e26:prof )    
-    setupRequired( eigen    v3_3_4a    )
-    setupRequired( libtorch v1_13_1b  -q e26 )    
+    setupRequired( eigen    v23_08_01_66e8f    )
+    setupRequired( libtorch v2_1_1b  -q e26 )    
     setupRequired( pyyaml   v6_0_2    -q e26:p3915:prof )    
     setupRequired( opencv   v3_4_16_nogui -q e26:p3915:prof )
-    setupRequired( pyzmq    v19_0_2   -q e26:p3915:prof )  
+    setupRequired( pyzmq    v19_0_2   -q e26:p39:prof )  
     setupRequired( scipy    v1_11_4    -q e26:p3915:prof )    
 
 Common:
@@ -142,12 +142,7 @@ Common:
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larflow/build/lib )
 
     # add include dirst to root include path
-<<<<<<< Updated upstream
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/build/installed/include )
-=======
-    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/build/ )
-    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/UserDev )
->>>>>>> Stashed changes
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/Geo2D/ )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/ )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larcv/build/installed/include )
