@@ -35,6 +35,51 @@ Qualifiers = "e26:prof"
     setupRequired( pyzmq    v19_0_2   -q e26:p39:prof )  
     setupRequired( scipy    v1_11_4    -q e26:p3915:prof )    
 
+Flavor     = ANY
+Qualifiers = "e26:debug"
+
+  Action = GetProducts
+    setupRequired( root     v6_28_12 -q e26:p3915:prof )
+    setupRequired( python   v3_9_15 )    
+    setupRequired( numpy    v1_24_3   -q e26:p3915 )
+    setupRequired( boost    v1_82_0   -q e26:prof )    
+    setupRequired( eigen    v23_08_01_66e8f    )
+    setupRequired( libtorch v2_1_1b  -q e26 )    
+    setupRequired( pyyaml   v6_0_2    -q e26:p3915:prof )    
+    setupRequired( opencv   v3_4_16_nogui -q e26:p3915:prof )
+    setupRequired( pyzmq    v19_0_2   -q e26:p39:prof )  
+    setupRequired( scipy    v1_11_4    -q e26:p3915:prof )    
+
+Flavor     = ANY
+Qualifiers = "c14:prof"
+
+  Action = GetProducts
+    setupRequired( root     v6_28_12 -q c14:p3915:prof )
+    setupRequired( python   v3_9_15 )    
+    setupRequired( numpy    v1_24_3   -q c14:p3915 )
+    setupRequired( boost    v1_82_0   -q c14:prof )    
+    setupRequired( eigen    v23_08_01_66e8f    )
+    setupRequired( libtorch v2_1_1a  -q c14 )    
+    setupRequired( pyyaml   v6_0_2    -q e26:p3915:prof )    
+    setupRequired( opencv   v3_4_16_nogui -q e26:p3915:prof )
+    setupRequired( pyzmq    v19_0_2   -q e26:p39:prof )  
+    setupRequired( scipy    v1_11_4    -q e26:p3915:prof )    
+
+Flavor     = ANY
+Qualifiers = "c14:debug"
+
+  Action = GetProducts
+    setupRequired( root     v6_28_12 -q c14:debug:p3915 )
+    setupRequired( python   v3_9_15 )    
+    setupRequired( numpy    v1_24_3   -q c14:p3915 )
+    setupRequired( boost    v1_82_0   -q c14:prof )    
+    setupRequired( eigen    v23_08_01_66e8f    )
+    setupRequired( libtorch v2_1_1a  -q c14 )    
+    setupRequired( pyyaml   v6_0_2    -q e26:p3915:prof )    
+    setupRequired( opencv   v3_4_16_nogui -q e26:p3915:prof )
+    setupRequired( pyzmq    v19_0_2   -q e26:p39:prof )  
+    setupRequired( scipy    v1_11_4    -q e26:p3915:prof )    
+
 Common:
   Action = setup
     prodDir()
@@ -142,16 +187,27 @@ Common:
     pathPrepend(LD_LIBRARY_PATH, ${UPS_PROD_DIR}/larflow/build/lib )
 
     # add include dirst to root include path
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/build/installed/include/ )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/build/installed/include/larlite/Analysis )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/build/installed/include/larlite/Base )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/build/installed/include/larlite/BasicTool )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/build/installed/include/larlite/DataFormat )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larlite/build/installed/include/larlite/LArUtil )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/Geo2D/ )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/Geo2D/Geo2D/Algorithm )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/Geo2D/Geo2D/Core )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/Geo2D/Geo2D/PyUtil )
     #shouldn't need this one since LArOpenCV doesn't have ROOT dictionaries
-    #pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/ )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/ )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/LArOpenCV/Core )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/LArOpenCV/App )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/LArOpenCV/ImageCluster )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/LArOpenCV/ImageCluster/Base )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/LArOpenCV/ImageCluster/AlgoClass )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/LArOpenCV/ImageCluster/AlgoData )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/LArOpenCV/ImageCluster/AlgoFunction )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/LArOpenCV/LArOpenCV/ImageCluster/AlgoModule )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larcv/build/installed/ )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larcv/build/installed/include/larcv/app/ImageMod )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larcv/build/installed/include/larcv/core/Base )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larcv/build/installed/include/larcv/core/CPPUtil )
@@ -162,6 +218,7 @@ Common:
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larcv/build/installed/include/larcv/core/ROOTUtil )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larcv/build/installed/include/larcv/core/TorchUtil )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larcv/build/installed/include/larcv/core/json )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/include/ )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/include/ublarcvapp/ContourTools )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/include/ublarcvapp/LArOpenCVHandle )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/include/ublarcvapp/LArliteHandler )
@@ -173,6 +230,7 @@ Common:
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/include/ublarcvapp/UBWireTool )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/include/ublarcvapp/dbscan )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/ublarcvapp/build/include/ublarcvapp/ubdllee )
+    pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larflow/build/include/ )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larflow/build/include/larflow/KeyPoints )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larflow/build/include/larflow/LArFlowConstants )
     pathPrepend(ROOT_INCLUDE_PATH, ${UPS_PROD_DIR}/larflow/build/include/larflow/PrepFlowMatchData )
