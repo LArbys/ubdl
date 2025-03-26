@@ -1,0 +1,6 @@
+*.o
+*/.git*
+*/arxiv*
+*/CMakeFiles*
+*/CMakeFiles/*
+*~
