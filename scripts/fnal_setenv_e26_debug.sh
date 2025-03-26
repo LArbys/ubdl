@@ -34,3 +34,7 @@ export OPENCV_LIBDIR=${OPENCV_LIB}
 export LIBTORCH_LIBDIR=${LIBTORCH_LIB}
 export LIBTORCH_INCDIR=${LIBTORCH_INC}
 
+cd ${__ubdl_buildall_workdir__}/../
+source configure.sh
+
+cd ${__ubdl_buildall_workdir__}
