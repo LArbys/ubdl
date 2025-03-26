@@ -10,7 +10,7 @@ __ubdl_buildall_workdir__="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 echo "QUALIFIER: ${QUALIFIER}"
 echo "UBDL LOCATED AT: ${__ubdl_buildall_workdir__}"
 
-source fnal_setenv_c14.sh
+source fnal_setenv_c14_prof.sh
 
 # larlite
 echo "<<< BUILD LARLITE >>>"

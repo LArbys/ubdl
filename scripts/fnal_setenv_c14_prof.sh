@@ -20,7 +20,7 @@ setup python v3_9_15
 setup opencv v3_4_16_nogui -q e26:p3915:prof
 setup numpy v1_24_3 -q c14:p3915
 setup tbb v2021_9_0 -q c14
-setup libtorch v2_1_1b -q c14
+setup libtorch v2_1_1b
 setup eigen v23_08_01_66e8f
 setup boost v1_82_0 -q c14:prof
 
