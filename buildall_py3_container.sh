@@ -31,7 +31,7 @@ echo "<<< BUILD LARCV >>>"
 cd larcv
 mkdir -p build
 cd build
-cmake -DUSE_PYTHON3=ON -DUSE_OPENCV=ON -DUSE_FNAL=ON -DUSE_TORCH=OFF ../
+cmake -DUSE_PYTHON3=ON -DUSE_OPENCV=ON -DUSE_TORCH=ON ../
 #make install -j4 >> ${build_log} 2>&1
 make install -j4
 cd $__ubdl_buildall_py3_workdir__

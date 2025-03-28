@@ -51,3 +51,5 @@ source setenv.sh
 cd $UBDL_BASEDIR
 
 cd ${__ubdl_configure_workdir__}
+
+source setenv_root_include_path.sh
