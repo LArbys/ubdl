@@ -15,6 +15,8 @@ export CUDA_HOME=/usr/local/cuda/
 export OPENCV_INCDIR=/usr/include
 export OPENCV_LIBDIR=/usr/local/lib
 
-export TORCH_CMAKE_DIR=`python3 -c "import os,torch; print(os.path.dirname(torch.__file__))"`/share/cmake/Torch
+export TORCH_DIR=`python3 -c "import os,torch; print(os.path.dirname(torch.__file__))"`
+export LIBTORCH_INCDIR=${TORCH_DIR}/include
+export LIBTORCH_LIBDIR=${TORCH_DIR}/lib
+export TORCH_CMAKE_DIR=${TORCH_DIR}/share/cmake/Torch
 [[ ":${CMAKE_MODULE_PATH}:" != *":${TORCH_CMAKE_DIR}:"* ]] && export CMAKE_MODULE_PATH="${TORCH_CMAKE_DIR}:${CMAKE_MODULE_PATH}"
-
