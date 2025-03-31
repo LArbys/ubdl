@@ -50,6 +50,8 @@ cd lardly
 source setenv.sh
 cd $UBDL_BASEDIR
 
+source ${UBDL_BASEDIR}/setenv_root_include_path.sh
+
 cd ${__ubdl_configure_workdir__}
 
-source setenv_root_include_path.sh
+
