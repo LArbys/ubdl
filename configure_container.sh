@@ -27,7 +27,7 @@ cd $UBDL_BASEDIR
 
 # LArCV
 cd larcv
-source configure.sh
+source configure_container.sh
 cd $UBDL_BASEDIR
 
 # Cilantro (3rd party)
