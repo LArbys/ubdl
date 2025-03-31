@@ -3,7 +3,7 @@
 alias python=python3
 alias python-config=python3-config
 
-__ubdl_buildall_py3_workdir__=$PWD
+__ubdl_buildall_py3_workdir__="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 build_log=${__ubdl_buildall_py3_workdir__}/build.log
 
 echo "<<< BUILD LARLITE >>>"
@@ -23,6 +23,7 @@ cd $__ubdl_buildall_py3_workdir__
 
 echo "<<< BUILD LAROPENCV >>>"
 cd LArOpenCV
+
 #make -j4 >> ${build_log} 2>&1
 make -j4
 cd $__ubdl_buildall_py3_workdir__

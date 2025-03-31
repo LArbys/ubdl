@@ -22,12 +22,12 @@ cd $UBDL_BASEDIR
 
 # LArOpenCV
 cd LArOpenCV
-source setup_laropencv_container.sh
+source setup_laropencv.sh
 cd $UBDL_BASEDIR
 
 # LArCV
 cd larcv
-source configure_container.sh
+source configure.sh
 cd $UBDL_BASEDIR
 
 # Cilantro (3rd party)
