@@ -22,7 +22,7 @@ cd $UBDL_BASEDIR
 
 # LArOpenCV
 cd LArOpenCV
-source setup_laropencv_container.sh
+source setup_laropencv.sh
 cd $UBDL_BASEDIR
 
 # LArCV
@@ -49,5 +49,7 @@ cd $UBDL_BASEDIR
 cd lardly
 source setenv.sh
 cd $UBDL_BASEDIR
+
+source scripts/setenv_root_include_path.sh
 
 cd ${__ubdl_configure_workdir__}
