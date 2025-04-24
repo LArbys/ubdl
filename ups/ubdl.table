@@ -39,14 +39,14 @@ Flavor     = ANY
 Qualifiers = "e26:debug"
 
   Action = GetProducts
-    setupRequired( root     v6_28_12 -q e26:p3915:prof )
+    setupRequired( root     v6_28_12 -q e26:p3915:debug )
     setupRequired( python   v3_9_15 )    
     setupRequired( numpy    v1_24_3   -q e26:p3915 )
-    setupRequired( boost    v1_82_0   -q e26:prof )    
+    setupRequired( boost    v1_82_0   -q e26:debug )    
     setupRequired( eigen    v23_08_01_66e8f    )
     setupRequired( libtorch v2_1_1b  -q e26 )    
-    setupRequired( pyyaml   v6_0_2    -q e26:p3915:prof )    
     setupRequired( opencv   v3_4_16_nogui -q e26:p3915:prof )
+    setupRequired( pyyaml   v6_0_2    -q e26:p3915:prof )        
     setupRequired( pyzmq    v19_0_2   -q e26:p39:prof )  
     setupRequired( scipy    v1_11_4    -q e26:p3915:prof )    
 
