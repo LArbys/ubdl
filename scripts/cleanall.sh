@@ -9,7 +9,7 @@ cd larlite/build/ && rm -rf $UBDL_BASDIR/larlite/build/*
 echo "<<< CLEAN GEO2D >>>"
 cd $UBDL_BASEDIR
 cd Geo2D
-make clean
+rm -r build
 
 echo "<<< CLEAN LAROPENCV >>>"
 cd $UBDL_BASEDIR
