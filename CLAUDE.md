@@ -11,15 +11,15 @@ UBDL (MicroBooNE Deep Learning) is a neutrino physics reconstruction framework t
 ### Initial Setup (First Time)
 ```bash
 git submodule init && git submodule update
-source setenv_py3.sh
-source configure.sh
+source setenv_py3_container.sh
+source configure_container.sh
 source buildall_py3.sh
 ```
 
 ### Daily Development
 ```bash
-source setenv_py3.sh
-source configure.sh
+source setenv_py3_container.sh
+source configure_container.sh
 ```
 
 ### Building Individual Components
@@ -37,8 +37,8 @@ source buildall_py3.sh  # Full rebuild
 ## Environment Configuration
 
 The codebase uses machine-specific environment setup:
-- `setenv_py3.sh`: Configures external dependencies (ROOT, CUDA, OpenCV, PyTorch)
-- `configure.sh`: Sets up UBDL component environment variables
+- `setenv_py3_container.sh`: Configures external dependencies (ROOT, CUDA, OpenCV, PyTorch)
+- `configure_container.sh`: Sets up UBDL component environment variables
 - Environment automatically detects container vs. native machine setup
 
 ## Core Architecture

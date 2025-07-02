@@ -15,16 +15,27 @@ export CUDA_HOME=/usr/local/cuda/
 export OPENCV_INCDIR=/usr/include
 export OPENCV_LIBDIR=/usr/local/lib
 
-# Torch set
-export TORCH_CMAKE_DIR=`python3 -c "import os,torch; print(os.path.dirname(torch.__file__))"`/share/cmake/Torch
-export TORCHDEPS_CMAKE_DIR=`python3 -c "import os,torch; print(os.path.dirname(torch.__file__))"`/share/cmake/
-export TORCH_LIBDIR=`python3 -c "import os,torch; print(os.path.dirname(torch.__file__))"`/lib
-[[ ":${CMAKE_MODULE_PATH}:" != *":${TORCH_CMAKE_DIR}:"* ]] && export CMAKE_MODULE_PATH="${TORCH_CMAKE_DIR}:${CMAKE_MODULE_PATH}"
-[[ ":${CMAKE_MODULE_PATH}:" != *":${TORCHDEPS_CMAKE_DIR}:"* ]] && export CMAKE_MODULE_PATH="${TORCHDEPS_CMAKE_DIR}:${CMAKE_MODULE_PATH}"
-[[ ":$LD_LIBRARY_PATH:" != *":${TORCH_LIBDIR}:"* ]] && export LD_LIBRARY_PATH="${TORCH_LIBDIR}:${LD_LIBRARY_PATH}"
+# Build against libtorch built with c++11 ABI standard
+# This is different than the version in python3.8
+# Careful about mixing these up.
+export LIBTORCH_DIR=/usr/local/libtorch1.9.0_cxx11abi/libtorch
+export LIBTORCH_LIBRARY_DIR=${LIBTORCH_DIR}/lib
+export LIBTORCH_CMAKE_DIR=${LIBTORCH_DIR}/share/cmake/Torch
+export LIBTORCH_BIN_DIR=${LIBTORCH_DIR}/bin
+
+[[ ":$LD_LIBRARY_PATH:" != *":${LIBTORCH_LIBRARY_DIR}:"* ]] && LD_LIBRARY_PATH="${LIBTORCH_LIBRARY_DIR}:${LD_LIBRARY_PATH}"
+[[ ":$PATH:" != *":${LIBTORCH_BIN_DIR}:"* ]] && PATH="${LIBTORCH_BIN_DIR}:${PATH}"
 
 # Add prongCNN folder
+export PRONGCNN_DIR=/home/twongjirad/working/larbys/gen2/container_u20_env/work/prongCNN/
 export LARPID_DIR=/home/twongjirad/working/larbys/gen2/container_u20_env/work/prongCNN/larpid/build/installed/
 export LARPID_LIBDIR=${LARPID_DIR}/lib
+export LARPID_INCDIR=${LARPID_DIR}/include
+
 [[ ":$LD_LIBRARY_PATH:" != *":${LARPID_LIBDIR}:"* ]] && export LD_LIBRARY_PATH="${LARPID_LIBDIR}:${LD_LIBRARY_PATH}"
+[[ ":$LD_LIBRARY_PATH:" != *":${LARPID_LIBDIR}:"* ]] && export LD_LIBRARY_PATH="${LARPID_LIBDIR}:${LD_LIBRARY_PATH}"
+[[ ":$PATH:" != *":${LARPID_BINDIR}:"* ]] && export PATH="${LARFLOW_BINDIR}:${PATH}"
+[[ ":${PYTHONPATH}:" != *":${PRONGCNN_DIR}:"* ]] && export PYTHONPATH="${PRONGCNN_DIR}:${PYTHONPATH}"
+[[ ":${PYTHONPATH}:" != *":${PRONGCNN_DIR}/models:"* ]] && export PYTHONPATH="${PRONGCNN_DIR}/models:${PYTHONPATH}"
+
 
