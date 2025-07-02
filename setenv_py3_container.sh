@@ -27,8 +27,9 @@ export LIBTORCH_BIN_DIR=${LIBTORCH_DIR}/bin
 [[ ":$PATH:" != *":${LIBTORCH_BIN_DIR}:"* ]] && PATH="${LIBTORCH_BIN_DIR}:${PATH}"
 
 # Add prongCNN folder
-export PRONGCNN_DIR=/home/twongjirad/working/larbys/gen2/container_u20_env/work/prongCNN/
-export LARPID_DIR=/home/twongjirad/working/larbys/gen2/container_u20_env/work/prongCNN/larpid/build/installed/
+UBDL_BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export PRONGCNN_DIR=${UBDL_BASEDIR}/prongCNN
+export LARPID_DIR=${PRONGCNN_DIR}/larpid/build/installed
 export LARPID_LIBDIR=${LARPID_DIR}/lib
 export LARPID_INCDIR=${LARPID_DIR}/include
 

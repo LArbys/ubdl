@@ -31,3 +31,6 @@
 [submodule "lardly"]
 	path = lardly
 	url = https://github.com/larbys/lardly
+[submodule "prongCNN"]
+	path = prongCNN
+	url = https://github.com/NuTufts/prongCNN
