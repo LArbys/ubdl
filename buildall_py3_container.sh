@@ -61,6 +61,13 @@ cmake -DUSE_OPENCV=ON ../
 make install $COMPFLAG
 cd $__ubdl_buildall_py3_workdir__
 
+echo "<<< BUILD PRONGCNN/LARPID >>>"
+mkdir -p prongCNN/larpid/build
+cd prongCNN/larpid/build
+cmake ../
+make install $COMPFLAG
+cd $__ubdl_buildall_py3_workdir__
+
 echo "<<< BUILD LARFLOW >>>"
 mkdir -p larflow/build
 cd larflow
