@@ -34,3 +34,6 @@
 [submodule "prongCNN"]
 	path = prongCNN
 	url = https://github.com/NuTufts/prongCNN
+[submodule "extern/highfive"]
+	path = extern/highfive
+	url = https://github.com/NuTufts/highfive.git
