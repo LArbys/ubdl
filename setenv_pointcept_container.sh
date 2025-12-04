@@ -50,3 +50,8 @@ source configure_container.sh
 # Put conda lib in front
 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
 
+# Suppress HDF5 version check - needed because system OpenCV links to GDAL
+# which pulls in system HDF5 (1.10.7), conflicting with conda HDF5 (1.14.6)
+# used by HighFive in our code. Setting to 2 suppresses warnings entirely.
+export HDF5_DISABLE_VERSION_CHECK=2
+
