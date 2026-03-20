@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source /cluster/home/lantern_scripts/setup_lantern_container.sh
+
 export UBDL_DIR=/cluster/home/ubdl/
 export RECO_TEST_DIR=/cluster/home/ubdl/larflow/larflow/Reco/test/
 export LARMATCH_DIR=/cluster/home/ubdl/larflow/larmatchnet/larmatch/

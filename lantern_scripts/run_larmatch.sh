@@ -10,11 +10,12 @@ export LANTERN_SCRIPTS=/cluster/home/lantern_scripts/
 
 input_rootfile=$1
 lm_outfile=$2
-FLAGS=$3
+adcname=$3
+FLAGS=$4
 
 CONFIG_FILE="${LANTERN_SCRIPTS}/config_larmatchme_deploycpu.yaml"
 WEIGHT_FILE="larmatch_ckpt78k.pt"
 
-CMD="python3 $LARMATCH_DIR/deploy_larmatchme.py --config-file ${CONFIG_FILE} --supera $input_rootfile --weights ${LARMATCH_DIR}/${WEIGHT_FILE} --output $lm_outfile --min-score 0.5 --adc-name wire --chstatus-name wire --device-name cpu --use-skip-limit ${FLAGS}"
+CMD="python3 $LARMATCH_DIR/deploy_larmatchme.py --config-file ${CONFIG_FILE} --supera $input_rootfile --weights ${LARMATCH_DIR}/${WEIGHT_FILE} --output $lm_outfile --min-score 0.5 --adc-name ${adcname} --chstatus-name ${adcname} --device-name cpu --use-skip-limit ${FLAGS}"
 echo $CMD
 $CMD
