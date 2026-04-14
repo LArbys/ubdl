@@ -1,4 +1,5 @@
 #!/bin/bash
+shopt -s extdebug
 
 # WE NEED TO SETUP ENV VARIABLES FOR ROOT, CUDA, OPENCV
 alias python=python3
@@ -9,7 +10,9 @@ alias python=python3
 echo "DEFAULT SETUP (COMPAT WITH SINGULARITY CONTAINER)"
 
 # ROOT
-source /opt/root/bin/thisroot.sh
+# Source thisroot.sh from /opt/root to avoid shell-detection issues
+# (getTrueShellExeName fails on some login nodes, so we cd there instead)
+pushd /opt/root > /dev/null && source bin/thisroot.sh 2>/dev/null && popd > /dev/null
 
 # CUDA
 export CUDA_HOME=/usr/local/cuda/
